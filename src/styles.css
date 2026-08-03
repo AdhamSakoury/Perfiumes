@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.scroll-locked {
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  background: #F5F0E6;
+  color: #1A1510;
+}
+
+html.dark body {
+  background: #1A1510;
+  color: #F5F0E6;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #302619;
+  color: #F5F0E6;
+  border-color: rgba(245, 166, 35, 0.28);
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: rgba(230, 213, 184, 0.55);
+}
+
+html.dark option {
+  background-color: #302619;
+  color: #F5F0E6;
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, rgba(27, 77, 77, 0.9) 0%, rgba(26, 21, 16, 0.8) 100%);
+}
+
+.gold-shimmer {
+  color: #F5A623;
+  background: linear-gradient(45deg, #F5A623 0%, #FFD700 50%, #F5A623 100%);
+  background-size: 200% 200%;
+  animation: shimmer 3s ease infinite;
+}
+
+.hero-sun-icon {
+  color: #FFD21A;
+  font-size: 4.75rem;
+  line-height: 1;
+  filter: drop-shadow(0 10px 26px rgba(245, 166, 35, 0.28));
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.page-shell {
+  min-height: calc(100vh - 20rem);
+  padding-top: 7rem;
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    padding-top: 8rem;
+  }
+}
+
+.page-enter {
+  animation: page-enter 420ms ease-out both;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-checkbox,
+.custom-radio {
+  accent-color: #F5A623;
+}
+
+.pagination-btn.active {
+  background: #F5A623;
+  color: #1A1510;
+  border-color: #F5A623;
+}
+
+.pagination-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.timeline-dot {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 2px solid #E6D5B8;
+}
+
+.timeline-dot.completed,
+.timeline-dot.active {
+  background: #F5A623;
+  color: #1A1510;
+  border-color: #F5A623;
+}
+
+.timeline-dot.pending {
+  color: #5D4E37;
+}

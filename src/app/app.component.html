@@ -1,0 +1,19 @@
+<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen">
+      <app-navbar />
+      <main>
+        <router-outlet />
+      </main>
+      <app-footer />
+
+      @if (toast.toast(); as activeToast) {
+        <div class="toast active" [class.error]="activeToast.type === 'error'" [class.success]="activeToast.type === 'success'">
+          <i class="fas" [class.fa-check-circle]="activeToast.type === 'success'" [class.fa-exclamation-circle]="activeToast.type === 'error'"></i>
+          <span>{{ activeToast.message }}</span>
+        </div>
+      }
+    </div>
+
+
+
+
+

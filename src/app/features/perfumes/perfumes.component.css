@@ -1,0 +1,88 @@
+.filters-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  background: rgba(26, 21, 16, 0.42);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+@media (max-width: 1023px) {
+  .filters-panel {
+    position: fixed;
+    top: 5rem;
+    left: 0;
+    z-index: 59;
+    width: min(19.5rem, calc(100vw - 2rem));
+    height: calc(100vh - 5rem);
+    overflow-y: auto;
+    border-radius: 0 1rem 1rem 0;
+    transform: translateX(-110%);
+    transition: transform 220ms ease;
+  }
+
+  .filters-panel.is-open {
+    transform: translateX(0);
+  }
+}
+
+.mobile-sort {
+  overflow: hidden;
+  border: 1px solid rgba(230, 213, 184, 0.8);
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+:host-context(.dark) .mobile-sort {
+  border-color: rgba(245, 166, 35, 0.25);
+  background: #302619;
+}
+
+.mobile-sort-button {
+  width: 100%;
+  min-height: 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  color: #1A1510;
+  font-weight: 600;
+}
+
+:host-context(.dark) .mobile-sort-button {
+  color: #F5F0E6;
+}
+
+.mobile-sort-menu {
+  border-top: 1px solid rgba(245, 166, 35, 0.18);
+  background: #fff;
+}
+
+:host-context(.dark) .mobile-sort-menu {
+  background: #302619;
+}
+
+.mobile-sort-option {
+  width: 100%;
+  display: block;
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  color: #1B4D4D;
+  font-weight: 500;
+}
+
+:host-context(.dark) .mobile-sort-option {
+  color: #E6D5B8;
+}
+
+.mobile-sort-option:hover,
+.mobile-sort-option.is-active {
+  background: rgba(245, 166, 35, 0.18);
+  color: #1A1510;
+}
+
+:host-context(.dark) .mobile-sort-option:hover,
+:host-context(.dark) .mobile-sort-option.is-active {
+  color: #F5A623;
+}

@@ -1,0 +1,52 @@
+<article class="bg-white dark:bg-nubian-surface rounded-xl shadow-lg overflow-hidden group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+      <div class="relative overflow-hidden">
+        <img
+          [src]="perfume.image"
+          [alt]="perfume.name"
+          class="w-full h-48 sm:h-52 object-cover transform group-hover:scale-110 transition-transform duration-500"
+          (error)="useFallback($event)">
+        <div class="absolute top-4 right-4">
+          <span class="px-3 py-1 bg-nubian-gold text-nubian-dark text-sm font-bold rounded-full">{{ perfume.gender }}</span>
+        </div>
+        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-3">
+          <a
+            [routerLink]="['/perfumes', perfume.id]"
+            class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-nubian-brown hover:bg-nubian-gold transition-colors"
+            aria-label="View perfume">
+            <i class="fas fa-eye"></i>
+          </a>
+          <button
+            type="button"
+            (click)="toggleWishlist()"
+            class="w-10 h-10 bg-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+            [class.text-nubian-terracotta]="!wishlist.has(perfume.id)"
+            [class.bg-nubian-terracotta]="wishlist.has(perfume.id)"
+            [class.text-white]="wishlist.has(perfume.id)"
+            aria-label="Toggle wishlist">
+            <i class="fas fa-heart"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-4">
+        <p class="text-sm text-nubian-gold font-semibold mb-1">{{ perfume.brand }}</p>
+        <h3 class="text-lg font-bold text-nubian-dark dark:text-nubian-sand mb-2 font-cinzel">{{ perfume.name }}</h3>
+        <div class="flex items-center mb-3">
+          <app-star-rating [rating]="perfume.rating" />
+          <span class="ml-2 text-sm text-nubian-earth dark:text-nubian-sand">({{ perfume.rating }})</span>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-xl font-bold text-nubian-brown dark:text-nubian-gold">{{ perfume.price | currency }}</span>
+          <button
+            type="button"
+            (click)="addToCart()"
+            class="px-3 py-2 bg-nubian-brown text-white rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+            <i class="fas fa-cart-plus mr-1"></i> Add
+          </button>
+        </div>
+      </div>
+    </article>
+
+
+
+
+

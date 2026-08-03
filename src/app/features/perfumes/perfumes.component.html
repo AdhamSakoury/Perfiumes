@@ -1,0 +1,125 @@
+<section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+      <div class="flex flex-col lg:flex-row gap-5">
+        @if (filtersOpen()) {
+          <button type="button" class="filters-backdrop lg:hidden" (click)="filtersOpen.set(false)" aria-label="Close filters"></button>
+        }
+
+        <aside class="filters-panel lg:w-72 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 h-fit border border-nubian-gold/20" [class.is-open]="filtersOpen()">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Filters</h2>
+            <div class="flex items-center gap-3">
+              <button type="button" (click)="resetFilters()" class="text-sm text-nubian-terracotta hover:text-nubian-gold">Reset</button>
+              <button type="button" (click)="filtersOpen.set(false)" class="lg:hidden text-nubian-earth dark:text-nubian-sand hover:text-nubian-terracotta" aria-label="Close filters">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-8">
+            <div class="lg:hidden">
+              <h3 class="font-semibold mb-3 text-nubian-brown dark:text-nubian-sand">Sort</h3>
+              <div class="mobile-sort">
+                <button type="button" (click)="sortOpen.set(!sortOpen())" class="mobile-sort-button">
+                  <span>{{ sortLabel() }}</span>
+                  <i class="fas fa-chevron-down text-xs transition-transform" [class.rotate-180]="sortOpen()"></i>
+                </button>
+                @if (sortOpen()) {
+                  <div class="mobile-sort-menu">
+                    @for (option of sortOptions; track option.value) {
+                      <button type="button" (click)="sort = option.value; sortOpen.set(false)" class="mobile-sort-option" [class.is-active]="sort === option.value">
+                        {{ option.label }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-3 text-nubian-brown dark:text-nubian-sand">Gender</h3>
+              <div class="space-y-2">
+                @for (gender of ['Men', 'Women', 'Unisex']; track gender) {
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox" [checked]="filters.gender.includes(gender)" (change)="toggleArray('gender', gender, $event)">
+                    <span>{{ gender }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-3 text-nubian-brown dark:text-nubian-sand">Rating</h3>
+              <div class="space-y-2">
+                @for (rating of [0, 4, 4.5, 4.8]; track rating) {
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="radio" name="rating" class="custom-radio" [value]="rating" [(ngModel)]="filters.rating">
+                    <span>{{ rating === 0 ? 'Any rating' : rating + '+ stars' }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-3 text-nubian-brown dark:text-nubian-sand">Price</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <input type="number" [(ngModel)]="filters.priceMin" class="px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" [min]="bounds.min" [max]="bounds.max">
+                <input type="number" [(ngModel)]="filters.priceMax" class="px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" [min]="bounds.min" [max]="bounds.max">
+              </div>
+            </div>
+
+            <div>
+              <h3 class="font-semibold mb-3 text-nubian-brown dark:text-nubian-sand">Brands</h3>
+              <div class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                @for (brand of brands; track brand) {
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox" [checked]="filters.brands.includes(brand)" (change)="toggleArray('brands', brand, $event)">
+                    <span class="text-sm">{{ brand }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="flex-1">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Perfumes</h1>
+              <p class="text-nubian-earth dark:text-nubian-sand mt-2">Showing {{ displayed.length }} fragrance{{ displayed.length === 1 ? '' : 's' }}</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <button type="button" (click)="filtersOpen.set(true)" class="lg:hidden inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-nubian-brown text-white font-semibold hover:bg-nubian-gold hover:text-nubian-dark transition-colors">
+                <i class="fas fa-filter"></i>
+                Filters
+              </button>
+              <select [(ngModel)]="sort" class="hidden lg:block px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
+                <option value="default">Default</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="rating">Top Rated</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+          </div>
+
+          @if (displayed.length) {
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 gap-5">
+              @for (perfume of displayed; track perfume.id) {
+                <app-perfume-card [perfume]="perfume" />
+              }
+            </div>
+          } @else {
+            <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
+              <i class="fas fa-search text-2xl text-nubian-gold/60 mb-4"></i>
+              <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">No results</h2>
+              <p class="mt-2 text-nubian-earth dark:text-nubian-sand">Try relaxing your filters.</p>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+
+
+
+

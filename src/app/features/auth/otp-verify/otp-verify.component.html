@@ -1,0 +1,16 @@
+<section class="page-shell page-enter flex items-center justify-center px-4 py-16">
+  <form (ngSubmit)="verify()" class="w-full max-w-md bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl p-6 border border-nubian-gold/20 space-y-5">
+    <div class="text-center">
+      <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Verify OTP</h1>
+      <p class="text-nubian-earth dark:text-nubian-sand mt-2">Enter the code sent to your email.</p>
+    </div>
+    <input name="code" [(ngModel)]="code" placeholder="Verification code" class="w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2 tracking-widest text-center" required>
+    <button type="submit" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">Verify</button>
+    <a routerLink="/resend-confirmation" class="block text-center text-nubian-gold font-semibold">Resend code</a>
+  </form>
+</section>
+
+
+
+
+

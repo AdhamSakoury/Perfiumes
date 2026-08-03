@@ -1,0 +1,88 @@
+<section class="relative pt-32 md:pt-36 min-h-screen flex items-center justify-center overflow-hidden page-enter">
+      <div class="absolute inset-0 z-0">
+        <img src="https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=1920" alt="Nubian Perfume" class="w-full h-full object-cover">
+        <div class="absolute inset-0 hero-gradient"></div>
+      </div>
+      <div class="relative z-10 w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 text-center">
+        <div class="mb-6 inline-flex justify-center">
+          <i class="fa-solid fa-sun hero-sun-icon" aria-hidden="true"></i>
+        </div>
+        <h1 class="text-5xl md:text-7xl font-bold text-white mb-6 font-cinzel leading-tight">
+          Essence of <br>
+          <span class="text-nubian-gold">Nubian Heritage</span>
+        </h1>
+        <p class="text-xl md:text-2xl text-nubian-sand mb-8 max-w-2xl mx-auto font-light">
+          Discover luxury fragrances inspired by the ancient lands of Nubia. Where golden sands meet timeless elegance.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a routerLink="/perfumes" class="px-8 py-4 bg-nubian-gold text-nubian-dark font-bold rounded-lg hover:bg-white transition-all transform hover:scale-105 shadow-lg">Explore Collection</a>
+          <a href="#featured" class="px-8 py-4 border-2 border-white text-white font-bold rounded-lg hover:bg-white hover:text-nubian-dark transition-all">View Featured</a>
+        </div>
+      </div>
+      <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-nubian-cream dark:from-nubian-dark to-transparent"></div>
+    </section>
+
+    <section id="featured" class="py-14 md:py-16 w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 page-enter">
+      <div class="text-center mb-10">
+        <h2 class="text-4xl font-bold text-nubian-brown dark:text-nubian-gold mb-4 font-cinzel">Featured Collections</h2>
+        <div class="w-24 h-1 bg-nubian-gold mx-auto rounded-full"></div>
+        <p class="mt-4 text-nubian-earth dark:text-nubian-sand max-w-2xl mx-auto">Handpicked fragrances that embody the spirit of Nubia</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-5">
+        @for (perfume of perfumeService.featured(); track perfume.id) {
+          <app-perfume-card [perfume]="perfume" />
+        }
+      </div>
+      <div class="text-center mt-12">
+        <a routerLink="/perfumes" class="inline-flex items-center px-8 py-4 bg-nubian-brown text-white font-semibold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+          View All Perfumes <i class="fas fa-arrow-right ml-2"></i>
+        </a>
+      </div>
+    </section>
+
+    <section class="py-14 md:py-16 bg-nubian-sand/30 dark:bg-nubian-surface/20 nubian-pattern">
+      <div class="w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16 items-center">
+          <div class="relative max-w-4xl">
+            <div class="absolute -inset-4 bg-nubian-gold/20 rounded-2xl transform rotate-3"></div>
+            <img src="https://images.unsplash.com/photo-1541643600914-78b084683601?w=800" alt="Nubian Art" class="relative rounded-2xl shadow-2xl w-full max-h-[620px] object-cover">
+          </div>
+          <div class="lg:pl-6 xl:pl-10 max-w-4xl">
+            <h2 class="text-4xl font-bold text-nubian-brown dark:text-nubian-gold mb-6 font-cinzel">The Nubian Legacy</h2>
+            <div class="w-20 h-1 bg-nubian-gold rounded-full mb-6"></div>
+            <p class="text-lg text-nubian-earth dark:text-nubian-sand mb-6 leading-relaxed">
+              Inspired by the ancient Kingdom of Nubia, our perfumes capture the essence of golden deserts, flowing rivers, and rich cultural heritage.
+            </p>
+            <ul class="space-y-4 mb-6">
+              <li class="flex items-center text-nubian-earth dark:text-nubian-sand"><i class="fas fa-check-circle text-nubian-gold mr-3"></i> Premium ingredients sourced from across Africa</li>
+              <li class="flex items-center text-nubian-earth dark:text-nubian-sand"><i class="fas fa-check-circle text-nubian-gold mr-3"></i> Traditional craftsmanship meets modern luxury</li>
+              <li class="flex items-center text-nubian-earth dark:text-nubian-sand"><i class="fas fa-check-circle text-nubian-gold mr-3"></i> Sustainable and ethical production</li>
+            </ul>
+            <a routerLink="/perfumes" class="inline-flex items-center text-nubian-brown dark:text-nubian-gold font-semibold hover:text-nubian-terracotta transition-colors">Discover Our Story <i class="fas fa-arrow-right ml-2"></i></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-14 md:py-16 px-4 sm:px-6 lg:px-10 xl:px-12">
+      <div class="w-full text-center">
+        <div class="bg-nubian-brown dark:bg-nubian-surface rounded-2xl p-6 md:p-8 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-64 h-56 bg-nubian-gold/10 rounded-full -mr-32 -mt-32"></div>
+          <div class="absolute bottom-0 left-0 w-64 h-56 bg-nubian-gold/10 rounded-full -ml-32 -mb-32"></div>
+          <div class="relative z-10">
+            <i class="fas fa-envelope-open-text text-5xl text-nubian-gold mb-4"></i>
+            <h2 class="text-3xl font-bold text-white mb-4 font-cinzel">Join the Gnouby Family</h2>
+            <p class="text-nubian-sand mb-8">Subscribe for exclusive offers and new fragrance announcements</p>
+            <form (ngSubmit)="subscribe()" class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+              <input type="email" name="newsletterEmail" [(ngModel)]="newsletterEmail" placeholder="Enter your email" class="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-nubian-gold" required>
+              <button type="submit" class="px-6 py-3 bg-nubian-gold text-nubian-dark font-bold rounded-lg hover:bg-white transition-colors">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+
+
+

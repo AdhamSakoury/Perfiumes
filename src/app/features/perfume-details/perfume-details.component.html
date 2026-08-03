@@ -1,0 +1,75 @@
+<section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+      @if (perfume; as item) {
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          <div class="bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl overflow-hidden">
+            <img [src]="item.image" [alt]="item.name" class="w-full aspect-square object-cover" (error)="useFallback($event)">
+          </div>
+          <div>
+            <p class="text-nubian-gold font-semibold text-lg">{{ item.brand }}</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mt-2 mb-4">{{ item.name }}</h1>
+            <div class="flex items-center gap-3 mb-6">
+              <app-star-rating [rating]="item.rating" />
+              <span class="text-nubian-earth dark:text-nubian-sand">{{ item.rating }} out of 5</span>
+            </div>
+            <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-6">{{ item.price | currency }}</p>
+            <p class="text-lg leading-relaxed text-nubian-earth dark:text-nubian-sand mb-6">{{ item.description }}</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+                <span class="text-sm text-nubian-earth dark:text-nubian-sand">Gender</span>
+                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.gender }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+                <span class="text-sm text-nubian-earth dark:text-nubian-sand">Concentration</span>
+                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.concentration }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+                <span class="text-sm text-nubian-earth dark:text-nubian-sand">Category</span>
+                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.category }}</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+                <span class="text-sm text-nubian-earth dark:text-nubian-sand">Season</span>
+                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.season.join(', ') }}</p>
+              </div>
+            </div>
+
+            <div class="mb-6">
+              <h2 class="font-bold text-nubian-brown dark:text-nubian-gold mb-3 font-cinzel">Notes</h2>
+              <div class="flex flex-wrap gap-2">
+                @for (note of item.notes; track note) {
+                  <span class="px-3 py-1 rounded-full bg-nubian-sand/70 dark:bg-nubian-surface2 text-sm">{{ note }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+              <button type="button" (click)="cart.add(item.id)" class="px-8 py-4 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+                <i class="fas fa-shopping-cart mr-2"></i> Add to Cart
+              </button>
+              <button type="button" (click)="wishlist.add(item.id)" class="px-8 py-4 border-2 border-nubian-brown dark:border-nubian-gold text-nubian-brown dark:text-nubian-gold font-bold rounded-lg hover:bg-nubian-brown hover:text-white transition-all">
+                <i class="fas fa-heart mr-2"></i> Add to Wishlist
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-20">
+          <h2 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mb-6">Related Perfumes</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+            @for (related of perfumeService.relatedTo(item); track related.id) {
+              <app-perfume-card [perfume]="related" />
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="text-center py-14 md:py-16">
+          <h1 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-4">Perfume not found</h1>
+          <a routerLink="/perfumes" class="text-nubian-gold font-semibold">Back to collection</a>
+        </div>
+      }
+    </section>
+
+
+
+
+

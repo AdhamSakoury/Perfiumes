@@ -1,0 +1,381 @@
+/* Account Page Styles for Gnouby Perfumes - Enhanced Edition */
+
+body { 
+    font-family: 'Inter', sans-serif; 
+}
+
+h1, h2, h3, h4, h5, h6 { 
+    font-family: 'Cinzel', serif; 
+}
+
+/* Profile Header Glassmorphism */
+.profile-header-wrapper {
+    position: relative;
+}
+
+.profile-header-glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(245, 166, 35, 0.3);
+    box-shadow: 
+        0 20px 40px -10px rgba(27, 77, 77, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+.dark .profile-header-glass {
+    background: rgba(36, 29, 21, 0.86);
+    border: 1px solid rgba(245, 166, 35, 0.2);
+    box-shadow: 
+        0 20px 40px -10px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+/* Animated Gradient Text */
+.animate-gradient-x {
+    background-size: 200% auto;
+    animation: gradient-x 3s ease infinite;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(245, 166, 35, 0.1) inset;
+}
+
+.dark .modal-content {
+    background: #241D15;
+    color: #F5F0E6;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(245, 166, 35, 0.1) inset;
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: scale(1) translateY(0);
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #1B4D4D 0%, #2d6b6b 100%);
+    color: white;
+    border-radius: 1rem;
+    box-shadow: 
+        0 10px 30px -5px rgba(27, 77, 77, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    z-index: 200;
+    transform: translateX(150%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.toast.active {
+    transform: translateX(0);
+}
+
+.toast.error {
+    background: linear-gradient(135deg, #EF4444 0%, #dc2626 100%);
+    box-shadow: 
+        0 10px 30px -5px rgba(239, 68, 68, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.dark .toast {
+    background: linear-gradient(135deg, #F5A623 0%, #d97706 100%);
+    color: #1A1510;
+    box-shadow: 
+        0 10px 30px -5px rgba(245, 166, 35, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.dark .toast.error {
+    background: linear-gradient(135deg, #EF4444 0%, #b91c1c 100%);
+    color: white;
+}
+
+/* Order Status Badges */
+.order-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.status-delivered { 
+    background: linear-gradient(135deg, #DEF7EC 0%, #d1fae5 100%); 
+    color: #03543F; 
+    border: 1px solid #6EE7B7;
+}
+
+.status-shipped { 
+    background: linear-gradient(135deg, #E1EFFE 0%, #dbeafe 100%); 
+    color: #1E429F; 
+    border: 1px solid #93C5FD;
+}
+
+.status-processing { 
+    background: linear-gradient(135deg, #FEF3C7 0%, #fef9c3 100%); 
+    color: #92400E; 
+    border: 1px solid #FCD34D;
+}
+
+.status-pending { 
+    background: linear-gradient(135deg, #F3F4F6 0%, #f3f4f6 100%); 
+    color: #374151; 
+    border: 1px solid #D1D5DB;
+}
+
+.status-cancelled { 
+    background: linear-gradient(135deg, #FEE2E2 0%, #fee2e2 100%); 
+    color: #991B1B; 
+    border: 1px solid #FCA5A5;
+}
+
+.dark .status-delivered { 
+    background: linear-gradient(135deg, #065F46 0%, #047857 100%); 
+    color: #6EE7B7; 
+    border: 1px solid #059669;
+}
+
+.dark .status-shipped { 
+    background: linear-gradient(135deg, #1E3A8A 0%, #1e40af 100%); 
+    color: #93C5FD; 
+    border: 1px solid #3b82f6;
+}
+
+.dark .status-processing { 
+    background: linear-gradient(135deg, #78350F 0%, #92400e 100%); 
+    color: #FCD34D; 
+    border: 1px solid #d97706;
+}
+
+.dark .status-pending { 
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%); 
+    color: #D1D5DB; 
+    border: 1px solid #6b7280;
+}
+
+.dark .status-cancelled { 
+    background: linear-gradient(135deg, #7F1D1D 0%, #991b1b 100%); 
+    color: #FCA5A5; 
+    border: 1px solid #dc2626;
+}
+
+/* User Dropdown */
+#user-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.5rem;
+    min-width: 220px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 0.75rem;
+    box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(245, 166, 35, 0.2) inset;
+    border: 1px solid rgba(245, 166, 35, 0.2);
+    z-index: 50;
+    overflow: hidden;
+}
+
+.dark #user-dropdown {
+    background: rgba(36, 29, 21, 0.95);
+    border: 1px solid rgba(245, 166, 35, 0.15);
+}
+
+#user-dropdown.hidden {
+    display: none;
+}
+
+#user-dropdown a,
+#user-dropdown button {
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1.25rem;
+    color: #1B4D4D;
+    text-decoration: none;
+    transition: all 0.2s;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.dark #user-dropdown a,
+.dark #user-dropdown button {
+    color: #E6D5B8;
+}
+
+#user-dropdown a:hover,
+#user-dropdown button:hover {
+    background: linear-gradient(90deg, rgba(230, 213, 184, 0.5) 0%, transparent 100%);
+    padding-left: 1.5rem;
+}
+
+.dark #user-dropdown a:hover,
+.dark #user-dropdown button:hover {
+    background: linear-gradient(90deg, rgba(26, 21, 16, 0.5) 0%, transparent 100%);
+}
+
+#user-dropdown hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(245, 166, 35, 0.3) 50%, transparent 100%);
+    margin: 0.5rem 0;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #F5A623 0%, #C65D3B 100%);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #d97706 0%, #ea580c 100%);
+}
+
+/* Input Focus Effects */
+input:focus, textarea:focus {
+    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.1);
+}
+
+/* Card Hover Effects */
+.group:hover .group-hover\:scale-110 {
+    transform: scale(1.1);
+}
+
+/* Shimmer Effect for Loading States */
+.shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 1rem;
+        max-height: calc(100vh - 2rem);
+        border-radius: 1rem;
+    }
+    
+    .toast {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+    }
+    
+    .profile-header-glass {
+        padding: 1.5rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .profile-header-glass {
+        background: white !important;
+        box-shadow: none !important;
+    }
+}
+/* Logout Button Specific Styles */
+#user-menu {
+    align-items: center;
+}
+
+#nav-user-name {
+    position: relative;
+    padding-right: 1rem;
+    border-right: 1px solid rgba(245, 166, 35, 0.3);
+}
+
+#user-menu button {
+    position: relative;
+    overflow: hidden;
+}
+
+#user-menu button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+}
+
+#user-menu button:hover::before {
+    transform: translateX(100%);
+}
+
+/* Dark mode adjustments */
+.dark #nav-user-name {
+    border-right-color: rgba(245, 166, 35, 0.2);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    #nav-user-name {
+        display: none;
+    }
+    
+    #user-menu button {
+        padding: 0.625rem 1rem;
+    }
+    
+    #user-menu button span {
+        display: none;
+    }
+    
+    #user-menu button i {
+        margin: 0;
+        font-size: 1rem;
+    }
+}

@@ -1,0 +1,105 @@
+.mobile-menu-backdrop {
+  position: fixed;
+  inset: 5rem 0 0;
+  z-index: -1;
+  width: 100%;
+  background: rgba(26, 21, 16, 0.28);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.mobile-menu-panel {
+  position: fixed;
+  top: 5rem;
+  right: 0;
+  width: min(20rem, calc(100vw - 1.5rem));
+  height: calc(100vh - 5rem);
+  z-index: 60;
+  overflow: hidden;
+  border: 1px solid rgba(245, 166, 35, 0.24);
+  border-right: 0;
+  border-radius: 1.25rem 0 0 1.25rem;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: -24px 0 48px -32px rgba(26, 21, 16, 0.55);
+  animation: mobile-drawer-enter 220ms ease-out both;
+}
+
+:host-context(.dark) .mobile-menu-panel {
+  background: rgba(26, 21, 16, 0.96);
+  box-shadow: 0 22px 50px -24px rgba(0, 0, 0, 0.72);
+}
+
+.mobile-nav-list {
+  padding: 0.45rem 0.75rem;
+}
+
+.mobile-account-links {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(245, 166, 35, 0.12);
+}
+
+.mobile-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 0.6rem;
+  border-bottom: 1px solid rgba(245, 166, 35, 0.1);
+  color: #1B4D4D;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: color 0.2s ease, background-color 0.2s ease, padding-left 0.2s ease;
+}
+
+.mobile-nav-row:last-child {
+  border-bottom: 0;
+}
+
+.mobile-nav-row.compact {
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+
+.mobile-nav-row i {
+  width: 1.1rem;
+  text-align: center;
+  color: #F5A623;
+}
+
+.mobile-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(245, 166, 35, 0.18);
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.12), rgba(230, 213, 184, 0.28));
+}
+
+:host-context(.dark) .mobile-nav-row {
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .mobile-user-card {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.14), rgba(48, 38, 25, 0.78));
+}
+
+.mobile-nav-row:hover {
+  background: rgba(245, 166, 35, 0.14);
+  color: #F5A623;
+  padding-left: 0.85rem;
+}
+
+@keyframes mobile-drawer-enter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

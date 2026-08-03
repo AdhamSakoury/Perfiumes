@@ -1,0 +1,71 @@
+<section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+      <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mb-6">Checkout</h1>
+
+      @if (!auth.currentUser()) {
+        <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
+          <h2 class="text-2xl font-bold font-cinzel mb-3">Login required</h2>
+          <a routerLink="/login" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">Login</a>
+        </div>
+      } @else if (!cart.lines().length) {
+        <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
+          <h2 class="text-2xl font-bold font-cinzel mb-3">Your cart is empty</h2>
+          <a routerLink="/perfumes" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">Explore Perfumes</a>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <form (ngSubmit)="placeOrder()" class="lg:col-span-2 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 border border-nubian-gold/20 space-y-5">
+            <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">Shipping Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label>Full Name<input name="name" [(ngModel)]="form.name" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
+              <label>Email<input type="email" name="email" [(ngModel)]="form.email" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
+              <label>Phone<input name="phone" [(ngModel)]="form.phone" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
+              <label>City<input name="city" [(ngModel)]="form.city" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
+              <label class="md:col-span-2">Address<textarea name="address" [(ngModel)]="form.address" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" rows="3" required></textarea></label>
+              <label>Postal Code<input name="postal" [(ngModel)]="form.postal" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
+            </div>
+            @if (error) { <p class="text-nubian-terracotta">{{ error }}</p> }
+
+            <div>
+              <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">Payment Method</h3>
+              <label class="flex items-center gap-3 p-4 rounded-xl border border-nubian-gold">
+                <input type="radio" name="payment" checked class="custom-radio">
+                <span>Cash on delivery</span>
+              </label>
+            </div>
+
+            <button type="submit" [disabled]="processing" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-70">
+              <i class="fas mr-2" [class.fa-spinner]="processing" [class.fa-spin]="processing" [class.fa-check]="!processing"></i>
+              {{ processing ? 'Processing...' : 'Place Order' }}
+            </button>
+          </form>
+
+          <aside class="bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 border border-nubian-gold/20 h-fit">
+            <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-6">Order Summary</h2>
+            <div class="divide-y divide-nubian-gold/20 mb-6">
+              @for (line of cart.lines(); track line.perfumeId) {
+                <div class="flex items-center gap-4 py-3">
+                  <img [src]="line.perfume.image" [alt]="line.perfume.name" class="w-16 h-16 object-cover rounded-lg">
+                  <div class="flex-1">
+                    <h4 class="font-bold text-sm">{{ line.perfume.name }}</h4>
+                    <p class="text-xs text-nubian-earth dark:text-nubian-sand">Qty: {{ line.quantity }}</p>
+                  </div>
+                  <strong>{{ line.lineTotal | currency }}</strong>
+                </div>
+              }
+            </div>
+            <div class="space-y-3">
+              <div class="flex justify-between"><span>Subtotal</span><strong>{{ cart.subtotal() | currency }}</strong></div>
+              @if (cart.promo()) {
+                <div class="flex justify-between text-green-600"><span>{{ cart.promo()!.code }}</span><strong>-{{ cart.discount() | currency }}</strong></div>
+              }
+              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>Total</span><strong class="text-nubian-gold">{{ cart.total() | currency }}</strong></div>
+            </div>
+          </aside>
+        </div>
+      }
+    </section>
+
+
+
+
+

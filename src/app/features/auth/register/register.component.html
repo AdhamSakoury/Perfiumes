@@ -1,0 +1,64 @@
+<section class="page-shell page-enter flex items-center justify-center px-4 py-16">
+      <div class="w-full max-w-lg bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl p-6 border border-nubian-gold/20">
+        <div class="text-center mb-6">
+          <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Create Account</h1>
+          <p class="text-nubian-earth dark:text-nubian-sand mt-2">Join the Gnouby family</p>
+        </div>
+
+        <form (ngSubmit)="submit()" class="space-y-5">
+          <div>
+            <label class="block font-medium mb-2">Full Name</label>
+            <input name="fullName" [(ngModel)]="fullName" class="w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+            @if (errors['fullName']) { <p class="text-sm mt-2 text-nubian-terracotta">{{ errors['fullName'] }}</p> }
+          </div>
+
+          <div>
+            <label class="block font-medium mb-2">Email</label>
+            <input type="email" name="email" [(ngModel)]="email" class="w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+            @if (errors['email']) { <p class="text-sm mt-2 text-nubian-terracotta">{{ errors['email'] }}</p> }
+          </div>
+
+          <div>
+            <label class="block font-medium mb-2">Password</label>
+            <div class="relative">
+              <input [type]="showPassword ? 'text' : 'password'" name="password" [(ngModel)]="password" (input)="updateStrength()" class="w-full px-4 py-3 pr-12 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+              <button type="button" (click)="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2" aria-label="Toggle password">
+                <i class="fas" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
+              </button>
+            </div>
+            <div class="flex gap-2 mt-3">
+              @for (bar of [1, 2, 3, 4]; track bar) {
+                <span class="flex-1 h-2 rounded-full" [class.bg-gray-200]="bar > strength" [class.bg-nubian-terracotta]="strength === 1 && bar <= strength" [class.bg-yellow-500]="strength === 2 && bar <= strength" [class.bg-nubian-gold]="strength === 3 && bar <= strength" [class.bg-green-500]="strength === 4 && bar <= strength"></span>
+              }
+            </div>
+            @if (errors['password']) { <p class="text-sm mt-2 text-nubian-terracotta">{{ errors['password'] }}</p> }
+          </div>
+
+          <div>
+            <label class="block font-medium mb-2">Confirm Password</label>
+            <input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" class="w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+            @if (errors['confirmPassword']) { <p class="text-sm mt-2 text-nubian-terracotta">{{ errors['confirmPassword'] }}</p> }
+          </div>
+
+          <label class="flex items-start gap-3">
+            <input type="checkbox" name="terms" [(ngModel)]="terms" class="custom-checkbox mt-1">
+            <span>I agree to the terms and privacy policy</span>
+          </label>
+          @if (errors['terms']) { <p class="text-sm text-nubian-terracotta">{{ errors['terms'] }}</p> }
+
+          <button type="submit" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+            <i class="fas fa-user-plus mr-2"></i> Register
+          </button>
+        </form>
+
+        <p class="text-center mt-6 text-sm text-nubian-earth dark:text-nubian-sand">
+          Already registered?
+          <a routerLink="/login" class="text-nubian-gold font-semibold">Login</a>
+        </p>
+      </div>
+    </section>
+
+
+
+
+

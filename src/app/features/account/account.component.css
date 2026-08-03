@@ -1,0 +1,255 @@
+.profile-header-wrapper {
+  position: relative;
+}
+
+.profile-header-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  box-shadow:
+    0 20px 40px -10px rgba(27, 77, 77, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+:host-context(.dark) .profile-header-glass {
+  background: rgba(36, 29, 21, 0.86);
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.account-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23F5A623' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 15s ease infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.account-float-delay {
+  animation-delay: -3s;
+}
+
+:host .page-enter {
+  animation: account-page-enter 420ms ease-out both;
+}
+
+.account-modal-root {
+  display: none;
+}
+
+.account-popup-toggle {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.account-modal-root.open,
+.account-edit-toggle:checked ~ .account-edit-modal,
+.account-order-toggle:checked ~ .account-order-modal {
+  display: block;
+}
+
+.account-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.account-modal-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.account-edit-dialog {
+  width: min(52rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2.5rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  box-shadow: 0 26px 70px -28px rgba(0, 0, 0, 0.55);
+  animation: account-popup-enter 180ms ease-out both;
+}
+
+:host-context(.dark) .account-edit-dialog {
+  background: #241D15;
+}
+
+.account-order-dialog {
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.35rem;
+  background: #fff;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  box-shadow: 0 26px 70px -28px rgba(0, 0, 0, 0.55);
+  animation: account-popup-enter 180ms ease-out both;
+}
+
+:host-context(.dark) .account-order-dialog {
+  background: #241D15;
+  color: #F5F0E6;
+}
+
+.account-edit-header {
+  padding: 0.85rem 1.15rem;
+  flex-shrink: 0;
+}
+
+.account-edit-body {
+  padding: 1rem 1.15rem 1.1rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.account-edit-body::-webkit-scrollbar {
+  display: none;
+}
+
+.account-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.78fr);
+  gap: 1.1rem;
+  align-items: stretch;
+}
+
+.account-password-panel {
+  padding-left: 1.1rem;
+  border-left: 1px solid rgba(230, 213, 184, 0.45);
+}
+
+:host-context(.dark) .account-password-panel {
+  border-left-color: rgba(245, 166, 35, 0.22);
+}
+
+.account-edit-actions {
+  display: flex;
+  gap: 0.8rem;
+  padding-top: 0.9rem;
+  margin-top: 0.9rem;
+  border-top: 1px solid rgba(230, 213, 184, 0.34);
+}
+
+.account-edit-field input,
+.account-edit-field textarea,
+.account-edit-dialog input {
+  min-height: 2.85rem;
+}
+
+.account-edit-field textarea {
+  height: 5.35rem;
+}
+
+@media (max-width: 719px) {
+  .account-modal-stage {
+    padding: 0.5rem;
+  }
+
+  .account-edit-dialog {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .account-order-dialog {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .account-edit-header {
+    padding: 1rem;
+  }
+
+  .account-edit-body {
+    padding: 1rem;
+  }
+
+  .account-edit-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .account-password-panel {
+    padding-left: 0;
+    padding-top: 1rem;
+    border-left: 0;
+    border-top: 1px solid rgba(230, 213, 184, 0.45);
+  }
+
+  .account-edit-field input,
+  .account-edit-field textarea,
+  .account-edit-dialog input {
+    min-height: 2.9rem;
+  }
+
+  .account-edit-field textarea {
+    height: 4.75rem;
+  }
+
+  .account-edit-actions {
+    flex-direction: column;
+    padding-top: 0.9rem;
+    margin-top: 0.9rem;
+  }
+}
+
+@keyframes account-page-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes account-popup-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
