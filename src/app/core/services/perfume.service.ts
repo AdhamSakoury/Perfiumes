@@ -1,12 +1,42 @@
-import { Injectable } from '@angular/core';
-import { filters, perfumes, promoCodes } from '../data/perfumes.data';
+import { HttpClient } from '@angular/common/http';
+import { HttpHeaders } from '@angular/common/http';
+import { Injectable, signal } from '@angular/core';
+import { filters, promoCodes } from '../data/perfumes.data';
 import { Perfume, ProductFilters } from '@core/models/store.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class PerfumeService {
-  readonly perfumes = perfumes;
+  readonly products = signal<Perfume[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
   readonly filters = filters;
   readonly promoCodes = promoCodes;
+
+  constructor(private readonly http: HttpClient) {
+    this.loadProducts();
+  }
+
+  get perfumes(): Perfume[] {
+    return this.products();
+  }
+
+  loadProducts(): void {
+    this.loading.set(true);
+    this.loadError.set(null);
+
+    this.http.get<Perfume[]>(`${environment.apiBaseUrl}/api/products`).subscribe({
+      next: (products) => {
+        this.products.set(products);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.products.set([]);
+        this.loading.set(false);
+        this.loadError.set('Could not load products from the backend.');
+      }
+    });
+  }
 
   featured(limit = 6): Perfume[] {
     return this.perfumes.slice(0, limit);
@@ -28,6 +58,10 @@ export class PerfumeService {
 
   priceBounds(): { min: number; max: number } {
     const prices = this.perfumes.map((perfume) => perfume.price);
+    if (!prices.length) {
+      return { min: 0, max: 500 };
+    }
+
     return {
       min: Math.floor(Math.min(...prices)),
       max: Math.ceil(Math.max(...prices))
@@ -57,6 +91,22 @@ export class PerfumeService {
       default:
         return sorted;
     }
+  }
+
+  create(product: Omit<Perfume, 'id'>, token: string) {
+    return this.http.post<Perfume>(`${environment.apiBaseUrl}/api/products`, product, { headers: this.adminHeaders(token) });
+  }
+
+  update(id: number, product: Omit<Perfume, 'id'>, token: string) {
+    return this.http.put<Perfume>(`${environment.apiBaseUrl}/api/products/${id}`, product, { headers: this.adminHeaders(token) });
+  }
+
+  delete(id: number, token: string) {
+    return this.http.delete<void>(`${environment.apiBaseUrl}/api/products/${id}`, { headers: this.adminHeaders(token) });
+  }
+
+  private adminHeaders(token: string): HttpHeaders {
+    return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 }
 

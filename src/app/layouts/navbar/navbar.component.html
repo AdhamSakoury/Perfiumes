@@ -21,6 +21,11 @@
               }
             </a>
             @if (auth.currentUser()) {
+              @if (auth.currentUser()?.role === 'admin') {
+                <a routerLink="/admin/products" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium">
+                  <i class="fas fa-boxes-stacked mr-1"></i> Admin
+                </a>
+              }
               <a routerLink="/account" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium">
                 <i class="fas fa-user mr-1"></i> Account
               </a>
@@ -101,6 +106,12 @@
                   </div>
                 </div>
                 <div class="mobile-account-links">
+                  @if (user.role === 'admin') {
+                    <a routerLink="/admin/products" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
+                      <i class="fas fa-boxes-stacked"></i>
+                      <span>Admin Products</span>
+                    </a>
+                  }
                   <a routerLink="/account" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
                     <i class="fas fa-user-circle"></i>
                     <span>My Account</span>

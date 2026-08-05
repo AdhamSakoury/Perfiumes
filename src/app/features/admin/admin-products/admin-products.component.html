@@ -1,0 +1,200 @@
+<section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="max-w-xl mx-auto text-center bg-white dark:bg-nubian-surface rounded-2xl shadow-xl p-8 border border-nubian-gold/20">
+      <h1 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-3">Admin login required</h1>
+      <p class="text-nubian-earth dark:text-nubian-sand mb-6">Login first to manage products.</p>
+      <a routerLink="/login" class="inline-flex px-6 py-3 rounded-lg bg-nubian-brown text-white font-semibold">Go to login</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="max-w-xl mx-auto text-center bg-white dark:bg-nubian-surface rounded-2xl shadow-xl p-8 border border-nubian-gold/20">
+      <h1 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-3">Admins only</h1>
+      <p class="text-nubian-earth dark:text-nubian-sand mb-6">This page is only available for admin accounts.</p>
+      <a routerLink="/" class="inline-flex px-6 py-3 rounded-lg bg-nubian-brown text-white font-semibold">Back home</a>
+    </div>
+  } @else {
+    <div class="mb-8">
+      <p class="text-nubian-gold font-semibold">Admin Dashboard</p>
+      <h1 class="text-3xl md:text-4xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">Manage Products</h1>
+      <p class="text-nubian-earth dark:text-nubian-sand mt-2">Add, edit, and remove seeded backend products.</p>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(360px,460px)_1fr] gap-6 items-start">
+      <form (ngSubmit)="submit()" class="admin-panel space-y-4">
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">
+            {{ isEditing ? 'Edit Product' : 'Add Product' }}
+          </h2>
+          @if (isEditing) {
+            <button type="button" (click)="resetForm()" class="text-sm text-nubian-terracotta hover:text-nubian-gold">Cancel edit</button>
+          }
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label class="form-field sm:col-span-2">
+            <span>Name</span>
+            <input name="name" [(ngModel)]="form.name" required>
+          </label>
+
+          <label class="form-field">
+            <span>Brand</span>
+            <input name="brand" [(ngModel)]="form.brand" required>
+          </label>
+
+          <label class="form-field">
+            <span>Category</span>
+            <input name="category" [(ngModel)]="form.category" required>
+          </label>
+
+          <label class="form-field">
+            <span>Price</span>
+            <input type="number" min="0" step="0.01" name="price" [(ngModel)]="form.price">
+          </label>
+
+          <label class="form-field">
+            <span>Rating</span>
+            <input type="number" min="0" max="5" step="0.1" name="rating" [(ngModel)]="form.rating">
+          </label>
+
+          <label class="form-field">
+            <span>Gender</span>
+            <select name="gender" [(ngModel)]="form.gender">
+              <option>Men</option>
+              <option>Women</option>
+              <option>Unisex</option>
+            </select>
+          </label>
+
+          <label class="form-field">
+            <span>Stock</span>
+            <input type="number" min="0" name="stockQuantity" [(ngModel)]="form.stockQuantity">
+          </label>
+
+          <label class="form-field sm:col-span-2">
+            <span>Image URL</span>
+            <input name="image" [(ngModel)]="form.image">
+          </label>
+
+          <label class="form-field sm:col-span-2">
+            <span>Description</span>
+            <textarea rows="3" name="description" [(ngModel)]="form.description"></textarea>
+          </label>
+
+          <label class="form-field sm:col-span-2">
+            <span>Notes comma separated</span>
+            <input name="notesText" [(ngModel)]="form.notesText" placeholder="Rose, Vanilla, Musk">
+          </label>
+
+          <label class="form-field">
+            <span>Concentration</span>
+            <input name="concentration" [(ngModel)]="form.concentration">
+          </label>
+
+          <label class="form-field">
+            <span>Season comma separated</span>
+            <input name="seasonText" [(ngModel)]="form.seasonText">
+          </label>
+
+          <label class="sm:col-span-2 flex items-center gap-3 text-nubian-brown dark:text-nubian-sand">
+            <input type="checkbox" name="isFeatured" [(ngModel)]="form.isFeatured" class="custom-checkbox">
+            <span>Featured product</span>
+          </label>
+        </div>
+
+        <button type="submit" [disabled]="saving || tokenLoading" class="w-full py-3 rounded-lg bg-nubian-brown text-white font-bold hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-60">
+          <i class="fas fa-save mr-2"></i>
+          {{ saving || tokenLoading ? 'Saving...' : (isEditing ? 'Update Product' : 'Add Product') }}
+        </button>
+      </form>
+
+      <div class="admin-panel">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">Products</h2>
+            <p class="text-sm text-nubian-earth dark:text-nubian-sand">
+              Showing {{ pageStart }}–{{ pageEnd }} of {{ products.length }} products from backend
+            </p>
+          </div>
+          <button type="button" (click)="perfumeService.loadProducts(); setPage(1)" class="px-4 py-2 rounded-lg border border-nubian-gold text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+            <i class="fas fa-rotate mr-2"></i>Refresh
+          </button>
+        </div>
+
+        @if (perfumeService.loading()) {
+          <p class="text-nubian-earth dark:text-nubian-sand">Loading products...</p>
+        } @else if (perfumeService.loadError()) {
+          <p class="text-nubian-terracotta">{{ perfumeService.loadError() }}</p>
+        } @else {
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Brand</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Featured</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody [class.page-changing]="pageAnimating">
+                @for (product of paginatedProducts; track product.id) {
+                  <tr>
+                    <td>
+                      <div class="flex items-center gap-3 min-w-64">
+                        <img [src]="product.image" [alt]="product.name" class="w-12 h-12 rounded-lg object-cover">
+                        <div>
+                          <p class="font-semibold text-nubian-brown dark:text-nubian-gold">{{ product.name }}</p>
+                          <p class="text-xs text-nubian-earth dark:text-nubian-sand">{{ product.gender }} · {{ product.category }}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ product.brand }}</td>
+                    <td>{{ product.price | currency }}</td>
+                    <td>{{ product.stockQuantity ?? 0 }}</td>
+                    <td>{{ product.isFeatured ? 'Yes' : 'No' }}</td>
+                    <td>
+                      <div class="flex items-center justify-end gap-2">
+                        <button type="button" (click)="edit(product)" class="admin-action edit">
+                          <i class="fas fa-pen"></i>
+                        </button>
+                        <button type="button" (click)="delete(product)" [disabled]="deletingId === product.id" class="admin-action delete">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (products.length > pageSize) {
+            <div class="pagination-shell">
+              <button type="button" class="pagination-arrow" (click)="previousPage()" [disabled]="safeCurrentPage === 1">
+                <i class="fas fa-chevron-left"></i>
+                <span>Previous</span>
+              </button>
+
+              <div class="pagination-pages">
+                @for (page of pages; track page) {
+                  <button
+                    type="button"
+                    class="pagination-page"
+                    [class.active]="page === safeCurrentPage"
+                    (click)="setPage(page)">
+                    {{ page }}
+                  </button>
+                }
+              </div>
+
+              <button type="button" class="pagination-arrow" (click)="nextPage()" [disabled]="safeCurrentPage === pageCount">
+                <span>Next</span>
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</section>

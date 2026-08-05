@@ -1,10 +1,20 @@
-<button
-  type="button"
-  (click)="startGoogleSignIn()"
-  class="w-full py-3 border border-nubian-sand dark:border-nubian-gold/25 rounded-lg font-semibold text-nubian-brown dark:text-nubian-sand hover:border-nubian-gold transition-colors">
-  <i class="fab fa-google mr-2 text-nubian-terracotta"></i>
-  Continue with Google
-</button>
+@if (configured) {
+  <div class="flex justify-center">
+    <div #googleButton class="min-h-[44px]"></div>
+  </div>
+
+  @if (loading) {
+    <p class="text-center text-sm mt-3 text-nubian-earth dark:text-nubian-sand">Signing you in with Google...</p>
+  }
+} @else {
+  <button
+    type="button"
+    (click)="startGoogleSignIn()"
+    class="w-full py-3 border border-nubian-sand dark:border-nubian-gold/25 rounded-lg font-semibold text-nubian-brown dark:text-nubian-sand hover:border-nubian-gold transition-colors">
+    <i class="fab fa-google mr-2 text-nubian-terracotta"></i>
+    Add Google Client ID
+  </button>
+}
 
 
 

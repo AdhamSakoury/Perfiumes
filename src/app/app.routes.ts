@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AccountPageComponent } from './features/account/account.component';
+import { AdminProductsComponent } from './features/admin/admin-products/admin-products.component';
 import { CartPageComponent } from './features/cart/cart.component';
 import { CheckoutPageComponent } from './features/checkout/checkout.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
@@ -34,6 +35,7 @@ export const routes: Routes = [
   { path: 'onboarding-owner', component: OnboardingOwnerComponent, title: 'Owner Onboarding | Gnouby' },
   { path: 'onboarding-tenant', component: OnboardingTenantComponent, title: 'Tenant Onboarding | Gnouby' },
   { path: 'account', component: AccountPageComponent, title: 'Account | Gnouby' },
+  { path: 'admin/products', component: AdminProductsComponent, title: 'Admin Products | Gnouby' },
   { path: 'orders', component: OrdersPageComponent, title: 'Orders | Gnouby' },
   { path: '**', redirectTo: '' }
 ];

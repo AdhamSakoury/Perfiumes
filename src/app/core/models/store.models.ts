@@ -11,6 +11,10 @@ export interface Perfume {
   notes: string[];
   concentration: string;
   season: string[];
+  stockQuantity?: number;
+  isFeatured?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PriceRange {
@@ -91,12 +95,15 @@ export interface User {
   wishlist: number[];
   createdAt: string;
   updatedAt: string;
+  authProvider?: 'local' | 'google';
+  role?: 'customer' | 'admin';
 }
 
 export interface AuthResult {
   success: boolean;
   message?: string;
   user?: User;
+  accessToken?: string;
 }
 
 export interface ProductFilters {
@@ -105,5 +112,10 @@ export interface ProductFilters {
   brands: string[];
   priceMin: number;
   priceMax: number;
+}
+
+export interface ChatbotMessageResponse {
+  reply: string;
+  suggestedProducts: Perfume[];
 }
 

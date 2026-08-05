@@ -1,17 +1,98 @@
 import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthResult, User } from '@core/models/store.models';
 import { StorageService } from './storage.service';
+import { map, Observable, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 const AUTH_KEY = 'gnouby_auth';
+const AUTH_TOKEN_KEY = 'gnouby_auth_token';
 const USERS_KEY = 'gnouby_users';
+
+const TEST_USERS: User[] = [
+  {
+    id: 'test_admin',
+    fullName: 'Ganouby Admin',
+    name: 'Ganouby Admin',
+    email: 'admin@ganouby.local',
+    password: 'Admin123!',
+    phone: '+20 100 000 0001',
+    address: 'Ganouby HQ, Cairo',
+    profilePhoto: null,
+    orders: [],
+    wishlist: [1, 5, 21],
+    createdAt: '2026-08-05T00:00:00.000Z',
+    updatedAt: '2026-08-05T00:00:00.000Z',
+    authProvider: 'local',
+    role: 'admin'
+  },
+  {
+    id: 'test_customer_1',
+    fullName: 'Mariam Hassan',
+    name: 'Mariam Hassan',
+    email: 'mariam@test.local',
+    password: 'Test123!',
+    phone: '+20 100 000 0002',
+    address: 'Zamalek, Cairo',
+    profilePhoto: null,
+    orders: [],
+    wishlist: [3, 8, 48],
+    createdAt: '2026-08-05T00:00:00.000Z',
+    updatedAt: '2026-08-05T00:00:00.000Z',
+    authProvider: 'local',
+    role: 'customer'
+  },
+  {
+    id: 'test_customer_2',
+    fullName: 'Omar Saleh',
+    name: 'Omar Saleh',
+    email: 'omar@test.local',
+    password: 'Test123!',
+    phone: '+20 100 000 0003',
+    address: 'Maadi, Cairo',
+    profilePhoto: null,
+    orders: [],
+    wishlist: [2, 9, 24],
+    createdAt: '2026-08-05T00:00:00.000Z',
+    updatedAt: '2026-08-05T00:00:00.000Z',
+    authProvider: 'local',
+    role: 'customer'
+  }
+];
+
+interface GoogleLoginResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresAt: string;
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    profilePhoto: string | null;
+    role: 'customer' | 'admin';
+  };
+}
+
+interface AdminLoginResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresAt: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   readonly currentUser = signal<User | null>(null);
+  readonly currentAccessToken = signal<string | null>(null);
 
-  constructor(private readonly storage: StorageService, private readonly router: Router) {
+  constructor(
+    private readonly storage: StorageService,
+    private readonly router: Router,
+    private readonly http: HttpClient
+  ) {
+    this.seedTestUsers();
     this.currentUser.set(this.readCurrentUser());
+    this.currentAccessToken.set(this.readCurrentAccessToken());
   }
 
   users(): User[] {
@@ -48,7 +129,9 @@ export class AuthService {
       orders: [],
       wishlist: [],
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      authProvider: 'local',
+      role: 'customer'
     };
 
     users.push(user);
@@ -66,6 +149,50 @@ export class AuthService {
     return { success: true, user };
   }
 
+  loginAdminApi(email: string, password: string): Observable<string> {
+    return this.http.post<AdminLoginResponse>(`${environment.apiBaseUrl}/api/admin/login`, { email, password }).pipe(
+      map((response) => response.accessToken),
+      tap((token) => {
+        this.storage.set(AUTH_TOKEN_KEY, token);
+        this.storage.setSession(AUTH_TOKEN_KEY, token);
+        this.currentAccessToken.set(token);
+      })
+    );
+  }
+
+  loginWithGoogle(credential: string, remember = true): Observable<AuthResult> {
+    return this.http.post<GoogleLoginResponse>(`${environment.apiBaseUrl}/api/auth/google`, { credential }).pipe(
+      map((response) => {
+        const now = new Date().toISOString();
+        const existing = this.users().find((user) => user.id === response.user.id || user.email.toLowerCase() === response.user.email.toLowerCase());
+        const user: User = {
+          id: response.user.id,
+          fullName: response.user.fullName,
+          name: response.user.fullName,
+          email: response.user.email.toLowerCase(),
+          password: existing?.password || '',
+          phone: existing?.phone || '',
+          address: existing?.address || '',
+          profilePhoto: response.user.profilePhoto,
+          orders: existing?.orders || [],
+          wishlist: existing?.wishlist || [],
+          createdAt: existing?.createdAt || now,
+          updatedAt: now,
+          authProvider: 'google',
+          role: response.user.role
+        };
+
+        return { success: true, user, accessToken: response.accessToken };
+      }),
+      tap((result) => {
+        if (result.user && result.accessToken) {
+          this.saveUser(result.user);
+          this.setCurrentUser(result.user, remember, result.accessToken);
+        }
+      })
+    );
+  }
+
   updateCurrentUser(user: User): void {
     const updated = { ...user, updatedAt: new Date().toISOString() };
     this.saveUser(updated);
@@ -75,14 +202,22 @@ export class AuthService {
   logout(): void {
     this.storage.remove(AUTH_KEY);
     this.storage.removeSession(AUTH_KEY);
+    this.storage.remove(AUTH_TOKEN_KEY);
+    this.storage.removeSession(AUTH_TOKEN_KEY);
     this.currentUser.set(null);
+    this.currentAccessToken.set(null);
     void this.router.navigateByUrl('/');
   }
 
-  private setCurrentUser(user: User, remember: boolean): void {
+  private setCurrentUser(user: User, remember: boolean, accessToken?: string): void {
     this.storage.set(AUTH_KEY, user);
-    if (remember) this.storage.setSession(AUTH_KEY, user);
+    if (accessToken) this.storage.set(AUTH_TOKEN_KEY, accessToken);
+    if (remember) {
+      this.storage.setSession(AUTH_KEY, user);
+      if (accessToken) this.storage.setSession(AUTH_TOKEN_KEY, accessToken);
+    }
     this.currentUser.set(user);
+    if (accessToken) this.currentAccessToken.set(accessToken);
   }
 
   private readCurrentUser(): User | null {
@@ -90,6 +225,42 @@ export class AuthService {
     if (!stored) return null;
     const latest = this.users().find((user) => user.id === stored.id || user.email.toLowerCase() === stored.email.toLowerCase());
     return latest || stored;
+  }
+
+  private readCurrentAccessToken(): string | null {
+    return this.storage.get<string | null>(AUTH_TOKEN_KEY, null) || this.storage.getSession<string | null>(AUTH_TOKEN_KEY, null);
+  }
+
+  private seedTestUsers(): void {
+    const users = this.users();
+    let changed = false;
+
+    for (const testUser of TEST_USERS) {
+      const index = users.findIndex((user) => user.email.toLowerCase() === testUser.email.toLowerCase());
+      if (index < 0) {
+        users.push(testUser);
+        changed = true;
+      } else {
+        users[index] = {
+          ...testUser,
+          ...users[index],
+          id: testUser.id,
+          fullName: users[index].fullName || testUser.fullName,
+          name: users[index].name || testUser.name,
+          password: testUser.password,
+          authProvider: 'local',
+          role: testUser.role,
+          wishlist: users[index].wishlist?.length ? users[index].wishlist : testUser.wishlist,
+          orders: users[index].orders || testUser.orders,
+          updatedAt: new Date().toISOString()
+        };
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.storage.set(USERS_KEY, users);
+    }
   }
 }
 

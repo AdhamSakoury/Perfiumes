@@ -1,0 +1,119 @@
+.admin-panel {
+  @apply bg-white dark:bg-nubian-surface rounded-2xl shadow-xl p-5 md:p-6 border border-nubian-gold/20;
+}
+
+.form-field {
+  @apply flex flex-col gap-2;
+}
+
+.form-field span {
+  @apply text-sm font-semibold text-nubian-brown dark:text-nubian-sand;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  @apply w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2 text-nubian-brown dark:text-nubian-sand outline-none focus:ring-2 focus:ring-nubian-gold/50;
+}
+
+.admin-table {
+  @apply w-full text-sm;
+}
+
+.admin-table th {
+  @apply text-left px-3 py-3 text-nubian-brown dark:text-nubian-gold border-b border-nubian-gold/20 whitespace-nowrap;
+}
+
+.admin-table td {
+  @apply px-3 py-3 text-nubian-earth dark:text-nubian-sand border-b border-nubian-gold/10 whitespace-nowrap;
+}
+
+.admin-table tbody tr {
+  animation: admin-row-enter 280ms ease-out both;
+  @apply transition-all duration-300 ease-out;
+}
+
+.admin-table tbody tr:hover {
+  @apply bg-nubian-gold/10 shadow-lg shadow-nubian-gold/10;
+  transform: translateY(-2px);
+}
+
+.admin-table tbody tr:hover td:first-child {
+  @apply border-l-4 border-l-nubian-gold;
+}
+
+.admin-table tbody tr img {
+  @apply transition-transform duration-300 ease-out;
+}
+
+.admin-table tbody tr:hover img {
+  transform: scale(1.08) rotate(-1deg);
+}
+
+.admin-table tbody tr:nth-child(2) { animation-delay: 22ms; }
+.admin-table tbody tr:nth-child(3) { animation-delay: 44ms; }
+.admin-table tbody tr:nth-child(4) { animation-delay: 66ms; }
+.admin-table tbody tr:nth-child(5) { animation-delay: 88ms; }
+.admin-table tbody tr:nth-child(6) { animation-delay: 110ms; }
+.admin-table tbody tr:nth-child(7) { animation-delay: 132ms; }
+.admin-table tbody tr:nth-child(8) { animation-delay: 154ms; }
+.admin-table tbody tr:nth-child(9) { animation-delay: 176ms; }
+.admin-table tbody tr:nth-child(10) { animation-delay: 198ms; }
+
+.admin-table tbody.page-changing tr {
+  animation: admin-page-pop 260ms ease-out both;
+}
+
+.admin-action {
+  @apply w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors disabled:opacity-60;
+}
+
+.admin-action.edit {
+  @apply bg-nubian-gold/15 text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold hover:text-nubian-dark;
+}
+
+.admin-action.delete {
+  @apply bg-red-500/10 text-red-600 hover:bg-red-600 hover:text-white;
+}
+
+.pagination-shell {
+  @apply mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-nubian-gold/15 pt-5;
+}
+
+.pagination-pages {
+  @apply flex flex-wrap justify-center gap-2;
+}
+
+.pagination-page {
+  @apply min-w-10 h-10 px-3 rounded-xl border border-nubian-gold/25 text-nubian-brown dark:text-nubian-sand bg-white dark:bg-nubian-surface2 hover:border-nubian-gold hover:-translate-y-0.5 transition-all duration-200;
+}
+
+.pagination-page.active {
+  @apply bg-nubian-gold text-nubian-dark border-nubian-gold shadow-lg shadow-nubian-gold/25;
+}
+
+.pagination-arrow {
+  @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-nubian-gold/25 text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold hover:text-nubian-dark transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none;
+}
+
+@keyframes admin-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-page-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

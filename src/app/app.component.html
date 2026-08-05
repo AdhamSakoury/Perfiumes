@@ -4,6 +4,7 @@
         <router-outlet />
       </main>
       <app-footer />
+      <app-chatbot-widget />
 
       @if (toast.toast(); as activeToast) {
         <div class="toast active" [class.error]="activeToast.type === 'error'" [class.success]="activeToast.type === 'success'">

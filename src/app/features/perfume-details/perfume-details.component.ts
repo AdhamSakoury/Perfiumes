@@ -15,14 +15,16 @@ import { WishlistService } from '@core/services/wishlist.service';
   styleUrl: './perfume-details.component.css'
 })
 export class PerfumeDetailsPageComponent {
-  readonly perfume = this.perfumeService.findById(Number(this.route.snapshot.paramMap.get('id')));
-
   constructor(
     private readonly route: ActivatedRoute,
     readonly perfumeService: PerfumeService,
     readonly cart: CartService,
     readonly wishlist: WishlistService
   ) {}
+
+  get perfume() {
+    return this.perfumeService.findById(Number(this.route.snapshot.paramMap.get('id')));
+  }
 
   useFallback(event: Event): void {
     (event.target as HTMLImageElement).src = 'https://via.placeholder.com/800x800/1B4D4D/FFFFFF?text=Gnouby+Perfume';

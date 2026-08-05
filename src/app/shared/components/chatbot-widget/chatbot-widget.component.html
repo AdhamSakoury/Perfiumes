@@ -1,0 +1,75 @@
+<div class="chatbot-root">
+  @if (open()) {
+    <section class="chatbot-window" aria-label="Gnouby chatbot">
+      <header class="chatbot-header">
+        <div>
+          <p class="text-xs uppercase tracking-[0.22em] text-nubian-gold">Gnouby Assistant</p>
+          <h2 class="font-bold font-cinzel text-lg text-white">Perfume Chatbot</h2>
+        </div>
+        <div class="chatbot-header-actions">
+          <button type="button" (click)="newChat()" class="chatbot-new" aria-label="Start new chat">
+            <i class="fas fa-plus"></i>
+            <span>New</span>
+          </button>
+          <button type="button" (click)="toggle()" class="chatbot-close" aria-label="Close chatbot">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </header>
+
+      <div #messagesPanel class="chatbot-messages custom-scrollbar">
+        @for (item of messages; track $index) {
+          <div class="chat-row" [class.user]="item.role === 'user'" [class.bot]="item.role === 'bot'">
+            <div class="chat-bubble">
+              <p>{{ item.text }}</p>
+
+              @if (item.suggestedProducts?.length) {
+                <div class="suggestions">
+                  @for (product of item.suggestedProducts; track product.id) {
+                    <a [routerLink]="['/perfumes', product.id]" (click)="open.set(false)" class="suggestion-card">
+                      <img [src]="product.image" [alt]="product.name" (error)="useFallback($event)">
+                      <div class="min-w-0">
+                        <p class="font-semibold truncate">{{ product.name }}</p>
+                        <p class="text-xs opacity-80 truncate">{{ product.brand }} · {{ product.price | currency }}</p>
+                      </div>
+                    </a>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (sending()) {
+          <div class="chat-row bot">
+            <div class="chat-bubble typing">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <form (ngSubmit)="send()" class="chatbot-form">
+        <button type="button" (click)="newChat()" class="chatbot-form-new" aria-label="Start new chat">
+          <i class="fas fa-plus"></i>
+        </button>
+        <input
+          type="text"
+          name="chatMessage"
+          [(ngModel)]="message"
+          placeholder="Ask for a fragrance..."
+          autocomplete="off">
+        <button type="submit" class="chatbot-send" [disabled]="sending() || !message.trim()" aria-label="Send message">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+    </section>
+  }
+
+  <button type="button" (click)="toggle()" class="chatbot-fab" aria-label="Open perfume chatbot" [class.is-open]="open()">
+    <i class="fas" [class.fa-comments]="!open()" [class.fa-sparkles]="open()"></i>
+    @if (!open()) {
+      <span class="chatbot-pulse"></span>
+    }
+  </button>
+</div>

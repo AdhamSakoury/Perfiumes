@@ -1,0 +1,63 @@
+@Perfiumes.Api_HostAddress = http://localhost:5156
+@AdminToken = paste-token-here
+
+GET {{Perfiumes.Api_HostAddress}}/
+Accept: application/json
+
+###
+
+POST {{Perfiumes.Api_HostAddress}}/api/admin/login
+Content-Type: application/json
+
+{
+  "email": "admin@ganouby.local",
+  "password": "Admin123!"
+}
+
+###
+
+POST {{Perfiumes.Api_HostAddress}}/api/auth/google
+Content-Type: application/json
+
+{
+  "credential": "paste-google-id-token-here"
+}
+
+###
+
+GET {{Perfiumes.Api_HostAddress}}/api/products
+Accept: application/json
+
+###
+
+POST {{Perfiumes.Api_HostAddress}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{AdminToken}}
+
+{
+  "name": "Rose Velvet",
+  "brand": "Perfiumes",
+  "price": 79.99,
+  "rating": 4.6,
+  "gender": "Women",
+  "image": "https://placehold.co/600x600?text=Rose+Velvet",
+  "description": "Soft rose perfume with vanilla and musk.",
+  "category": "Women",
+  "notes": ["rose", "vanilla", "musk"],
+  "concentration": "Eau de Parfum",
+  "season": ["Spring", "Summer"],
+  "stockQuantity": 12,
+  "isFeatured": true
+}
+
+###
+
+POST {{Perfiumes.Api_HostAddress}}/api/chatbot/message
+Content-Type: application/json
+
+{
+  "message": "I want a woody perfume",
+  "productId": null
+}
+
+###

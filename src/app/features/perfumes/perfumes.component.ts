@@ -13,8 +13,6 @@ import { ScrollLockService } from '@core/services/scroll-lock.service';
   styleUrl: './perfumes.component.css'
 })
 export class PerfumesPageComponent {
-  readonly bounds = this.perfumeService.priceBounds();
-  readonly brands = this.perfumeService.brands();
   readonly filtersOpen = signal(false);
   readonly sortOpen = signal(false);
   readonly sortOptions = [
@@ -29,8 +27,8 @@ export class PerfumesPageComponent {
     gender: [],
     rating: 0,
     brands: [],
-    priceMin: this.bounds.min,
-    priceMax: this.bounds.max
+    priceMin: 0,
+    priceMax: 500
   };
 
   constructor(private readonly perfumeService: PerfumeService, private readonly scrollLock: ScrollLockService) {
@@ -43,6 +41,14 @@ export class PerfumesPageComponent {
 
   get displayed() {
     return this.perfumeService.sort(this.perfumeService.filter(this.perfumeService.perfumes, this.filters), this.sort);
+  }
+
+  get bounds() {
+    return this.perfumeService.priceBounds();
+  }
+
+  get brands() {
+    return this.perfumeService.brands();
   }
 
   toggleArray(key: 'gender' | 'brands', value: string, event: Event): void {

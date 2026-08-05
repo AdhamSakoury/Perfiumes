@@ -7,6 +7,11 @@ dist/
 .out-tsc/
 coverage/
 
+# .NET build output
+bin/
+obj/
+backend/**/data/products.json
+
 # Environment files
 env/
 .env
@@ -26,6 +31,7 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .vscode/
+.vs/
 .idea/
 
 # Temporary files
