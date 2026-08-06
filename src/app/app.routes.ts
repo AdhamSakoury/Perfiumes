@@ -16,6 +16,7 @@ import { PerfumesPageComponent } from './features/perfumes/perfumes.component';
 import { ResendConfirmationComponent } from './features/auth/resend-confirmation/resend-confirmation.component';
 import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
 import { RegisterPageComponent } from './features/auth/register/register.component';
+import { SettingsPageComponent } from './features/settings/settings.component';
 import { WishlistPageComponent } from './features/wishlist/wishlist.component';
 
 export const routes: Routes = [
@@ -35,6 +36,7 @@ export const routes: Routes = [
   { path: 'onboarding-owner', component: OnboardingOwnerComponent, title: 'Owner Onboarding | Gnouby' },
   { path: 'onboarding-tenant', component: OnboardingTenantComponent, title: 'Tenant Onboarding | Gnouby' },
   { path: 'account', component: AccountPageComponent, title: 'Account | Gnouby' },
+  { path: 'settings', component: SettingsPageComponent, title: 'Settings | Gnouby' },
   { path: 'admin/products', component: AdminProductsComponent, title: 'Admin Products | Gnouby' },
   { path: 'orders', component: OrdersPageComponent, title: 'Orders | Gnouby' },
   { path: '**', redirectTo: '' }

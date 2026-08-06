@@ -199,6 +199,15 @@ export class AuthService {
     this.setCurrentUser(updated, true);
   }
 
+  deleteCurrentUser(): void {
+    const user = this.currentUser();
+    if (!user) return;
+
+    const users = this.users().filter((stored) => stored.id !== user.id && stored.email.toLowerCase() !== user.email.toLowerCase());
+    this.storage.set(USERS_KEY, users);
+    this.logout();
+  }
+
   logout(): void {
     this.storage.remove(AUTH_KEY);
     this.storage.removeSession(AUTH_KEY);

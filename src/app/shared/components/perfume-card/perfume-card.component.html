@@ -18,12 +18,10 @@
           <button
             type="button"
             (click)="toggleWishlist()"
-            class="w-10 h-10 bg-white rounded-full flex items-center justify-center transition-colors shadow-lg"
-            [class.text-nubian-terracotta]="!wishlist.has(perfume.id)"
-            [class.bg-nubian-terracotta]="wishlist.has(perfume.id)"
-            [class.text-white]="wishlist.has(perfume.id)"
-            aria-label="Toggle wishlist">
-            <i class="fas fa-heart"></i>
+            class="wishlist-button"
+            [class.is-active]="wishlist.has(perfume.id)"
+            [attr.aria-label]="wishlist.has(perfume.id) ? 'Remove from wishlist' : 'Add to wishlist'">
+            <i class="fas" [class.fa-heart]="!wishlist.has(perfume.id)" [class.fa-check]="wishlist.has(perfume.id)"></i>
           </button>
         </div>
       </div>

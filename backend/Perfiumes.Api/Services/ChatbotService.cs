@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Perfiumes.Api.Models;
 
 namespace Perfiumes.Api.Services;
@@ -12,54 +13,60 @@ public sealed class ChatbotService(IConfiguration configuration)
         if (string.IsNullOrWhiteSpace(message))
         {
             return Task.FromResult(new ChatbotMessageResponse(
-                "اكتبلي بتحب العطر عامل إزاي: فريش، خشبي، حلو، شرقي، رجالي، حريمي، أو ميزانيتك كام.",
+                "قولّي المواصفات اللي عايزها: رجالي/حريمي، السعر أو الرينج، ونوع الرائحة زي فريش أو خشبي أو حلو.",
                 []));
         }
 
         if (IsGreeting(message))
         {
             return Task.FromResult(new ChatbotMessageResponse(
-                $"تمام يا باشا، منور {_storeName}! قولّي بس بتحب العطر يبقى فريش ولا خشبي ولا حلو؟ ولو عندك budget معين اكتبهولي.",
+                $"تمام يا باشا، منور {_storeName}. اكتبلي مثلًا: عايز حاجة حريمي في حدود 150 أو عطر رجالي خشبي تحت 100.",
                 []));
         }
 
-        var suggestions = PickSuggestions(message, products);
+        var criteria = ExtractCriteria(message);
+        var suggestions = QueryProducts(products, criteria);
+
         if (suggestions.Count == 0)
         {
-            return Task.FromResult(new ChatbotMessageResponse(
-                "مش لاقي اختيار واضح من كلامك. جرّب تقول مثلًا: عايز عطر خشبي للرجال تحت 100 دولار، أو عايز حاجة حلوة للشتا.",
-                []));
+            return Task.FromResult(new ChatbotMessageResponse(BuildNoResultsReply(criteria), []));
         }
 
-        return Task.FromResult(new ChatbotMessageResponse(BuildReply(message, suggestions), suggestions));
+        return Task.FromResult(new ChatbotMessageResponse(BuildReply(criteria, suggestions), suggestions));
     }
 
-    private static bool IsGreeting(string message)
+    private static IReadOnlyList<Product> QueryProducts(IReadOnlyList<Product> products, ChatCriteria criteria)
     {
-        var normalized = Normalize(message);
-        var greetings = new[] { "عامل ايه", "ازيك", "اهلا", "هاي", "hello", "hi", "hey" };
-        return greetings.Any(greeting => normalized.Contains(Normalize(greeting)));
-    }
+        IEnumerable<Product> query = products;
 
-    private static IReadOnlyList<Product> PickSuggestions(string message, IReadOnlyList<Product> products)
-    {
-        if (products.Count == 0)
+        // Hard filters: explicit user constraints must never be violated.
+        if (criteria.Gender is not null)
+        {
+            query = query.Where(product => string.Equals(product.Gender, criteria.Gender, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (criteria.MinPrice is not null)
+        {
+            query = query.Where(product => product.Price >= criteria.MinPrice);
+        }
+
+        if (criteria.MaxPrice is not null)
+        {
+            query = query.Where(product => product.Price <= criteria.MaxPrice);
+        }
+
+        var filtered = query.ToList();
+        if (filtered.Count == 0)
         {
             return [];
         }
 
-        var normalized = Normalize(message);
-        var maxPrice = ExtractMaxPrice(normalized);
-        var wantedGender = ExtractGender(normalized);
-        var wantedNotes = ExtractWantedNotes(normalized);
-
-        var scored = products
+        var scored = filtered
             .Select(product => new
             {
                 Product = product,
-                Score = Score(product, normalized, maxPrice, wantedGender, wantedNotes)
+                Score = Score(product, criteria)
             })
-            .Where(item => item.Score > 0)
             .OrderByDescending(item => item.Score)
             .ThenByDescending(item => item.Product.Rating)
             .ThenBy(item => item.Product.Price)
@@ -67,20 +74,10 @@ public sealed class ChatbotService(IConfiguration configuration)
             .Take(3)
             .ToList();
 
-        if (scored.Count > 0)
-        {
-            return scored;
-        }
-
-        var hasShoppingIntent = new[] { "عايز", "عاوز", "رشح", "اختار", "perfume", "fragrance", "recommend", "suggest" }
-            .Any(term => normalized.Contains(Normalize(term)));
-
-        return hasShoppingIntent
-            ? products.Where(product => product.IsFeatured).OrderByDescending(product => product.Rating).Take(3).ToList()
-            : [];
+        return scored;
     }
 
-    private static int Score(Product product, string normalizedMessage, decimal? maxPrice, string? wantedGender, IReadOnlyList<string> wantedNotes)
+    private static int Score(Product product, ChatCriteria criteria)
     {
         var score = 0;
         var productText = Normalize(string.Join(' ', new[]
@@ -95,80 +92,142 @@ public sealed class ChatbotService(IConfiguration configuration)
             string.Join(' ', product.Season)
         }));
 
-        if (product.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(word => normalizedMessage.Contains(Normalize(word))))
-        {
-            score += 4;
-        }
-
-        if (product.Brand.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(word => normalizedMessage.Contains(Normalize(word))))
-        {
-            score += 3;
-        }
-
-        foreach (var note in wantedNotes)
+        foreach (var note in criteria.Notes)
         {
             if (productText.Contains(note))
             {
-                score += 5;
+                score += 8;
             }
         }
 
-        if (wantedGender is not null && Normalize(product.Gender).Contains(wantedGender))
+        foreach (var term in criteria.SearchTerms)
         {
-            score += 3;
+            if (productText.Contains(term))
+            {
+                score += 2;
+            }
         }
 
-        if (maxPrice is not null)
+        if (product.IsFeatured)
         {
-            score += product.Price <= maxPrice ? 3 : -6;
+            score += 1;
         }
 
-        if (normalizedMessage.Contains("شتا") || normalizedMessage.Contains("winter"))
-        {
-            score += product.Season.Any(season => Normalize(season).Contains("winter") || Normalize(season).Contains("شتا")) ? 2 : 0;
-        }
-
-        if (normalizedMessage.Contains("صيف") || normalizedMessage.Contains("summer") || normalizedMessage.Contains("فريش"))
-        {
-            score += product.Season.Any(season => Normalize(season).Contains("summer") || Normalize(season).Contains("صيف")) ? 2 : 0;
-        }
-
+        score += (int)Math.Round(product.Rating);
         return score;
     }
 
-    private static string BuildReply(string message, IReadOnlyList<Product> suggestions)
+    private static ChatCriteria ExtractCriteria(string message)
     {
         var normalized = Normalize(message);
+        var numbers = ExtractNumbers(normalized);
+        var priceIntent = HasAny(normalized, "سعر", "رينج", "range", "budget", "ميزانيه", "ميزانية", "حدود", "تحت", "اقل", "أقل", "under", "below", "less");
+
+        decimal? minPrice = null;
+        decimal? maxPrice = null;
+
+        if (numbers.Count >= 2 && HasAny(normalized, "بين", "من", "to", "between", "-"))
+        {
+            minPrice = numbers.Min();
+            maxPrice = numbers.Max();
+        }
+        else if (numbers.Count >= 1 && priceIntent)
+        {
+            // In shopping chat, "range 150", "budget 150", "في حدود 150" normally means max price 150.
+            maxPrice = numbers.Max();
+        }
+
+        return new ChatCriteria(
+            ExtractGender(normalized),
+            minPrice,
+            maxPrice,
+            ExtractWantedNotes(normalized),
+            ExtractSearchTerms(normalized));
+    }
+
+    private static string BuildReply(ChatCriteria criteria, IReadOnlyList<Product> suggestions)
+    {
+        var filters = new List<string>();
+        if (criteria.Gender is not null)
+        {
+            filters.Add(criteria.Gender == "Women" ? "حريمي" : criteria.Gender == "Men" ? "رجالي" : "يونيسكس");
+        }
+
+        if (criteria.MinPrice is not null && criteria.MaxPrice is not null)
+        {
+            filters.Add($"بين {criteria.MinPrice:0} و {criteria.MaxPrice:0}");
+        }
+        else if (criteria.MaxPrice is not null)
+        {
+            filters.Add($"لحد {criteria.MaxPrice:0}");
+        }
+
+        if (criteria.Notes.Count > 0)
+        {
+            filters.Add($"بنوتس {string.Join(", ", criteria.Notes)}");
+        }
+
+        var intro = filters.Count > 0
+            ? $"فلترت الداتا عندي على: {string.Join(" + ", filters)}."
+            : "دورت في الداتا المتاحة عندي.";
+
         var top = suggestions[0];
-        var reasons = new List<string>();
+        return $"{intro} أفضل ترشيح هو {top.Name} من {top.Brand} بسعر ${top.Price:0.##} وتقييم {top.Rating:0.#}/5. دول أقرب اختيارات مطابقة للشروط.";
+    }
 
-        if (normalized.Contains("خشب") || normalized.Contains("woody") || normalized.Contains("cedar") || normalized.Contains("oud"))
+    private static string BuildNoResultsReply(ChatCriteria criteria)
+    {
+        var parts = new List<string>();
+        if (criteria.Gender is not null)
         {
-            reasons.Add("ماشي مع الرائحة الخشبية/العود اللي طلبتها");
+            parts.Add(criteria.Gender == "Women" ? "حريمي" : criteria.Gender == "Men" ? "رجالي" : "يونيسكس");
         }
 
-        if (normalized.Contains("فريش") || normalized.Contains("fresh") || normalized.Contains("citrus"))
+        if (criteria.MaxPrice is not null)
         {
-            reasons.Add("اتجاهه فريش ومناسب للاستخدام اليومي");
+            parts.Add($"سعر لحد ${criteria.MaxPrice:0.##}");
         }
 
-        if (normalized.Contains("حلو") || normalized.Contains("sweet") || normalized.Contains("vanilla"))
+        if (criteria.MinPrice is not null)
         {
-            reasons.Add("فيه لمسة حلوة وواضحة");
+            parts.Add($"من ${criteria.MinPrice:0.##}");
         }
 
-        var reasonText = reasons.Count > 0
-            ? $"اخترت {top.Name} أول واحد لأنه {string.Join("، و", reasons)}."
-            : $"أقوى اختيار عندي ليك هو {top.Name} من {top.Brand} بتقييم {top.Rating}/5.";
+        var criteriaText = parts.Count > 0 ? string.Join(" و", parts) : "بالشروط دي";
+        return $"مش لاقي منتج مطابق لـ {criteriaText} في الداتا الحالية. جرّب تزود الرينج أو تشيل شرط من الشروط.";
+    }
 
-        return $"{reasonText} جبتلك كمان بدائل قريبة عشان تقارن السعر والستايل.";
+    private static bool IsGreeting(string message)
+    {
+        var normalized = Normalize(message);
+        return HasAny(normalized, "عامل ايه", "ازيك", "اهلا", "هاي", "hello", "hi", "hey");
+    }
+
+    private static string? ExtractGender(string normalizedMessage)
+    {
+        if (HasAny(normalizedMessage, "حريمي", "نسائي", "women", "woman", "female", "ladies"))
+        {
+            return "Women";
+        }
+
+        if (HasAny(normalizedMessage, "رجالي", "men", "man", "male"))
+        {
+            return "Men";
+        }
+
+        if (HasAny(normalizedMessage, "يونيسكس", "unisex"))
+        {
+            return "Unisex";
+        }
+
+        return null;
     }
 
     private static IReadOnlyList<string> ExtractWantedNotes(string normalizedMessage)
     {
         var map = new Dictionary<string, string[]>
         {
-            ["خشب"] = ["خشب", "خشبي", "woody", "wood", "cedar", "sandalwood"],
+            ["woody"] = ["خشب", "خشبي", "woody", "wood", "cedar", "sandalwood"],
             ["oud"] = ["عود", "oud"],
             ["vanilla"] = ["فانيليا", "vanilla", "حلو", "sweet"],
             ["rose"] = ["روز", "ورد", "rose"],
@@ -184,38 +243,34 @@ public sealed class ChatbotService(IConfiguration configuration)
             .ToList();
     }
 
-    private static string? ExtractGender(string normalizedMessage)
+    private static IReadOnlyList<string> ExtractSearchTerms(string normalizedMessage)
     {
-        if (normalizedMessage.Contains("رجالي") || normalizedMessage.Contains("men") || normalizedMessage.Contains("male"))
+        var ignored = new HashSet<string>
         {
-            return "men";
-        }
+            "عايز", "عاوزه", "عاوز", "حاجه", "حاجة", "عطر", "برفان", "perfume", "fragrance",
+            "في", "من", "الى", "الي", "لحد", "حدود", "range", "budget", "سعر", "تحت", "اقل"
+        };
 
-        if (normalizedMessage.Contains("حريمي") || normalizedMessage.Contains("نسائي") || normalizedMessage.Contains("women") || normalizedMessage.Contains("female"))
-        {
-            return "women";
-        }
-
-        if (normalizedMessage.Contains("يونيسكس") || normalizedMessage.Contains("unisex"))
-        {
-            return "unisex";
-        }
-
-        return null;
+        return normalizedMessage
+            .Split([' ', ',', '.', '،', '-', '_'], StringSplitOptions.RemoveEmptyEntries)
+            .Where(term => term.Length > 2 && !ignored.Contains(term) && !decimal.TryParse(term, out _))
+            .Distinct()
+            .Take(8)
+            .ToList();
     }
 
-    private static decimal? ExtractMaxPrice(string normalizedMessage)
+    private static IReadOnlyList<decimal> ExtractNumbers(string normalizedMessage)
     {
-        var numbers = normalizedMessage
-            .Split([' ', '$', ',', '.', '،'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => decimal.TryParse(part, out var value) ? value : (decimal?)null)
+        return Regex.Matches(normalizedMessage, @"\d+(\.\d+)?")
+            .Select(match => decimal.TryParse(match.Value, out var value) ? value : (decimal?)null)
             .Where(value => value is not null)
+            .Select(value => value!.Value)
             .ToList();
+    }
 
-        return numbers.Count > 0
-               && (normalizedMessage.Contains("تحت") || normalizedMessage.Contains("اقل") || normalizedMessage.Contains("under"))
-            ? numbers.Max()
-            : null;
+    private static bool HasAny(string value, params string[] terms)
+    {
+        return terms.Any(term => value.Contains(Normalize(term)));
     }
 
     private static string Normalize(string value)
@@ -229,4 +284,11 @@ public sealed class ChatbotService(IConfiguration configuration)
             .Replace("ى", "ي")
             .Replace("ة", "ه");
     }
+
+    private sealed record ChatCriteria(
+        string? Gender,
+        decimal? MinPrice,
+        decimal? MaxPrice,
+        IReadOnlyList<string> Notes,
+        IReadOnlyList<string> SearchTerms);
 }

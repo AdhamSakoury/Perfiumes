@@ -1,0 +1,160 @@
+.settings-hero {
+  @apply relative overflow-hidden rounded-3xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-5 bg-gradient-to-br from-white via-nubian-sand/40 to-nubian-gold/10 dark:from-nubian-surface dark:via-nubian-earth/40 dark:to-nubian-gold/10 border border-nubian-gold/20 shadow-xl;
+}
+
+.settings-hero-icon {
+  @apply w-20 h-20 rounded-full bg-white dark:bg-nubian-dark shadow-lg flex items-center justify-center text-3xl text-nubian-brown dark:text-nubian-gold;
+}
+
+.settings-eyebrow {
+  @apply text-xs uppercase tracking-[0.3em] text-nubian-gold font-bold;
+}
+
+.settings-hero h1 {
+  @apply text-4xl md:text-5xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mt-2;
+}
+
+.settings-subtitle {
+  @apply mt-2 text-nubian-earth dark:text-nubian-sand;
+}
+
+.settings-grid {
+  @apply grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start;
+}
+
+.settings-sidebar {
+  @apply lg:sticky lg:top-28 bg-white dark:bg-nubian-surface rounded-2xl border border-nubian-gold/20 shadow-lg p-3 space-y-2;
+}
+
+.settings-sidebar button {
+  @apply w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-nubian-brown dark:text-nubian-sand hover:bg-nubian-gold/15 hover:text-nubian-gold transition-all;
+}
+
+.settings-sidebar button.active {
+  @apply bg-nubian-gold/20 text-nubian-gold shadow-sm;
+  transform: translateX(0.25rem);
+}
+
+.settings-content {
+  @apply space-y-6;
+}
+
+.settings-card {
+  @apply bg-white dark:bg-nubian-surface rounded-2xl border border-nubian-gold/20 shadow-lg p-5 md:p-6;
+}
+
+.settings-section-enter {
+  animation: settings-section-enter 220ms ease-out both;
+}
+
+.settings-card-title {
+  @apply flex items-start gap-4 mb-5;
+}
+
+.settings-card-title > i {
+  @apply w-12 h-12 rounded-xl bg-nubian-gold/15 text-nubian-gold flex items-center justify-center text-xl shrink-0;
+}
+
+.settings-card-title h2 {
+  @apply text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold;
+}
+
+.settings-card-title p {
+  @apply text-sm text-nubian-earth dark:text-nubian-sand mt-1;
+}
+
+.settings-form-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+}
+
+.settings-field {
+  @apply flex flex-col gap-2 text-sm font-semibold text-nubian-brown dark:text-nubian-sand;
+}
+
+.settings-field input,
+.settings-field select {
+  @apply w-full px-4 py-3 rounded-xl border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2 text-nubian-brown dark:text-nubian-sand outline-none focus:ring-2 focus:ring-nubian-gold/50;
+}
+
+.settings-options {
+  @apply divide-y divide-nubian-gold/10;
+}
+
+.settings-option {
+  @apply flex items-center justify-between gap-4 py-4;
+}
+
+.settings-option h3 {
+  @apply font-bold text-nubian-brown dark:text-nubian-gold;
+}
+
+.settings-option p {
+  @apply text-sm text-nubian-earth dark:text-nubian-sand mt-1;
+}
+
+.settings-switch input {
+  @apply sr-only;
+}
+
+.settings-switch span {
+  @apply relative block w-14 h-8 rounded-full bg-nubian-sand dark:bg-nubian-earth transition-colors cursor-pointer;
+}
+
+.settings-switch span::after {
+  content: '';
+  @apply absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform;
+}
+
+.settings-switch input:checked + span {
+  @apply bg-nubian-gold;
+}
+
+.settings-switch input:checked + span::after {
+  transform: translateX(1.5rem);
+}
+
+.settings-actions,
+.settings-admin-actions {
+  @apply flex flex-col sm:flex-row gap-3 mt-5;
+}
+
+.settings-primary,
+.settings-secondary,
+.settings-danger {
+  @apply inline-flex items-center justify-center px-5 py-3 rounded-xl font-bold transition-all duration-300;
+}
+
+.settings-primary {
+  @apply bg-nubian-brown text-white hover:bg-nubian-gold hover:text-nubian-dark shadow-lg shadow-nubian-brown/10;
+}
+
+.settings-secondary {
+  @apply border border-nubian-gold text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold hover:text-nubian-dark;
+}
+
+.settings-danger {
+  @apply mt-4 bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20;
+}
+
+.danger-card {
+  @apply border-red-500/30;
+}
+
+.danger-card .settings-card-title > i {
+  @apply bg-red-500/10 text-red-600;
+}
+
+.admin-card {
+  @apply bg-gradient-to-br from-white to-nubian-gold/10 dark:from-nubian-surface dark:to-nubian-gold/10;
+}
+
+@keyframes settings-section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

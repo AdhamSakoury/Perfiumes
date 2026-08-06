@@ -15,6 +15,10 @@ export class ThemeService {
     this.apply(!this.isDark());
   }
 
+  setDark(isDark: boolean): void {
+    this.apply(isDark);
+  }
+
   private apply(isDark: boolean): void {
     document.documentElement.classList.toggle('dark', isDark);
     document.body.classList.toggle('dark', isDark);

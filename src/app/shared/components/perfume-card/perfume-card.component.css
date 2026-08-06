@@ -1,0 +1,22 @@
+.wishlist-button {
+  @apply w-10 h-10 bg-white rounded-full flex items-center justify-center text-nubian-terracotta transition-all duration-300 shadow-lg hover:bg-nubian-terracotta hover:text-white hover:scale-110;
+}
+
+.wishlist-button.is-active {
+  @apply bg-nubian-terracotta text-white ring-2 ring-white/90 shadow-xl shadow-nubian-terracotta/30;
+}
+
+.wishlist-button.is-active i {
+  animation: wishlist-check-pop 220ms ease-out both;
+}
+
+@keyframes wishlist-check-pop {
+  from {
+    transform: scale(0.55) rotate(-18deg);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}

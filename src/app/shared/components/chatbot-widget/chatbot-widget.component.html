@@ -66,8 +66,8 @@
     </section>
   }
 
-  <button type="button" (click)="toggle()" class="chatbot-fab" aria-label="Open perfume chatbot" [class.is-open]="open()">
-    <i class="fas" [class.fa-comments]="!open()" [class.fa-sparkles]="open()"></i>
+  <button type="button" (click)="toggle()" class="chatbot-fab" [attr.aria-label]="open() ? 'Close perfume chatbot' : 'Open perfume chatbot'" [class.is-open]="open()">
+    <i class="fas" [class.fa-comments]="!open()" [class.fa-times]="open()"></i>
     @if (!open()) {
       <span class="chatbot-pulse"></span>
     }

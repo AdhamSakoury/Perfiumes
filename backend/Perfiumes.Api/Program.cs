@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.SignalR;
+using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using Perfiumes.Api.Services;
 
@@ -10,18 +12,22 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
+builder.Services.AddSignalR();
 builder.Services.AddSingleton<ProductRepository>();
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<ChatbotService>();
+builder.Services.AddSingleton<NotificationService>();
 builder.Services.AddHttpClient<GoogleAuthService>();
 
 var app = builder.Build();
 
 app.UseCors("Frontend");
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -36,7 +42,11 @@ app.MapGet("/", () => Results.Ok(new
         "POST /api/products",
         "PUT /api/products/{id}",
         "DELETE /api/products/{id}",
-        "POST /api/chatbot/message"
+        "POST /api/chatbot/message",
+        "GET /api/notifications",
+        "POST /api/notifications/{id}/read",
+        "POST /api/notifications/read-all",
+        "POST /api/notifications"
     }
 }));
 
@@ -127,6 +137,54 @@ app.MapPost("/api/chatbot/message", async (
 {
     var response = await chatbot.ReplyAsync(request, await products.GetAllAsync());
     return Results.Ok(response);
+});
+
+app.MapGet("/api/notifications", (string userEmail, NotificationService notifications) =>
+{
+    return Results.Ok(notifications.GetForUser(userEmail));
+});
+
+app.MapPost("/api/notifications/{id}/read", async (
+    string id,
+    string userEmail,
+    NotificationService notifications,
+    IHubContext<NotificationHub> hub) =>
+{
+    var items = notifications.MarkAsRead(userEmail, id);
+    await hub
+        .Clients
+        .Group(NotificationHub.GroupName(userEmail))
+        .SendAsync(NotificationHub.NotificationsUpdatedEvent, items);
+
+    return Results.Ok(items);
+});
+
+app.MapPost("/api/notifications/read-all", async (
+    string userEmail,
+    NotificationService notifications,
+    IHubContext<NotificationHub> hub) =>
+{
+    var items = notifications.MarkAllAsRead(userEmail);
+    await hub
+        .Clients
+        .Group(NotificationHub.GroupName(userEmail))
+        .SendAsync(NotificationHub.NotificationsUpdatedEvent, items);
+
+    return Results.Ok(items);
+});
+
+app.MapPost("/api/notifications", async (
+    CreateNotificationRequest request,
+    NotificationService notifications,
+    IHubContext<NotificationHub> hub) =>
+{
+    var notification = notifications.Create(request.UserEmail, request.Title, request.Message, request.Type);
+    await hub
+        .Clients
+        .Group(NotificationHub.GroupName(request.UserEmail))
+        .SendAsync(NotificationHub.NotificationCreatedEvent, notification);
+
+    return Results.Created($"/api/notifications/{notification.Id}", notification);
 });
 
 app.Run();

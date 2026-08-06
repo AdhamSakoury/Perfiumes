@@ -1,0 +1,173 @@
+import { Component, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '@core/services/auth.service';
+import { AppLanguage, LocalizationService } from '@core/services/localization.service';
+import { StorageService } from '@core/services/storage.service';
+import { ThemeService } from '@core/services/theme.service';
+import { ToastService } from '@core/services/toast.service';
+
+interface UserSettings {
+  emailNotifications: boolean;
+  orderNotifications: boolean;
+  promoNotifications: boolean;
+  language: 'en' | 'ar';
+  profileVisibility: 'private' | 'members';
+  saveChatHistory: boolean;
+  chatbotTone: 'friendly' | 'direct' | 'luxury';
+}
+
+type SettingsSection = 'profile' | 'security' | 'preferences' | 'chatbot' | 'admin' | 'danger';
+
+const DEFAULT_SETTINGS: UserSettings = {
+  emailNotifications: true,
+  orderNotifications: true,
+  promoNotifications: false,
+  language: 'en',
+  profileVisibility: 'private',
+  saveChatHistory: true,
+  chatbotTone: 'friendly'
+};
+
+@Component({
+  selector: 'app-settings-page',
+  standalone: true,
+  imports: [FormsModule, RouterLink],
+  templateUrl: './settings.component.html',
+  styleUrl: './settings.component.css'
+})
+export class SettingsPageComponent {
+  readonly activeSection = signal<SettingsSection>('profile');
+
+  profileForm = {
+    fullName: '',
+    email: '',
+    phone: '',
+    address: ''
+  };
+  passwordForm = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  };
+  settings: UserSettings = { ...DEFAULT_SETTINGS };
+  deleteConfirm = '';
+
+  constructor(
+    readonly auth: AuthService,
+    readonly i18n: LocalizationService,
+    readonly theme: ThemeService,
+    private readonly router: Router,
+    private readonly storage: StorageService,
+    private readonly toast: ToastService
+  ) {
+    const user = this.auth.currentUser();
+    if (!user) {
+      void this.router.navigate(['/login'], { queryParams: { redirect: '/settings' } });
+      return;
+    }
+
+    this.profileForm = {
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone || '',
+      address: user.address || ''
+    };
+    this.settings = {
+      ...this.storage.get<UserSettings>(this.settingsKey(), DEFAULT_SETTINGS),
+      language: this.i18n.language()
+    };
+  }
+
+  get isAdmin(): boolean {
+    return this.auth.currentUser()?.role === 'admin';
+  }
+
+  selectSection(section: SettingsSection): void {
+    if (section === 'admin' && !this.isAdmin) {
+      this.activeSection.set('profile');
+      return;
+    }
+
+    this.activeSection.set(section);
+  }
+
+  saveProfile(): void {
+    const user = this.auth.currentUser();
+    if (!user) return;
+
+    if (!this.profileForm.fullName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.profileForm.email)) {
+      this.toast.show('Name and valid email are required.', 'error');
+      return;
+    }
+
+    this.auth.updateCurrentUser({
+      ...user,
+      fullName: this.profileForm.fullName.trim(),
+      name: this.profileForm.fullName.trim(),
+      email: this.profileForm.email.trim().toLowerCase(),
+      phone: this.profileForm.phone.trim(),
+      address: this.profileForm.address.trim()
+    });
+    this.toast.show('Profile settings saved.');
+  }
+
+  changePassword(): void {
+    const user = this.auth.currentUser();
+    if (!user) return;
+
+    if (this.passwordForm.currentPassword !== user.password) {
+      this.toast.show('Current password is incorrect.', 'error');
+      return;
+    }
+
+    if (this.passwordForm.newPassword.length < 8 || this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
+      this.toast.show('New password must be at least 8 characters and match confirmation.', 'error');
+      return;
+    }
+
+    this.auth.updateCurrentUser({
+      ...user,
+      password: this.passwordForm.newPassword
+    });
+    this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    this.toast.show('Password updated.');
+  }
+
+  savePreferences(): void {
+    this.i18n.setLanguage(this.settings.language);
+    this.storage.set(this.settingsKey(), this.settings);
+    this.toast.show('Preferences saved.');
+  }
+
+  setLanguage(language: AppLanguage): void {
+    this.settings.language = language;
+    this.i18n.setLanguage(language);
+    this.storage.set(this.settingsKey(), this.settings);
+  }
+
+  setDarkMode(isDark: boolean): void {
+    this.theme.setDark(isDark);
+  }
+
+  clearChatForCurrentUser(): void {
+    const user = this.auth.currentUser();
+    const key = `gnouby_chat_history_v2_${user?.id || 'guest'}`;
+    this.storage.remove(key);
+    this.toast.show('Chat history cleared.');
+  }
+
+  deleteAccount(): void {
+    if (this.deleteConfirm !== 'DELETE') {
+      this.toast.show('Type DELETE to confirm account deletion.', 'error');
+      return;
+    }
+
+    this.auth.deleteCurrentUser();
+    this.toast.show('Account deleted.');
+  }
+
+  private settingsKey(): string {
+    return `gnouby_settings_${this.auth.currentUser()?.id || 'guest'}`;
+  }
+}

@@ -1,0 +1,251 @@
+@if (auth.currentUser(); as user) {
+  <section class="page-shell page-enter px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 pb-12">
+    <div class="settings-hero">
+      <div class="settings-hero-icon">
+        <i class="fas fa-cog"></i>
+      </div>
+      <div>
+        <p class="settings-eyebrow">{{ i18n.t('accountCenter') }}</p>
+        <h1>{{ i18n.t('settings') }}</h1>
+        <p class="settings-subtitle">{{ i18n.t('settingsSubtitle') }}</p>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <aside class="settings-sidebar">
+        <button type="button" [class.active]="activeSection() === 'profile'" (click)="selectSection('profile')"><i class="fas fa-user"></i><span>{{ i18n.t('profile') }}</span></button>
+        <button type="button" [class.active]="activeSection() === 'security'" (click)="selectSection('security')"><i class="fas fa-lock"></i><span>{{ i18n.t('password') }}</span></button>
+        <button type="button" [class.active]="activeSection() === 'preferences'" (click)="selectSection('preferences')"><i class="fas fa-sliders"></i><span>{{ i18n.t('preferences') }}</span></button>
+        <button type="button" [class.active]="activeSection() === 'chatbot'" (click)="selectSection('chatbot')"><i class="fas fa-comments"></i><span>{{ i18n.t('chatbot') }}</span></button>
+        @if (isAdmin) {
+          <button type="button" [class.active]="activeSection() === 'admin'" (click)="selectSection('admin')"><i class="fas fa-crown"></i><span>{{ i18n.t('admin') }}</span></button>
+        }
+        <button type="button" [class.active]="activeSection() === 'danger'" (click)="selectSection('danger')"><i class="fas fa-triangle-exclamation"></i><span>{{ i18n.t('dangerZone') }}</span></button>
+      </aside>
+
+      <div class="settings-content">
+        @if (activeSection() === 'profile') {
+        <form (ngSubmit)="saveProfile()" class="settings-card settings-section-enter">
+          <div class="settings-card-title">
+            <i class="fas fa-user-pen"></i>
+            <div>
+              <h2>{{ i18n.t('profileInformation') }}</h2>
+              <p>{{ i18n.t('updatePublicDetails') }}</p>
+            </div>
+          </div>
+
+          <div class="settings-form-grid">
+            <label class="settings-field">
+              <span>{{ i18n.t('fullName') }}</span>
+              <input name="fullName" [(ngModel)]="profileForm.fullName" required>
+            </label>
+            <label class="settings-field">
+              <span>{{ i18n.t('email') }}</span>
+              <input type="email" name="email" [(ngModel)]="profileForm.email" required>
+            </label>
+            <label class="settings-field">
+              <span>{{ i18n.t('phone') }}</span>
+              <input name="phone" [(ngModel)]="profileForm.phone">
+            </label>
+            <label class="settings-field">
+              <span>{{ i18n.t('address') }}</span>
+              <input name="address" [(ngModel)]="profileForm.address">
+            </label>
+          </div>
+
+          <button type="submit" class="settings-primary">{{ i18n.t('saveProfile') }}</button>
+        </form>
+        }
+
+        @if (activeSection() === 'security') {
+        <form (ngSubmit)="changePassword()" class="settings-card settings-section-enter">
+          <div class="settings-card-title">
+            <i class="fas fa-shield-halved"></i>
+            <div>
+              <h2>{{ i18n.t('passwordSecurity') }}</h2>
+              <p>{{ i18n.t('changeLocalPassword') }}</p>
+            </div>
+          </div>
+
+          <div class="settings-form-grid">
+            <label class="settings-field">
+              <span>{{ i18n.t('currentPassword') }}</span>
+              <input type="password" name="currentPassword" [(ngModel)]="passwordForm.currentPassword">
+            </label>
+            <label class="settings-field">
+              <span>{{ i18n.t('newPassword') }}</span>
+              <input type="password" name="newPassword" [(ngModel)]="passwordForm.newPassword">
+            </label>
+            <label class="settings-field md:col-span-2">
+              <span>{{ i18n.t('confirmPassword') }}</span>
+              <input type="password" name="confirmPassword" [(ngModel)]="passwordForm.confirmPassword">
+            </label>
+          </div>
+
+          <button type="submit" class="settings-primary">{{ i18n.t('updatePassword') }}</button>
+        </form>
+        }
+
+        @if (activeSection() === 'preferences') {
+        <section class="settings-card settings-section-enter">
+          <div class="settings-card-title">
+            <i class="fas fa-wand-magic-sparkles"></i>
+            <div>
+              <h2>{{ i18n.t('preferences') }}</h2>
+              <p>Theme, notifications, language, and privacy.</p>
+            </div>
+          </div>
+
+          <div class="settings-options">
+            <div class="settings-option">
+              <div>
+                <h3>{{ i18n.t('darkMode') }}</h3>
+                <p>{{ i18n.t('darkModeHint') }}</p>
+              </div>
+              <label class="settings-switch">
+                <input type="checkbox" [ngModel]="theme.isDark()" (ngModelChange)="setDarkMode($event)" name="darkMode">
+                <span></span>
+              </label>
+            </div>
+
+            <div class="settings-option">
+              <div>
+                <h3>{{ i18n.t('emailNotifications') }}</h3>
+                <p>{{ i18n.t('emailNotificationsHint') }}</p>
+              </div>
+              <label class="settings-switch">
+                <input type="checkbox" [(ngModel)]="settings.emailNotifications" name="emailNotifications">
+                <span></span>
+              </label>
+            </div>
+
+            <div class="settings-option">
+              <div>
+                <h3>{{ i18n.t('orderUpdates') }}</h3>
+                <p>{{ i18n.t('orderUpdatesHint') }}</p>
+              </div>
+              <label class="settings-switch">
+                <input type="checkbox" [(ngModel)]="settings.orderNotifications" name="orderNotifications">
+                <span></span>
+              </label>
+            </div>
+
+            <div class="settings-option">
+              <div>
+                <h3>{{ i18n.t('promotions') }}</h3>
+                <p>{{ i18n.t('promotionsHint') }}</p>
+              </div>
+              <label class="settings-switch">
+                <input type="checkbox" [(ngModel)]="settings.promoNotifications" name="promoNotifications">
+                <span></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-form-grid mt-5">
+            <label class="settings-field">
+              <span>{{ i18n.t('language') }}</span>
+              <select name="language" [ngModel]="settings.language" (ngModelChange)="setLanguage($event)">
+                <option value="en">English</option>
+                <option value="ar">Arabic</option>
+              </select>
+            </label>
+            <label class="settings-field">
+              <span>{{ i18n.t('profilePrivacy') }}</span>
+              <select name="profileVisibility" [(ngModel)]="settings.profileVisibility">
+                <option value="private">Private</option>
+                <option value="members">Members only</option>
+              </select>
+            </label>
+          </div>
+
+          <button type="button" (click)="savePreferences()" class="settings-primary">{{ i18n.t('savePreferences') }}</button>
+        </section>
+        }
+
+        @if (activeSection() === 'chatbot') {
+        <section class="settings-card settings-section-enter">
+          <div class="settings-card-title">
+            <i class="fas fa-robot"></i>
+            <div>
+              <h2>{{ i18n.t('chatbotSettings') }}</h2>
+              <p>{{ i18n.t('chatbotSettingsHint') }}</p>
+            </div>
+          </div>
+
+          <div class="settings-options">
+            <div class="settings-option">
+              <div>
+                <h3>{{ i18n.t('saveChatHistory') }}</h3>
+                <p>{{ i18n.t('saveChatHistoryHint') }}</p>
+              </div>
+              <label class="settings-switch">
+                <input type="checkbox" [(ngModel)]="settings.saveChatHistory" name="saveChatHistory">
+                <span></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-form-grid mt-5">
+            <label class="settings-field">
+              <span>{{ i18n.t('assistantTone') }}</span>
+              <select name="chatbotTone" [(ngModel)]="settings.chatbotTone">
+                <option value="friendly">Friendly</option>
+                <option value="direct">Direct</option>
+                <option value="luxury">Luxury advisor</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="settings-actions">
+            <button type="button" (click)="savePreferences()" class="settings-primary">{{ i18n.t('saveChatbotSettings') }}</button>
+            <button type="button" (click)="clearChatForCurrentUser()" class="settings-secondary">{{ i18n.t('clearChatHistory') }}</button>
+          </div>
+        </section>
+        }
+
+        @if (isAdmin && activeSection() === 'admin') {
+          <section class="settings-card admin-card settings-section-enter">
+            <div class="settings-card-title">
+              <i class="fas fa-crown"></i>
+              <div>
+                <h2>{{ i18n.t('adminSettings') }}</h2>
+                <p>{{ i18n.t('adminSettingsHint') }}</p>
+              </div>
+            </div>
+            <div class="settings-admin-actions">
+              <a routerLink="/admin/products" class="settings-primary">{{ i18n.t('manageProducts') }}</a>
+              <a routerLink="/perfumes" class="settings-secondary">{{ i18n.t('viewStorefront') }}</a>
+            </div>
+          </section>
+        }
+
+        @if (activeSection() === 'danger') {
+        <section class="settings-card danger-card settings-section-enter">
+          <div class="settings-card-title">
+            <i class="fas fa-triangle-exclamation"></i>
+            <div>
+              <h2>{{ i18n.t('dangerZone') }}</h2>
+              <p>{{ i18n.t('deleteAccountHint') }}</p>
+            </div>
+          </div>
+          <label class="settings-field">
+            <span>{{ i18n.t('typeDelete') }}</span>
+            <input name="deleteConfirm" [(ngModel)]="deleteConfirm" placeholder="DELETE">
+          </label>
+          <button type="button" (click)="deleteAccount()" class="settings-danger">{{ i18n.t('deleteAccount') }}</button>
+        </section>
+        }
+      </div>
+    </div>
+  </section>
+} @else {
+  <section class="page-shell page-enter px-4 sm:px-6 lg:px-10 pb-12">
+    <div class="settings-card max-w-xl mx-auto text-center">
+      <i class="fas fa-lock text-4xl text-nubian-gold mb-4"></i>
+      <h1 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">Login required</h1>
+      <p class="text-nubian-earth dark:text-nubian-sand mt-2 mb-6">Login to manage your settings.</p>
+      <a routerLink="/login" class="settings-primary">Go to login</a>
+    </div>
+  </section>
+}
