@@ -1,24 +1,29 @@
 import { CurrencyPipe, DatePipe, DOCUMENT } from '@angular/common';
-import { Component, HostListener, Inject, computed } from '@angular/core';
+import { Component, HostListener, Inject, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { User } from '@core/models/store.models';
+import { User, UserWallet } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { ToastService } from '@core/services/toast.service';
 import { WishlistService } from '@core/services/wishlist.service';
+import { WalletService } from '@core/services/wallet.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-account-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './account.component.html',
   styleUrl: './account.component.css'
 })
-export class AccountPageComponent {
+export class AccountPageComponent implements OnInit {
   editOpen = false;
   orderHistoryOpen = false;
+  readonly wallet = signal<UserWallet | null>(null);
+  readonly walletLoading = signal(false);
   readonly recentOrders = computed(() => (this.auth.currentUser()?.orders || []).slice(0, 3));
   form = this.emptyForm();
   passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
@@ -27,11 +32,17 @@ export class AccountPageComponent {
   constructor(
     readonly auth: AuthService,
     readonly wishlist: WishlistService,
+    private readonly walletService: WalletService,
     private readonly cart: CartService,
     readonly toast: ToastService,
     private readonly scrollLock: ScrollLockService,
+    private readonly i18n: LocalizationService,
     @Inject(DOCUMENT) private readonly document: Document
   ) {}
+
+  ngOnInit(): void {
+    this.loadWallet();
+  }
 
   initials(user: User): string {
     return user.fullName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'U';
@@ -108,22 +119,18 @@ export class AccountPageComponent {
     if (!user) return;
 
     if (!this.form.fullName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.form.email)) {
-      this.toast.show('Name and a valid email are required.', 'error');
+      this.toast.show(this.i18n.t('nameEmailRequired'), 'error');
       return;
     }
 
     if (this.passwordForm.newPassword) {
-      if (this.passwordForm.currentPassword !== user.password) {
-        this.toast.show('Current password is incorrect.', 'error');
-        return;
-      }
       if (this.passwordForm.newPassword.length < 8 || this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
-        this.toast.show('New passwords must match and be at least 8 characters.', 'error');
+        this.toast.show(this.i18n.t('newPasswordsInvalid'), 'error');
         return;
       }
     }
 
-    this.auth.updateCurrentUser({
+    const updatedUser = {
       ...user,
       fullName: this.form.fullName.trim(),
       name: this.form.fullName.trim(),
@@ -131,18 +138,47 @@ export class AccountPageComponent {
       phone: this.form.phone.trim(),
       address: this.form.address.trim(),
       password: this.passwordForm.newPassword || user.password
+    };
+
+    this.auth.updateProfile(updatedUser, this.passwordForm.currentPassword, this.passwordForm.newPassword).subscribe({
+      next: (result) => {
+        if (!result.success) {
+          this.toast.show(result.message || this.i18n.t('currentPasswordIncorrect'), 'error');
+          return;
+        }
+
+        this.editOpen = false;
+        this.setPopupToggle('account-edit-toggle', false);
+        this.syncScrollLock();
+        this.toast.show(this.i18n.t('profileUpdatedSuccess'));
+      },
+      error: (error) => {
+        this.toast.show(error?.error?.message || this.i18n.t('currentPasswordIncorrect'), 'error');
+      }
     });
-    this.editOpen = false;
-    this.setPopupToggle('account-edit-toggle', false);
-    this.syncScrollLock();
-    this.toast.show('Profile updated successfully!');
   }
 
   reorder(orderId: string): void {
     const order = this.auth.currentUser()?.orders.find((item) => item.id === orderId);
     if (!order) return;
     for (const item of order.items) this.cart.add(item.id, item.quantity);
-    this.toast.show('Items added to cart!');
+    this.toast.show(this.i18n.t('itemsAddedToCart'));
+  }
+
+  loadWallet(): void {
+    const token = this.auth.currentAccessToken();
+    if (!token) return;
+
+    this.walletLoading.set(true);
+    this.walletService.getCurrentWallet(token).subscribe({
+      next: (wallet) => {
+        this.wallet.set(wallet);
+        this.walletLoading.set(false);
+      },
+      error: () => {
+        this.walletLoading.set(false);
+      }
+    });
   }
 
   private emptyForm() {

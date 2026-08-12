@@ -1,17 +1,17 @@
 <section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
-      <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mb-6">Shopping Cart</h1>
+      <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mb-6">{{ 'shoppingCart' | t }}</h1>
 
       @if (!auth.currentUser()) {
         <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
           <i class="fas fa-lock text-2xl text-nubian-gold/60 mb-4"></i>
-          <h2 class="text-2xl font-bold font-cinzel mb-3">Login required</h2>
-          <a routerLink="/login" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">Login</a>
+          <h2 class="text-2xl font-bold font-cinzel mb-3">{{ 'loginRequired' | t }}</h2>
+          <a routerLink="/login" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">{{ 'login' | t }}</a>
         </div>
       } @else if (!cart.lines().length) {
         <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
           <i class="fas fa-shopping-cart text-2xl text-nubian-gold/60 mb-4"></i>
-          <h2 class="text-2xl font-bold font-cinzel mb-3">Your cart is empty</h2>
-          <a routerLink="/perfumes" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">Explore Perfumes</a>
+          <h2 class="text-2xl font-bold font-cinzel mb-3">{{ 'cartEmpty' | t }}</h2>
+          <a routerLink="/perfumes" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">{{ 'exploreCollection' | t }}</a>
         </div>
       } @else {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -25,7 +25,7 @@
                       <p class="text-sm text-nubian-gold font-semibold">{{ line.perfume.brand }}</p>
                       <h3 class="text-lg font-bold text-nubian-dark dark:text-nubian-sand font-cinzel">{{ line.perfume.name }}</h3>
                     </div>
-                    <button type="button" (click)="cart.remove(line.perfumeId)" class="text-nubian-terracotta hover:text-red-700 transition-colors" aria-label="Remove item">
+                    <button type="button" (click)="cart.remove(line.perfumeId)" class="text-nubian-terracotta hover:text-red-700 transition-colors" [attr.aria-label]="'removeItem' | t">
                       <i class="fas fa-trash-alt"></i>
                     </button>
                   </div>
@@ -43,25 +43,25 @@
           </div>
 
           <aside class="bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 border border-nubian-gold/20 h-fit">
-            <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-6">Summary</h2>
+            <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-6">{{ 'summary' | t }}</h2>
             <div class="space-y-3 mb-6">
-              <div class="flex justify-between"><span>Subtotal</span><strong>{{ cart.subtotal() | currency }}</strong></div>
+              <div class="flex justify-between"><span>{{ 'subtotal' | t }}</span><strong>{{ cart.subtotal() | currency }}</strong></div>
               @if (cart.promo()) {
-                <div class="flex justify-between text-green-600"><span>Discount ({{ cart.promo()!.code }})</span><strong>-{{ cart.discount() | currency }}</strong></div>
+                <div class="flex justify-between text-green-600"><span>{{ 'discount' | t }} ({{ cart.promo()!.code }})</span><strong>-{{ cart.discount() | currency }}</strong></div>
               }
-              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>Total</span><strong class="text-nubian-gold">{{ cart.total() | currency }}</strong></div>
+              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ cart.total() | currency }}</strong></div>
             </div>
 
             @if (!cart.promo()) {
               <div class="flex gap-2 mb-4">
-                <input [(ngModel)]="promoCode" name="promoCode" placeholder="Promo code" class="flex-1 px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
-                <button type="button" (click)="applyPromo()" class="px-4 py-2 bg-nubian-gold text-nubian-dark rounded-lg font-bold">Apply</button>
+                <input [(ngModel)]="promoCode" name="promoCode" [placeholder]="'promoCode' | t" class="flex-1 px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
+                <button type="button" (click)="applyPromo()" class="px-4 py-2 bg-nubian-gold text-nubian-dark rounded-lg font-bold">{{ 'apply' | t }}</button>
               </div>
             } @else {
-              <button type="button" (click)="cart.clearPromo()" class="w-full mb-4 py-2 border border-nubian-terracotta text-nubian-terracotta rounded-lg">Remove Promo</button>
+              <button type="button" (click)="cart.clearPromo()" class="w-full mb-4 py-2 border border-nubian-terracotta text-nubian-terracotta rounded-lg">{{ 'removePromo' | t }}</button>
             }
 
-            <a routerLink="/checkout" class="block text-center w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">Checkout</a>
+            <a routerLink="/checkout" class="block text-center w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">{{ 'checkout' | t }}</a>
           </aside>
         </div>
       }

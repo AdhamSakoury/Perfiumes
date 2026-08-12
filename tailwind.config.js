@@ -12,9 +12,9 @@ module.exports = {
           terracotta: '#C65D3B',
           earth: '#5D4E37',
           cream: '#F5F0E6',
-          dark: '#1A1510',
-          surface: '#241D15',
-          surface2: '#302619',
+          dark: '#0F1717',
+          surface: '#162222',
+          surface2: '#1D2B2B',
           primary: '#1B4D4D',
           accent: '#F5A623'
         }

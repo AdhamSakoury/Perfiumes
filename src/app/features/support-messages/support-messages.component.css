@@ -1,0 +1,150 @@
+.messages-header {
+  @apply mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4;
+}
+
+.messages-header p {
+  @apply text-nubian-gold font-semibold;
+}
+
+.messages-header h1 {
+  @apply text-3xl md:text-4xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold;
+}
+
+.messages-header button,
+.messages-empty a {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nubian-brown text-white font-semibold hover:bg-nubian-gold hover:text-nubian-dark transition-colors disabled:opacity-50;
+}
+
+.messages-actions {
+  @apply flex flex-wrap items-center gap-3;
+}
+
+.messages-actions .new-message-btn {
+  @apply bg-nubian-gold text-nubian-dark hover:bg-nubian-brown hover:text-white;
+}
+
+.messages-layout {
+  @apply grid grid-cols-1 lg:grid-cols-[330px_minmax(0,1fr)] gap-0 bg-white dark:bg-nubian-surface rounded-2xl shadow-xl border border-nubian-gold/20 overflow-hidden;
+  min-height: 620px;
+}
+
+.thread-list,
+.thread-panel,
+.messages-empty {
+  @apply bg-white dark:bg-nubian-surface;
+}
+
+.thread-list {
+  @apply p-2 space-y-1 overflow-y-auto border-r border-nubian-gold/15;
+  max-height: 620px;
+}
+
+.thread-row {
+  @apply w-full grid grid-cols-[42px_1fr] items-center gap-3 text-left p-3 rounded-xl hover:bg-nubian-gold/10 transition-colors;
+}
+
+.thread-row.active {
+  @apply bg-nubian-gold/15;
+}
+
+.thread-avatar {
+  @apply w-10 h-10 rounded-full bg-nubian-brown text-white flex items-center justify-center;
+}
+
+.thread-copy {
+  @apply min-w-0;
+}
+
+.thread-copy strong {
+  @apply block text-nubian-brown dark:text-nubian-gold truncate;
+}
+
+.thread-copy small,
+.messages-empty p {
+  @apply block text-xs text-nubian-earth dark:text-nubian-sand/80 truncate;
+}
+
+.empty-new-message {
+  @apply w-full min-h-32 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border border-dashed border-nubian-gold/50 text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold/10 transition-colors text-center font-semibold;
+}
+
+.empty-new-message i {
+  @apply text-2xl;
+}
+
+.thread-panel {
+  @apply overflow-hidden flex flex-col min-w-0;
+}
+
+.thread-panel header {
+  @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-nubian-gold/20 bg-white dark:bg-nubian-surface;
+}
+
+.thread-panel h2 {
+  @apply text-xl font-bold text-nubian-brown dark:text-nubian-gold truncate;
+  font-family: inherit;
+}
+
+.thread-panel header p {
+  @apply text-sm text-nubian-earth dark:text-nubian-sand truncate;
+}
+
+.thread-panel header span {
+  @apply px-3 py-1 rounded-full bg-nubian-gold/20 text-sm font-semibold text-nubian-brown dark:text-nubian-gold;
+}
+
+.thread-panel header span.connected {
+  @apply bg-green-500/15 text-green-700 dark:text-green-300;
+}
+
+.thread-messages {
+  @apply flex-1 p-5 space-y-2 bg-nubian-cream/50 dark:bg-nubian-dark/30 overflow-y-auto;
+}
+
+.thread-message {
+  @apply w-fit max-w-[min(72%,680px)] rounded-2xl rounded-bl-md bg-white dark:bg-nubian-surface2 border border-nubian-gold/15 px-4 py-2.5 text-nubian-brown dark:text-nubian-sand shadow-sm;
+}
+
+.thread-message.mine {
+  @apply ml-auto bg-nubian-brown text-white rounded-bl-2xl rounded-br-md;
+}
+
+.thread-message p {
+  @apply whitespace-pre-wrap leading-relaxed;
+}
+
+.thread-message time {
+  @apply block mt-1 text-[11px] opacity-60 text-right;
+}
+
+.thread-reply {
+  @apply flex items-end gap-3 p-4 border-t border-nubian-gold/20 bg-white dark:bg-nubian-surface;
+}
+
+.thread-reply textarea {
+  @apply flex-1 min-h-12 max-h-32 px-4 py-3 rounded-2xl border border-nubian-sand dark:border-nubian-gold/25 bg-nubian-cream/60 dark:bg-nubian-surface2 text-nubian-brown dark:text-nubian-sand outline-none focus:ring-2 focus:ring-nubian-gold/50 resize-none;
+}
+
+.thread-reply button {
+  @apply w-12 h-12 rounded-full p-0 shrink-0 inline-flex items-center justify-center bg-nubian-brown text-white hover:bg-nubian-gold hover:text-nubian-dark transition-colors disabled:opacity-50;
+}
+
+.support-start {
+  @apply min-h-60 flex flex-col items-center justify-center text-center gap-2 text-nubian-earth dark:text-nubian-sand;
+}
+
+.support-start i {
+  @apply text-4xl text-nubian-gold mb-2;
+}
+
+.support-start strong {
+  @apply text-lg text-nubian-brown dark:text-nubian-gold;
+}
+
+.messages-empty {
+  @apply max-w-xl mx-auto text-center p-8 rounded-2xl shadow-xl border border-nubian-gold/20;
+}
+
+.messages-empty h1 {
+  @apply text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-3;
+}

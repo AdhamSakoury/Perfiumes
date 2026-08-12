@@ -6,6 +6,8 @@ import { Perfume } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { PerfumeService } from '@core/services/perfume.service';
 import { ToastService } from '@core/services/toast.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 type ProductForm = Omit<Perfume, 'id' | 'notes' | 'season'> & {
   id?: number;
@@ -32,7 +34,7 @@ const EMPTY_FORM: ProductForm = {
 @Component({
   selector: 'app-admin-products',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, RouterLink],
+  imports: [CurrencyPipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './admin-products.component.html',
   styleUrl: './admin-products.component.css'
 })
@@ -49,7 +51,8 @@ export class AdminProductsComponent {
     readonly auth: AuthService,
     readonly perfumeService: PerfumeService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {
     if (!this.auth.currentUser()) {
       void this.router.navigate(['/login'], { queryParams: { redirect: '/admin/products' } });
@@ -116,7 +119,7 @@ export class AdminProductsComponent {
   submit(): void {
     if (!this.isAdmin || this.saving) return;
     if (!this.form.name.trim() || !this.form.brand.trim() || !this.form.category.trim()) {
-      this.toast.show('Please fill name, brand, and category.', 'error');
+      this.toast.show(this.i18n.t('productRequiredFields'), 'error');
       return;
     }
 
@@ -129,14 +132,14 @@ export class AdminProductsComponent {
 
       request.subscribe({
         next: () => {
-          this.toast.show(this.isEditing ? 'Product updated.' : 'Product added.');
+          this.toast.show(this.isEditing ? this.i18n.t('productUpdated') : this.i18n.t('productAdded'));
           this.resetForm();
           this.perfumeService.loadProducts();
           this.setPage(1);
           this.saving = false;
         },
         error: () => {
-          this.toast.show('Could not save product. Check backend/admin token.', 'error');
+          this.toast.show(this.i18n.t('productSaveFailed'), 'error');
           this.saving = false;
         }
       });
@@ -156,14 +159,14 @@ export class AdminProductsComponent {
 
   delete(product: Perfume): void {
     if (!this.isAdmin || this.deletingId) return;
-    const confirmed = window.confirm(`Delete ${product.name}?`);
+    const confirmed = window.confirm(this.i18n.t('confirmDeleteProduct').replace('{name}', product.name));
     if (!confirmed) return;
 
     this.deletingId = product.id;
     this.withAdminToken((token) => {
       this.perfumeService.delete(product.id, token).subscribe({
         next: () => {
-          this.toast.show('Product deleted.');
+          this.toast.show(this.i18n.t('productDeleted'));
           if (this.form.id === product.id) this.resetForm();
           this.perfumeService.loadProducts();
           if (this.paginatedProducts.length === 1 && this.safeCurrentPage > 1) {
@@ -172,7 +175,7 @@ export class AdminProductsComponent {
           this.deletingId = null;
         },
         error: () => {
-          this.toast.show('Could not delete product.', 'error');
+          this.toast.show(this.i18n.t('productDeleteFailed'), 'error');
           this.deletingId = null;
         }
       });
@@ -192,7 +195,7 @@ export class AdminProductsComponent {
 
     const user = this.auth.currentUser();
     if (!user?.password) {
-      this.toast.show('Please login again as admin.', 'error');
+      this.toast.show(this.i18n.t('loginAgainAdmin'), 'error');
       this.saving = false;
       this.deletingId = null;
       return;
@@ -208,7 +211,7 @@ export class AdminProductsComponent {
         this.tokenLoading = false;
         this.saving = false;
         this.deletingId = null;
-        this.toast.show('Admin API login failed. Please login again.', 'error');
+        this.toast.show(this.i18n.t('adminApiLoginFailed'), 'error');
       }
     });
   }

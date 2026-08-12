@@ -1,0 +1,115 @@
+<section class="page-shell admin-dashboard-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="admin-dashboard-empty">
+      <h1>Admin login required</h1>
+      <a routerLink="/login">Go to login</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="admin-dashboard-empty">
+      <h1>Admins only</h1>
+      <a routerLink="/">Back home</a>
+    </div>
+  } @else {
+    <div class="admin-main">
+        <header class="admin-topbar">
+          <div>
+            <p>System overview</p>
+            <h2>Admin Dashboard</h2>
+            <span>Live sales, orders, customers, wallets, and support activity.</span>
+          </div>
+          <button type="button" (click)="load()" [disabled]="loading">
+            <i class="fas fa-rotate"></i>
+            <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+          </button>
+        </header>
+
+        @if (loading && !summary) {
+          <div class="admin-dashboard-empty">
+            <h1>Loading dashboard...</h1>
+            <p>Fetching live data from the database.</p>
+          </div>
+        } @else if (loadError) {
+          <div class="admin-dashboard-empty">
+            <h1>Dashboard unavailable</h1>
+            <p>{{ loadError }}</p>
+            <button type="button" (click)="load()">Try again</button>
+          </div>
+        } @else if (summary) {
+          <div class="metric-grid">
+            @for (card of cards; track card.label) {
+              <article class="metric-card" [class]="'tone-' + card.tone">
+                <span><i class="fas {{ card.icon }}"></i></span>
+                <p>{{ card.label }}</p>
+                <strong>{{ card.value }}</strong>
+              </article>
+            }
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="admin-panel">
+              <div class="panel-title">
+                <div>
+                  <p>Operations</p>
+                  <h3>Recent Orders</h3>
+                </div>
+                <a routerLink="/admin/orders">Manage all</a>
+              </div>
+              <div class="order-feed">
+                @for (order of summary.recentOrders; track order.id) {
+                  <article>
+                    <div>
+                      <strong>{{ order.id }}</strong>
+                      <span>{{ order.userEmail }}</span>
+                    </div>
+                    <div>
+                      <b>{{ order.total | currency }}</b>
+                      <small>{{ order.status }} · {{ order.date | date:'short' }}</small>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-line">No orders yet.</p>
+                }
+              </div>
+            </section>
+
+            <section class="admin-panel">
+              <div class="panel-title">
+                <div>
+                  <p>Finance</p>
+                  <h3>User Wallets</h3>
+                </div>
+                <span>{{ summary.wallets.length }} shown</span>
+              </div>
+              <div class="wallet-list">
+                @for (wallet of summary.wallets; track wallet.id) {
+                  <article class="wallet-row">
+                    <div class="wallet-user">
+                      <span>{{ wallet.userName.slice(0, 1).toUpperCase() }}</span>
+                      <div>
+                        <strong>{{ wallet.userName }}</strong>
+                        <small>{{ wallet.userEmail }}</small>
+                      </div>
+                    </div>
+                    <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
+                    <div class="wallet-controls">
+                      <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" placeholder="Amount">
+                      <select [(ngModel)]="walletDraft[wallet.id].type">
+                        <option value="credit">Credit</option>
+                        <option value="debit">Debit</option>
+                      </select>
+                      <input [(ngModel)]="walletDraft[wallet.id].reason" placeholder="Reason">
+                      <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
+                        {{ updatingWalletId === wallet.id ? 'Saving...' : 'Apply' }}
+                      </button>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-line">No wallets yet.</p>
+                }
+              </div>
+            </section>
+          </div>
+        }
+    </div>
+  }
+</section>

@@ -2,16 +2,16 @@
   @if (auth.currentUser()) {
     <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Orders</h1>
-        <p class="text-nubian-earth dark:text-nubian-sand mt-2">{{ count('all') }} order{{ count('all') === 1 ? '' : 's' }}</p>
+        <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Order Tracking</h1>
+        <p class="text-nubian-earth dark:text-nubian-sand mt-2">{{ 'orderCount' | t:{ count: count('all'), plural: count('all') === 1 ? '' : 's' } }}</p>
       </div>
       <div class="flex flex-col sm:flex-row gap-3">
-        <input [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search orders" class="px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
+        <input [ngModel]="query()" (ngModelChange)="query.set($event)" [placeholder]="'searchOrders' | t" class="px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
         <select [ngModel]="sort()" (ngModelChange)="sort.set($event)" class="px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="highest">Highest total</option>
-          <option value="lowest">Lowest total</option>
+          <option value="newest">{{ 'newest' | t }}</option>
+          <option value="oldest">{{ 'oldest' | t }}</option>
+          <option value="highest">{{ 'highestTotal' | t }}</option>
+          <option value="lowest">{{ 'lowestTotal' | t }}</option>
         </select>
       </div>
     </div>
@@ -19,7 +19,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       @for (status of ['all', 'processing', 'shipped', 'delivered']; track status) {
         <button type="button" (click)="filter.set(status)" class="order-filter-btn" [class.is-active]="filter() === status">
-          <span class="block capitalize">{{ status }}</span>
+          <span class="block capitalize">{{ statusLabel(status) }}</span>
           <strong class="text-2xl">{{ count(status) }}</strong>
         </button>
       }
@@ -34,14 +34,24 @@
                 <img [src]="order.items[0].image" [alt]="order.items[0].name" class="w-20 h-20 object-cover rounded-lg">
                 <div>
                   <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <span class="text-sm text-nubian-earth dark:text-nubian-sand">Order #{{ order.id }}</span>
-                    <span class="order-status status-{{ order.status.toLowerCase() }}">{{ order.status }}</span>
+                    <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'orderNumber' | t:{ id: order.id } }}</span>
+                    <span class="order-status status-{{ order.status.toLowerCase() }}">{{ statusLabel(order.status) }}</span>
                   </div>
                   <h3 class="font-semibold text-nubian-brown dark:text-nubian-sand text-lg">{{ order.items[0].name }}</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ order.date | date:'mediumDate' }} - {{ order.items.length }} item(s)</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ order.date | date:'mediumDate' }} - {{ 'itemCount' | t:{ count: order.items.length } }}</p>
                 </div>
               </div>
               <strong class="text-xl text-nubian-gold">{{ order.total | currency }}</strong>
+            </div>
+            <div class="tracking-mini">
+              <span class="tracking-mini-fill" [style.width.%]="trackingPercent(order)"></span>
+              @for (step of trackingSteps; track step; let index = $index) {
+                <span class="tracking-mini-dot" [class.done]="trackingIndex(order) >= index" [class.current]="trackingIndex(order) === index"></span>
+              }
+            </div>
+            <div class="tracking-mini-labels">
+              <span>{{ trackingTitle(order.status) }}</span>
+              <span>{{ order.trackingEvents?.[order.trackingEvents.length - 1]?.description || 'Your order is being updated.' }}</span>
             </div>
           </button>
         }
@@ -49,8 +59,8 @@
     } @else {
       <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
         <i class="fas fa-shopping-bag text-2xl text-nubian-gold/60 mb-4"></i>
-        <h2 class="text-2xl font-bold font-cinzel mb-3">No orders found</h2>
-        <a routerLink="/perfumes" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">Start Shopping</a>
+        <h2 class="text-2xl font-bold font-cinzel mb-3">{{ 'noOrdersFound' | t }}</h2>
+        <a routerLink="/perfumes" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">{{ 'startShopping' | t }}</a>
       </div>
     }
 
@@ -59,7 +69,7 @@
         <div class="modal-content p-5">
           <div class="flex items-center justify-between mb-5">
             <div>
-              <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">Order #{{ order.id }}</h2>
+              <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">{{ 'orderNumber' | t:{ id: order.id } }}</h2>
               <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ order.date | date:'fullDate' }}</p>
             </div>
             <button type="button" (click)="selectedOrder.set(null)" class="text-nubian-terracotta"><i class="fas fa-times"></i></button>
@@ -70,27 +80,52 @@
                 <img [src]="item.image" [alt]="item.name" class="w-16 h-16 object-cover rounded-lg">
                 <div class="flex-1">
                   <h4 class="font-medium">{{ item.name }}</h4>
-                  <p class="text-sm text-gray-500">Qty: {{ item.quantity }}</p>
+                  <p class="text-sm text-gray-500">{{ 'qty' | t }}: {{ item.quantity }}</p>
                 </div>
                 <strong class="text-nubian-gold">{{ item.price * item.quantity | currency }}</strong>
               </div>
             }
           </div>
-          <div class="space-y-2 border-t border-nubian-gold/20 pt-4">
-            <div class="flex justify-between"><span>Subtotal</span><strong>{{ order.subtotal | currency }}</strong></div>
-            @if (order.discount > 0) {
-              <div class="flex justify-between text-green-600"><span>Discount</span><strong>-{{ order.discount | currency }}</strong></div>
-            }
-            <div class="flex justify-between text-xl"><span>Total</span><strong class="text-nubian-gold">{{ order.total | currency }}</strong></div>
+          <div class="tracking-panel">
+            <div class="tracking-line">
+              <span class="tracking-line-fill" [style.height.%]="trackingPercent(order)"></span>
+            </div>
+            <div class="tracking-steps">
+              @for (step of trackingSteps; track step; let index = $index) {
+                <div class="tracking-step" [class.done]="trackingIndex(order) >= index" [class.current]="trackingIndex(order) === index">
+                  <span class="tracking-step-dot">
+                    <i class="fas" [class.fa-check]="trackingIndex(order) > index" [class.fa-truck-fast]="trackingIndex(order) === index" [class.fa-circle]="trackingIndex(order) < index"></i>
+                  </span>
+                  <div>
+                    <strong>{{ trackingTitle(step) }}</strong>
+                    @if (order.trackingEvents?.length) {
+                      @for (event of order.trackingEvents; track event.id) {
+                        @if (event.status === step) {
+                          <p>{{ event.description }}</p>
+                          <small>{{ event.createdAt | date:'medium' }}</small>
+                        }
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            </div>
           </div>
-          <button type="button" (click)="reorder(order)" class="w-full mt-6 py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">Reorder</button>
+          <div class="space-y-2 border-t border-nubian-gold/20 pt-4">
+            <div class="flex justify-between"><span>{{ 'subtotal' | t }}</span><strong>{{ order.subtotal | currency }}</strong></div>
+            @if (order.discount > 0) {
+              <div class="flex justify-between text-green-600"><span>{{ 'discount' | t }}</span><strong>-{{ order.discount | currency }}</strong></div>
+            }
+            <div class="flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ order.total | currency }}</strong></div>
+          </div>
+          <button type="button" (click)="reorder(order)" class="w-full mt-6 py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">{{ 'reorder' | t }}</button>
         </div>
       </div>
     }
   } @else {
     <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
-      <h1 class="text-2xl font-bold font-cinzel mb-4">Login required</h1>
-      <a routerLink="/login" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">Login</a>
+      <h1 class="text-2xl font-bold font-cinzel mb-4">{{ 'loginRequired' | t }}</h1>
+      <a routerLink="/login" class="inline-flex px-6 py-3 bg-nubian-brown text-white rounded-lg">{{ 'login' | t }}</a>
     </div>
   }
 </section>

@@ -1,0 +1,387 @@
+.support-header {
+  width: min(100%, 1180px);
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  animation: soft-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.support-header p {
+  color: #F5A623;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.support-header h1,
+.support-empty h1 {
+  color: #153f3f;
+  font-family: Arial, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.support-header button,
+.message-header button,
+.support-empty a {
+  min-height: 2.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.45rem;
+  background: #153f3f;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 900;
+  padding: 0.55rem 0.85rem;
+  white-space: nowrap;
+}
+
+.support-header button:hover,
+.message-header button:hover,
+.support-empty a:hover {
+  background: #F5A623;
+  color: #1A1510;
+  transform: translateY(-1px);
+}
+
+.support-header button:disabled,
+.message-header button:disabled {
+  background: #8DA3A0;
+  color: #fff;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.support-header button:disabled i {
+  animation: gentle-spin 900ms linear infinite;
+}
+
+.support-layout {
+  width: min(100%, 1180px);
+  min-height: 610px;
+  max-height: calc(100vh - 13rem);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(27, 77, 77, 0.1);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 18px 42px -34px rgba(26, 21, 16, 0.55);
+  animation: soft-pop 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.conversation-list {
+  min-width: 0;
+  overflow-y: auto;
+  border-inline-end: 1px solid rgba(230, 213, 184, 0.7);
+  background: rgba(255, 250, 242, 0.68);
+  padding: 0.65rem;
+}
+
+.conversation-row {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  border-radius: 0.55rem;
+  padding: 0.7rem;
+  color: #153f3f;
+  text-align: left;
+  animation: soft-rise 360ms ease both;
+}
+
+.conversation-row:nth-child(2) { animation-delay: 35ms; }
+.conversation-row:nth-child(3) { animation-delay: 70ms; }
+.conversation-row:nth-child(4) { animation-delay: 105ms; }
+
+.conversation-row:hover,
+.conversation-row.active {
+  background: rgba(245, 166, 35, 0.14);
+  transform: translateX(2px);
+}
+
+.conversation-avatar {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #153f3f;
+  color: #fff;
+  font-weight: 900;
+}
+
+.conversation-copy {
+  min-width: 0;
+}
+
+.conversation-copy strong {
+  display: block;
+  overflow: hidden;
+  color: #153f3f;
+  font-size: 0.95rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-copy small,
+.conversation-row em {
+  display: block;
+  overflow: hidden;
+  color: #5D4E37;
+  font-size: 0.78rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.message-header {
+  min-height: 4.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(230, 213, 184, 0.7);
+  padding: 0.85rem 1rem;
+}
+
+.message-header div {
+  min-width: 0;
+}
+
+.message-header h2 {
+  overflow: hidden;
+  color: #153f3f;
+  font-size: 1.15rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-header p {
+  overflow: hidden;
+  color: #5D4E37;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: rgba(245, 240, 230, 0.45);
+  padding: 1rem;
+}
+
+.message-bubble {
+  width: fit-content;
+  max-width: min(68%, 34rem);
+  border: 1px solid rgba(230, 213, 184, 0.75);
+  border-radius: 0.85rem 0.85rem 0.85rem 0.25rem;
+  background: #fff;
+  color: #153f3f;
+  padding: 0.7rem 0.85rem;
+  box-shadow: 0 14px 30px -28px rgba(26, 21, 16, 0.55);
+  animation: soft-pop 320ms ease both;
+}
+
+.message-bubble.admin {
+  align-self: flex-end;
+  border-color: rgba(27, 77, 77, 0.18);
+  border-radius: 0.85rem 0.85rem 0.25rem 0.85rem;
+  background: #153f3f;
+  color: #fff;
+}
+
+.message-bubble p {
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+.message-bubble time {
+  display: block;
+  margin-top: 0.35rem;
+  color: rgba(93, 78, 55, 0.72);
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.message-bubble.admin time {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.reply-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  border-top: 1px solid rgba(230, 213, 184, 0.7);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 0.75rem;
+}
+
+.reply-form textarea {
+  flex: 1;
+  min-height: 2.8rem;
+  max-height: 8rem;
+  resize: none;
+  border: 1px solid rgba(245, 166, 35, 0.32);
+  border-radius: 0.75rem;
+  background: rgba(245, 240, 230, 0.55);
+  color: #153f3f;
+  outline: 0;
+  padding: 0.7rem 0.85rem;
+}
+
+.reply-form button {
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: #153f3f;
+  color: #fff;
+}
+
+.reply-form button:hover {
+  background: #F5A623;
+  color: #1A1510;
+  transform: translateY(-1px);
+}
+
+.reply-form button:disabled {
+  background: #8DA3A0;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.support-empty {
+  max-width: 34rem;
+  margin-inline: auto;
+  border: 1px solid rgba(27, 77, 77, 0.1);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.support-empty p,
+.no-conversations,
+.no-selection {
+  color: #5D4E37;
+}
+
+.no-conversations,
+.no-selection {
+  padding: 1rem;
+  text-align: center;
+}
+
+:host-context(.dark) .support-header h1,
+:host-context(.dark) .support-empty h1,
+:host-context(.dark) .conversation-copy strong,
+:host-context(.dark) .message-header h2 {
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .support-layout,
+:host-context(.dark) .support-empty,
+:host-context(.dark) .message-panel {
+  background: rgba(22, 34, 34, 0.96);
+  border-color: rgba(245, 166, 35, 0.2);
+}
+
+:host-context(.dark) .conversation-list,
+:host-context(.dark) .message-thread {
+  background: rgba(15, 23, 23, 0.55);
+  border-color: rgba(245, 166, 35, 0.16);
+}
+
+:host-context(.dark) .message-header,
+:host-context(.dark) .reply-form {
+  background: rgba(22, 34, 34, 0.98);
+  border-color: rgba(245, 166, 35, 0.16);
+}
+
+:host-context(.dark) .message-bubble {
+  background: #1D2B2B;
+  border-color: rgba(245, 166, 35, 0.18);
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .message-bubble.admin {
+  background: #F5A623;
+  color: #1A1510;
+}
+
+:host-context(.dark) .reply-form textarea {
+  background: #1D2B2B;
+  color: #E6D5B8;
+  border-color: rgba(245, 166, 35, 0.32);
+}
+
+:host-context(.dark) .conversation-copy small,
+:host-context(.dark) .conversation-row em,
+:host-context(.dark) .message-header p,
+:host-context(.dark) .support-empty p,
+:host-context(.dark) .no-conversations,
+:host-context(.dark) .no-selection {
+  color: rgba(230, 213, 184, 0.74);
+}
+
+@media (max-width: 1020px) {
+  .support-layout {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .conversation-list {
+    max-height: 18rem;
+    border-inline-end: 0;
+    border-bottom: 1px solid rgba(230, 213, 184, 0.7);
+  }
+}
+
+@media (max-width: 680px) {
+  .support-header,
+  .message-header,
+  .reply-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .support-header h1 {
+    font-size: 1.45rem;
+  }
+
+  .message-bubble {
+    max-width: 88%;
+  }
+
+  .reply-form button {
+    width: 100%;
+  }
+}

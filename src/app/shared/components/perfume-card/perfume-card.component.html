@@ -12,7 +12,7 @@
           <a
             [routerLink]="['/perfumes', perfume.id]"
             class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-nubian-brown hover:bg-nubian-gold transition-colors"
-            aria-label="View perfume">
+            [attr.aria-label]="'viewPerfume' | t">
             <i class="fas fa-eye"></i>
           </a>
           <button
@@ -38,7 +38,7 @@
             type="button"
             (click)="addToCart()"
             class="px-3 py-2 bg-nubian-brown text-white rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
-            <i class="fas fa-cart-plus mr-1"></i> Add
+            <i class="fas fa-cart-plus mr-1"></i> {{ 'add' | t }}
           </button>
         </div>
       </div>

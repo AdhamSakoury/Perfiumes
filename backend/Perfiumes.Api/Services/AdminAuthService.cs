@@ -1,5 +1,7 @@
-using System.Security.Cryptography;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Perfiumes.Api.Services;
 
@@ -7,7 +9,9 @@ public sealed class AdminAuthService(IConfiguration configuration)
 {
     private readonly string _email = configuration["Admin:Email"] ?? "admin@perfiumes.local";
     private readonly string _password = configuration["Admin:Password"] ?? "ChangeMe123!";
-    private readonly string _secret = configuration["Admin:TokenSecret"] ?? "dev-secret";
+    private readonly string _secret = configuration["Jwt:Secret"] ?? configuration["Admin:TokenSecret"] ?? "replace-this-dev-secret-with-a-long-random-production-secret";
+    private readonly string _issuer = configuration["Jwt:Issuer"] ?? "Perfiumes.Api";
+    private readonly string _audience = configuration["Jwt:Audience"] ?? "Perfiumes.Client";
     private readonly HashSet<string> _googleAdminEmails = configuration
         .GetSection("Admin:GoogleAdminEmails")
         .Get<string[]>()?
@@ -25,12 +29,25 @@ public sealed class AdminAuthService(IConfiguration configuration)
 
     public (string AccessToken, DateTimeOffset ExpiresAt) CreateToken(string email, string role)
     {
-        var expiresAt = DateTimeOffset.UtcNow.AddHours(8).ToUnixTimeSeconds();
-        var payload = $"{email}|{role}|{expiresAt}";
-        var signature = Sign(payload);
+        var expiresAt = DateTimeOffset.UtcNow.AddHours(8);
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: _issuer,
+            audience: _audience,
+            claims:
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, email),
+                new Claim(JwtRegisteredClaimNames.Email, email),
+                new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("role", role)
+            ],
+            notBefore: DateTime.UtcNow,
+            expires: expiresAt.UtcDateTime,
+            signingCredentials: credentials);
 
-        return (Convert.ToBase64String(Encoding.UTF8.GetBytes($"{payload}|{signature}")),
-            DateTimeOffset.FromUnixTimeSeconds(expiresAt));
+        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 
     public string RoleForGoogleEmail(string email)
@@ -46,54 +63,24 @@ public sealed class AdminAuthService(IConfiguration configuration)
 
     public TokenPrincipal? ValidateRequest(HttpContext context)
     {
-        var header = context.Request.Headers.Authorization.ToString();
-        if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        var principal = context.User;
+        if (principal.Identity?.IsAuthenticated != true)
         {
             return null;
         }
 
-        var token = header["Bearer ".Length..].Trim();
-        return ValidateToken(token);
-    }
+        var email = principal.FindFirstValue(ClaimTypes.Email)
+            ?? principal.FindFirstValue(JwtRegisteredClaimNames.Email)
+            ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var role = principal.FindFirstValue(ClaimTypes.Role) ?? principal.FindFirstValue("role");
+        var exp = principal.FindFirstValue(JwtRegisteredClaimNames.Exp);
+        var expiresAt = long.TryParse(exp, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : DateTimeOffset.UtcNow;
 
-    public TokenPrincipal? ValidateToken(string token)
-    {
-        try
-        {
-            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(token));
-            var parts = decoded.Split('|');
-            if (parts.Length != 4)
-            {
-                return null;
-            }
-
-            var payload = $"{parts[0]}|{parts[1]}|{parts[2]}";
-            var expectedSignature = Sign(payload);
-            if (!CryptographicOperations.FixedTimeEquals(
-                    Encoding.UTF8.GetBytes(expectedSignature),
-                    Encoding.UTF8.GetBytes(parts[3])))
-            {
-                return null;
-            }
-
-            if (!long.TryParse(parts[2], out var expiresAt)
-                || DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= expiresAt)
-            {
-                return null;
-            }
-
-            return new TokenPrincipal(parts[0], parts[1], DateTimeOffset.FromUnixTimeSeconds(expiresAt));
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private string Sign(string value)
-    {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_secret));
-        return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(value)));
+        return string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(role)
+            ? null
+            : new TokenPrincipal(email, role, expiresAt);
     }
 }
 

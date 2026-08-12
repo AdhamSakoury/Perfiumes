@@ -97,7 +97,7 @@ export class SettingsPageComponent {
     if (!user) return;
 
     if (!this.profileForm.fullName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.profileForm.email)) {
-      this.toast.show('Name and valid email are required.', 'error');
+      this.toast.show(this.i18n.t('nameEmailRequired'), 'error');
       return;
     }
 
@@ -109,7 +109,7 @@ export class SettingsPageComponent {
       phone: this.profileForm.phone.trim(),
       address: this.profileForm.address.trim()
     });
-    this.toast.show('Profile settings saved.');
+    this.toast.show(this.i18n.t('profileSettingsSaved'));
   }
 
   changePassword(): void {
@@ -117,12 +117,12 @@ export class SettingsPageComponent {
     if (!user) return;
 
     if (this.passwordForm.currentPassword !== user.password) {
-      this.toast.show('Current password is incorrect.', 'error');
+      this.toast.show(this.i18n.t('currentPasswordIncorrect'), 'error');
       return;
     }
 
     if (this.passwordForm.newPassword.length < 8 || this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
-      this.toast.show('New password must be at least 8 characters and match confirmation.', 'error');
+      this.toast.show(this.i18n.t('newPasswordInvalid'), 'error');
       return;
     }
 
@@ -131,13 +131,13 @@ export class SettingsPageComponent {
       password: this.passwordForm.newPassword
     });
     this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
-    this.toast.show('Password updated.');
+    this.toast.show(this.i18n.t('passwordUpdated'));
   }
 
   savePreferences(): void {
     this.i18n.setLanguage(this.settings.language);
     this.storage.set(this.settingsKey(), this.settings);
-    this.toast.show('Preferences saved.');
+    this.toast.show(this.i18n.t('preferencesSaved'));
   }
 
   setLanguage(language: AppLanguage): void {
@@ -154,17 +154,17 @@ export class SettingsPageComponent {
     const user = this.auth.currentUser();
     const key = `gnouby_chat_history_v2_${user?.id || 'guest'}`;
     this.storage.remove(key);
-    this.toast.show('Chat history cleared.');
+    this.toast.show(this.i18n.t('chatHistoryCleared'));
   }
 
   deleteAccount(): void {
     if (this.deleteConfirm !== 'DELETE') {
-      this.toast.show('Type DELETE to confirm account deletion.', 'error');
+      this.toast.show(this.i18n.t('typeDeleteToConfirm'), 'error');
       return;
     }
 
     this.auth.deleteCurrentUser();
-    this.toast.show('Account deleted.');
+    this.toast.show(this.i18n.t('accountDeleted'));
   }
 
   private settingsKey(): string {

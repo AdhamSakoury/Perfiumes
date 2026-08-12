@@ -2,8 +2,8 @@
   <input id="account-edit-toggle" type="checkbox" class="account-popup-toggle account-edit-toggle" (change)="onEditToggle($event, user)">
   <input id="account-order-toggle" type="checkbox" class="account-popup-toggle account-order-toggle" (change)="onOrderToggle($event)">
 
-  <section class="page-shell page-enter px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12">
-    <div>
+  <section class="account-page-shell page-shell page-enter px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12">
+    <div class="account-page-inner">
       <div class="profile-header-wrapper mb-10">
         <div class="profile-header-glass relative overflow-hidden rounded-3xl p-8 md:p-12">
           <div class="absolute inset-0 bg-gradient-to-br from-nubian-brown/10 via-transparent to-nubian-gold/10 dark:from-nubian-gold/20 dark:via-transparent dark:to-nubian-terracotta/20 animate-gradient-x"></div>
@@ -11,7 +11,7 @@
           <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-nubian-terracotta/20 rounded-full blur-3xl animate-float account-float-delay"></div>
           <div class="account-pattern absolute inset-0 opacity-5 dark:opacity-10"></div>
 
-          <div class="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-8">
+          <div class="account-profile-grid relative z-10 flex flex-col md:flex-row items-center md:items-start gap-8">
             <div class="relative group">
               <div class="absolute inset-0 bg-gradient-to-r from-nubian-gold to-nubian-terracotta rounded-full blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
               <div class="relative w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-nubian-brown to-nubian-earth dark:from-nubian-gold dark:to-nubian-terracotta p-1 shadow-2xl transform group-hover:scale-105 transition-transform duration-300">
@@ -25,20 +25,20 @@
             <div class="flex-1 text-center md:text-left space-y-3 min-w-0">
               <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-nubian-gold/10 dark:bg-nubian-gold/20 border border-nubian-gold/30 backdrop-blur-sm mb-2">
                 <i class="fas fa-crown text-nubian-gold text-sm"></i>
-                <span class="text-xs font-semibold text-nubian-brown dark:text-nubian-gold uppercase tracking-wider">Premium Member</span>
+                <span class="text-xs font-semibold text-nubian-brown dark:text-nubian-gold uppercase tracking-wider">{{ 'premiumMember' | t }}</span>
               </div>
 
-              <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold font-cinzel bg-gradient-to-r from-nubian-brown via-nubian-earth to-nubian-terracotta dark:from-nubian-gold dark:via-nubian-sand dark:to-nubian-terracotta bg-clip-text text-transparent animate-gradient-x">
+              <h1 class="account-profile-title text-4xl md:text-5xl lg:text-6xl font-bold font-cinzel bg-gradient-to-r from-nubian-brown via-nubian-earth to-nubian-terracotta dark:from-nubian-gold dark:via-nubian-sand dark:to-nubian-terracotta bg-clip-text text-transparent animate-gradient-x">
                 Welcome, <span class="italic">{{ firstName(user.fullName) }}</span>!
               </h1>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <div class="account-info-grid grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                 <div class="group flex items-center gap-3 p-3 rounded-xl bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-nubian-gold/20 hover:border-nubian-gold/50 hover:bg-white/80 dark:hover:bg-black/30 transition-all duration-300 cursor-pointer">
                   <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-nubian-brown to-nubian-earth dark:from-nubian-gold/30 dark:to-nubian-terracotta/30 flex items-center justify-center text-nubian-gold shadow-lg group-hover:scale-110 transition-transform">
                     <i class="fas fa-envelope"></i>
                   </div>
                   <div class="text-left overflow-hidden">
-                    <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">Email</p>
+                    <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">{{ 'email' | t }}</p>
                     <p class="text-sm font-medium text-nubian-brown dark:text-nubian-sand truncate">{{ user.email }}</p>
                   </div>
                 </div>
@@ -48,7 +48,7 @@
                     <i class="fas fa-phone-alt"></i>
                   </div>
                   <div class="text-left overflow-hidden">
-                    <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">Phone</p>
+                    <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">{{ 'phone' | t }}</p>
                     <p class="text-sm font-medium text-nubian-brown dark:text-nubian-sand truncate">{{ user.phone || 'Not provided' }}</p>
                   </div>
                 </div>
@@ -58,7 +58,7 @@
                     <i class="fas fa-map-marker-alt"></i>
                   </div>
                   <div class="text-left overflow-hidden">
-                    <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">Address</p>
+                    <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">{{ 'address' | t }}</p>
                     <p class="text-sm font-medium text-nubian-brown dark:text-nubian-sand truncate">{{ user.address || 'Not provided' }}</p>
                   </div>
                 </div>
@@ -67,15 +67,15 @@
               <div class="flex flex-wrap justify-center md:justify-start gap-4 mt-6 pt-6 border-t border-nubian-gold/20">
                 <div class="text-center px-4">
                   <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ user.orders.length }}</p>
-                  <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider">Orders</p>
+                  <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider">{{ 'orders' | t }}</p>
                 </div>
                 <div class="text-center px-4 border-l border-nubian-gold/20">
                   <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ wishlist.count() }}</p>
-                  <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider">Wishlist</p>
+                  <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider">{{ 'wishlist' | t }}</p>
                 </div>
                 <div class="text-center px-4 border-l border-nubian-gold/20">
-                  <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Gold</p>
-                  <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider">Tier</p>
+                  <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ (wallet()?.balance || 0) | currency:(wallet()?.currency || 'EGP'):'symbol-narrow' }}</p>
+                  <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider">Wallet</p>
                 </div>
               </div>
             </div>
@@ -93,19 +93,47 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="account-card-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 hover:shadow-xl hover:border-nubian-gold/40 transition-all duration-300 group">
+          <div class="flex items-center space-x-4 mb-4">
+            <div class="w-16 h-16 bg-gradient-to-br from-emerald-500/25 to-nubian-gold/25 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-wallet text-nubian-gold text-2xl"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">Wallet</h3>
+              <p class="text-sm text-nubian-earth dark:text-nubian-sand">
+                {{ walletLoading() ? 'Loading...' : ((wallet()?.balance || 0) | currency:(wallet()?.currency || 'EGP'):'symbol-narrow') }}
+              </p>
+            </div>
+          </div>
+          <div class="rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/35 p-3">
+            @if (wallet()?.transactions?.length) {
+              @for (transaction of wallet()!.transactions.slice(0, 2); track transaction.id) {
+                <div class="flex items-center justify-between gap-3 py-1 text-sm">
+                  <span class="text-nubian-earth dark:text-nubian-sand truncate">{{ transaction.reason }}</span>
+                  <strong [class.text-green-600]="transaction.type === 'credit'" [class.text-red-500]="transaction.type === 'debit'">
+                    {{ transaction.type === 'debit' ? '-' : '+' }}{{ transaction.amount | currency:(wallet()?.currency || 'EGP'):'symbol-narrow' }}
+                  </strong>
+                </div>
+              }
+            } @else {
+              <p class="text-sm text-nubian-earth dark:text-nubian-sand">No wallet activity yet.</p>
+            }
+          </div>
+        </div>
+
         <div class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 hover:shadow-xl hover:border-nubian-gold/40 transition-all duration-300 group">
           <div class="flex items-center space-x-4 mb-4">
             <div class="w-16 h-16 bg-gradient-to-br from-nubian-brown to-nubian-earth rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
               <i class="fas fa-user text-nubian-gold text-2xl"></i>
             </div>
             <div>
-              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">Profile</h3>
-              <p class="text-sm text-nubian-earth dark:text-nubian-sand">Manage your info</p>
+              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">{{ 'profile' | t }}</h3>
+              <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'manageYourInfo' | t }}</p>
             </div>
           </div>
           <label for="account-edit-toggle" role="button" tabindex="0" class="w-full py-2.5 border-2 border-nubian-gold text-nubian-gold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark font-semibold transition-all duration-300 flex items-center justify-center gap-2 group-hover:gap-3 cursor-pointer">
-            <span>Edit Profile</span>
+            <span>{{ 'editProfile' | t }}</span>
             <i class="fas fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </label>
         </div>
@@ -116,12 +144,12 @@
               <i class="fas fa-box text-nubian-gold text-2xl"></i>
             </div>
             <div>
-              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">Orders</h3>
-              <p class="text-sm text-nubian-earth dark:text-nubian-sand">View history</p>
+              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">{{ 'orders' | t }}</h3>
+              <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'viewHistory' | t }}</p>
             </div>
           </div>
           <label for="account-order-toggle" role="button" tabindex="0" class="w-full py-2.5 border-2 border-nubian-gold text-nubian-gold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark font-semibold transition-all duration-300 flex items-center justify-center gap-2 group-hover:gap-3 cursor-pointer">
-            <span>View Orders</span>
+            <span>{{ 'viewOrders' | t }}</span>
             <i class="fas fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </label>
         </div>
@@ -132,18 +160,18 @@
               <i class="fas fa-heart text-nubian-terracotta text-2xl"></i>
             </div>
             <div>
-              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">Wishlist</h3>
+              <h3 class="font-bold text-nubian-brown dark:text-nubian-gold text-lg">{{ 'wishlist' | t }}</h3>
               <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ wishlist.count() }} items</p>
             </div>
           </div>
           <a routerLink="/wishlist" class="block w-full py-2.5 border-2 border-nubian-gold text-nubian-gold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark font-semibold transition-all duration-300 text-center flex items-center justify-center gap-2 group-hover:gap-3">
-            <span>View Wishlist</span>
+            <span>{{ 'viewWishlist' | t }}</span>
             <i class="fas fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </a>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 mb-8">
+      <div class="account-section-card bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 mb-8">
         <h3 class="text-xl font-bold text-nubian-brown dark:text-nubian-gold mb-4 font-cinzel flex items-center gap-2">
           <i class="fas fa-bolt text-nubian-gold"></i>
           Quick Actions
@@ -153,30 +181,30 @@
             <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <i class="fas fa-shopping-cart text-xl text-nubian-brown dark:text-nubian-gold"></i>
             </div>
-            <span class="text-sm font-medium">My Cart</span>
+            <span class="text-sm font-medium">{{ 'myCart' | t }}</span>
           </a>
           <a routerLink="/wishlist" class="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-nubian-sand/30 to-nubian-gold/10 dark:from-nubian-dark/50 dark:to-nubian-earth/30 hover:from-nubian-gold/20 hover:to-nubian-terracotta/20 transition-all duration-300 group">
             <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <i class="fas fa-heart text-xl text-nubian-terracotta"></i>
             </div>
-            <span class="text-sm font-medium">Wishlist</span>
+            <span class="text-sm font-medium">{{ 'wishlist' | t }}</span>
           </a>
           <a routerLink="/perfumes" class="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-nubian-sand/30 to-nubian-gold/10 dark:from-nubian-dark/50 dark:to-nubian-earth/30 hover:from-nubian-gold/20 hover:to-nubian-terracotta/20 transition-all duration-300 group">
             <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <i class="fas fa-search text-xl text-nubian-brown dark:text-nubian-gold"></i>
             </div>
-            <span class="text-sm font-medium">Browse</span>
+            <span class="text-sm font-medium">{{ 'browse' | t }}</span>
           </a>
           <a routerLink="/settings" class="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-nubian-sand/30 to-nubian-gold/10 dark:from-nubian-dark/50 dark:to-nubian-earth/30 hover:from-nubian-gold/20 hover:to-nubian-terracotta/20 transition-all duration-300 group w-full">
             <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <i class="fas fa-cog text-xl text-nubian-brown dark:text-nubian-gold"></i>
             </div>
-            <span class="text-sm font-medium">Settings</span>
+            <span class="text-sm font-medium">{{ 'settings' | t }}</span>
           </a>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20">
+      <div class="account-section-card bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20">
         <h3 class="text-xl font-bold text-nubian-brown dark:text-nubian-gold mb-4 font-cinzel flex items-center gap-2">
           <i class="fas fa-clock-rotate-left text-nubian-gold"></i>
           Recent Activity
@@ -185,13 +213,13 @@
           @for (order of recentOrders(); track order.id) {
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/40 border border-nubian-gold/10">
               <div>
-                <p class="font-semibold text-nubian-brown dark:text-nubian-gold">Order #{{ order.id }}</p>
+                <p class="font-semibold text-nubian-brown dark:text-nubian-gold">{{ 'orderNumber' | t:{ id: order.id } }}</p>
                 <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ order.date | date:'mediumDate' }} - {{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</p>
               </div>
               <strong class="text-nubian-gold">{{ order.total | currency }}</strong>
             </div>
           } @empty {
-            <p class="text-nubian-earth dark:text-nubian-sand text-center py-8">No recent activity to display</p>
+            <p class="text-nubian-earth dark:text-nubian-sand text-center py-8">{{ 'recentActivityEmpty' | t }}</p>
           }
         </div>
       </div>
@@ -257,15 +285,15 @@
                 <div class="space-y-3">
                   <div class="relative">
                     <i class="fas fa-key absolute left-3 top-1/2 -translate-y-1/2 text-nubian-gold"></i>
-                    <input type="password" name="currentPassword" [(ngModel)]="passwordForm.currentPassword" placeholder="Current Password" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors">
+                    <input type="password" name="currentPassword" [(ngModel)]="passwordForm.currentPassword" [placeholder]="'currentPassword' | t" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors">
                   </div>
                   <div class="relative">
                     <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-nubian-gold"></i>
-                    <input type="password" name="newPassword" [(ngModel)]="passwordForm.newPassword" placeholder="New Password" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors">
+                    <input type="password" name="newPassword" [(ngModel)]="passwordForm.newPassword" [placeholder]="'newPassword' | t" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors">
                   </div>
                   <div class="relative">
                     <i class="fas fa-check-circle absolute left-3 top-1/2 -translate-y-1/2 text-nubian-gold"></i>
-                    <input type="password" name="confirmPassword" [(ngModel)]="passwordForm.confirmPassword" placeholder="Confirm New Password" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors">
+                    <input type="password" name="confirmPassword" [(ngModel)]="passwordForm.confirmPassword" [placeholder]="'confirmNewPassword' | t" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors">
                   </div>
                 </div>
               </div>
@@ -303,7 +331,7 @@
               <div class="p-4 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/40 border border-nubian-gold/20">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h4 class="font-bold text-nubian-brown dark:text-nubian-gold">Order #{{ order.id }}</h4>
+                    <h4 class="font-bold text-nubian-brown dark:text-nubian-gold">{{ 'orderNumber' | t:{ id: order.id } }}</h4>
                     <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ order.date | date:'mediumDate' }} - {{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</p>
                   </div>
                   <div class="flex items-center gap-3">
@@ -313,7 +341,7 @@
                 </div>
               </div>
             } @empty {
-              <p class="text-nubian-earth dark:text-nubian-sand text-center py-8">No orders yet</p>
+              <p class="text-nubian-earth dark:text-nubian-sand text-center py-8">{{ 'noOrdersYet' | t }}</p>
             }
           </div>
         </div>
@@ -323,8 +351,8 @@
   <section class="page-shell page-enter px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12">
     <div class="text-center py-20">
       <i class="fas fa-user-lock text-6xl text-nubian-gold mb-4"></i>
-      <h2 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-4">Please Log In</h2>
-      <p class="text-nubian-earth dark:text-nubian-sand mb-6">You need to be logged in to view your account.</p>
+      <h2 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-4">{{ 'pleaseLogin' | t }}</h2>
+      <p class="text-nubian-earth dark:text-nubian-sand mb-6">{{ 'loginToViewAccount' | t }}</p>
       <a routerLink="/login" class="px-6 py-3 bg-nubian-brown text-white rounded-lg hover:bg-nubian-gold transition-colors">
         Go to Login
       </a>

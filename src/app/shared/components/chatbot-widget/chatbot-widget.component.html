@@ -1,17 +1,17 @@
 <div class="chatbot-root">
   @if (open()) {
-    <section class="chatbot-window" aria-label="Gnouby chatbot">
+    <section class="chatbot-window" [attr.aria-label]="'chatbot' | t">
       <header class="chatbot-header">
         <div>
-          <p class="text-xs uppercase tracking-[0.22em] text-nubian-gold">Gnouby Assistant</p>
-          <h2 class="font-bold font-cinzel text-lg text-white">Perfume Chatbot</h2>
+          <p class="text-xs uppercase tracking-[0.22em] text-nubian-gold">{{ 'gnoubyAssistant' | t }}</p>
+          <h2 class="font-bold font-cinzel text-lg text-white">{{ 'perfumeChatbot' | t }}</h2>
         </div>
         <div class="chatbot-header-actions">
-          <button type="button" (click)="newChat()" class="chatbot-new" aria-label="Start new chat">
+          <button type="button" (click)="newChat()" class="chatbot-new" [attr.aria-label]="'startNewChat' | t">
             <i class="fas fa-plus"></i>
-            <span>New</span>
+            <span>{{ 'newChat' | t }}</span>
           </button>
-          <button type="button" (click)="toggle()" class="chatbot-close" aria-label="Close chatbot">
+          <button type="button" (click)="toggle()" class="chatbot-close" [attr.aria-label]="'closeChatbot' | t">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -50,19 +50,23 @@
       </div>
 
       <form (ngSubmit)="send()" class="chatbot-form">
-        <button type="button" (click)="newChat()" class="chatbot-form-new" aria-label="Start new chat">
+        <button type="button" (click)="newChat()" class="chatbot-form-new" [attr.aria-label]="'startNewChat' | t">
           <i class="fas fa-plus"></i>
         </button>
         <input
           type="text"
           name="chatMessage"
           [(ngModel)]="message"
-          placeholder="Ask for a fragrance..."
+          [placeholder]="'askFragrance' | t"
           autocomplete="off">
-        <button type="submit" class="chatbot-send" [disabled]="sending() || !message.trim()" aria-label="Send message">
+        <button type="submit" class="chatbot-send" [disabled]="sending() || !message.trim()" [attr.aria-label]="'sendMessage' | t">
           <i class="fas fa-paper-plane"></i>
         </button>
       </form>
+      <button type="button" (click)="contactAdmin()" class="chatbot-admin-help" [disabled]="creatingSupport()">
+        <i class="fas fa-headset"></i>
+        <span>{{ creatingSupport() ? 'Sending to admin...' : 'Talk to admin' }}</span>
+      </button>
     </section>
   }
 

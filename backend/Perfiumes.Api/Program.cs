@@ -1,7 +1,12 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Perfiumes.Api.Data;
 using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using Perfiumes.Api.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,24 +15,68 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
+            .WithOrigins("http://localhost:4200", "http://127.0.0.1:4200", "http://localhost:4201", "http://127.0.0.1:4201")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
 });
 
+var jwtSecret = builder.Configuration["Jwt:Secret"]
+    ?? builder.Configuration["Admin:TokenSecret"]
+    ?? "replace-this-dev-secret-with-a-long-random-production-secret";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Perfiumes.Api";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Perfiumes.Client";
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddAuthorization();
+
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<ProductRepository>();
+builder.Services.AddDbContext<PerfiumesDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<ChatbotService>();
 builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddScoped<PasswordService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<SupportMessageService>();
+builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddHttpClient<GoogleAuthService>();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<PerfiumesDbContext>();
+    await db.Database.EnsureCreatedAsync();
+    await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureSchemaAsync();
+    await scope.ServiceProvider.GetRequiredService<ProductRepository>().EnsureSeedAsync();
+    await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);
+    await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
+}
+
 app.UseCors("Frontend");
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapHub<NotificationHub>("/notificationHub");
+app.MapHub<SupportMessageHub>("/supportHub");
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -36,13 +85,28 @@ app.MapGet("/", () => Results.Ok(new
     endpoints = new[]
     {
         "POST /api/admin/login",
+        "POST /api/auth/register",
+        "POST /api/auth/login",
+        "PUT /api/auth/profile",
         "POST /api/auth/google",
         "GET /api/products",
         "GET /api/products/{id}",
+        "GET /api/orders",
+        "POST /api/orders",
+        "GET /api/wallet",
+        "PUT /api/admin/orders/{id}/status",
+        "GET /api/admin/orders",
+        "DELETE /api/admin/orders/{id}",
+        "GET /api/admin/dashboard",
+        "GET /api/admin/wallets",
+        "POST /api/admin/wallets/{id}/adjust",
         "POST /api/products",
         "PUT /api/products/{id}",
         "DELETE /api/products/{id}",
         "POST /api/chatbot/message",
+        "POST /api/support/conversations",
+        "GET /api/support/conversations",
+        "GET /api/admin/support/conversations",
         "GET /api/notifications",
         "POST /api/notifications/{id}/read",
         "POST /api/notifications/read-all",
@@ -50,12 +114,58 @@ app.MapGet("/", () => Results.Ok(new
     }
 }));
 
-app.MapPost("/api/admin/login", (AdminLoginRequest request, AdminAuthService auth) =>
+app.MapPost("/api/admin/login", async (AdminLoginRequest request, UserService users) =>
 {
-    var token = auth.Login(request.Email, request.Password);
-    return token is null
+    var result = await users.LoginAsync(request.Email, request.Password);
+    return result is null || result.User.Role != "admin"
         ? Results.Unauthorized()
-        : Results.Ok(new AdminLoginResponse(token, "Bearer", DateTimeOffset.UtcNow.AddHours(8)));
+        : Results.Ok(new AdminLoginResponse(result.AccessToken, "Bearer", result.ExpiresAt));
+});
+
+app.MapPost("/api/auth/register", async (RegisterRequest request, UserService users) =>
+{
+    if (string.IsNullOrWhiteSpace(request.FullName)
+        || string.IsNullOrWhiteSpace(request.Email)
+        || string.IsNullOrWhiteSpace(request.Password))
+    {
+        return Results.BadRequest(new { message = "Full name, email and password are required." });
+    }
+
+    var result = await users.RegisterAsync(request);
+    return result is null ? Results.Conflict(new { message = "Email already registered" }) : Results.Ok(result);
+});
+
+app.MapPost("/api/auth/login", async (LoginRequest request, UserService users) =>
+{
+    var result = await users.LoginAsync(request.Email, request.Password);
+    return result is null ? Results.Unauthorized() : Results.Ok(result);
+});
+
+app.MapPut("/api/auth/profile", async (
+    UpdateProfileRequest request,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var result = await users.UpdateProfileAsync(principal.Email, request);
+        return result is null ? Results.NotFound() : Results.Ok(result);
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.Conflict(new { message = exception.Message });
+    }
+    catch (UnauthorizedAccessException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
 });
 
 app.MapPost("/api/auth/google", async (
@@ -83,6 +193,137 @@ app.MapGet("/api/products/{id:int}", async (int id, ProductRepository products) 
 {
     var product = await products.GetByIdAsync(id);
     return product is null ? Results.NotFound() : Results.Ok(product);
+});
+
+app.MapGet("/api/orders", async (string userEmail, OrderService orders) =>
+{
+    return Results.Ok(await orders.GetForUserAsync(userEmail));
+});
+
+app.MapGet("/api/orders/{id}", async (string id, OrderService orders) =>
+{
+    var order = await orders.GetByIdAsync(id);
+    return order is null ? Results.NotFound() : Results.Ok(order);
+});
+
+app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService orders) =>
+{
+    if (string.IsNullOrWhiteSpace(request.UserEmail) || request.Items.Count == 0)
+    {
+        return Results.BadRequest(new { message = "User email and order items are required." });
+    }
+
+    var order = await orders.CreateAsync(request);
+    return Results.Created($"/api/orders/{order.Id}", order);
+});
+
+app.MapGet("/api/wallet", async (
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    var wallet = await dashboard.GetWalletForUserAsync(principal.Email);
+    return wallet is null ? Results.NotFound() : Results.Ok(wallet);
+});
+
+app.MapPut("/api/admin/orders/{id}/status", async (
+    string id,
+    UpdateOrderStatusRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var order = await orders.UpdateStatusAsync(id, request.Status, request.Note);
+    return order is null ? Results.NotFound() : Results.Ok(order);
+});
+
+app.MapGet("/api/admin/orders", async (
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await orders.GetAllAsync());
+});
+
+app.MapDelete("/api/admin/orders/{id}", async (
+    string id,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return await orders.DeleteAsync(id) ? Results.NoContent() : Results.NotFound();
+});
+
+app.MapGet("/api/admin/dashboard", async (
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await dashboard.GetSummaryAsync());
+});
+
+app.MapGet("/api/admin/dashboard/demo", async (
+    AdminDashboardService dashboard,
+    IHostEnvironment environment) =>
+{
+    return environment.IsDevelopment()
+        ? Results.Ok(await dashboard.GetSummaryAsync())
+        : Results.NotFound();
+});
+
+app.MapGet("/api/admin/wallets", async (
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await dashboard.GetWalletsAsync());
+});
+
+app.MapPost("/api/admin/wallets/{id}/adjust", async (
+    string id,
+    AdjustWalletRequest request,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var wallet = await dashboard.AdjustWalletAsync(id, request);
+    return wallet is null ? Results.BadRequest(new { message = "Wallet not found or invalid amount." }) : Results.Ok(wallet);
 });
 
 app.MapPost("/api/products", async (
@@ -137,6 +378,102 @@ app.MapPost("/api/chatbot/message", async (
 {
     var response = await chatbot.ReplyAsync(request, await products.GetAllAsync());
     return Results.Ok(response);
+});
+
+app.MapPost("/api/support/conversations", async (
+    CreateSupportConversationRequest request,
+    SupportMessageService support,
+    IHubContext<SupportMessageHub> hub) =>
+{
+    if (string.IsNullOrWhiteSpace(request.UserEmail) || string.IsNullOrWhiteSpace(request.Message))
+    {
+        return Results.BadRequest(new { message = "User email and message are required." });
+    }
+
+    var conversation = await support.CreateAsync(request);
+    await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationCreatedEvent, conversation);
+    await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+    return Results.Created($"/api/support/conversations/{conversation.Id}", conversation);
+});
+
+app.MapGet("/api/support/conversations", async (string userEmail, SupportMessageService support) =>
+{
+    return Results.Ok(await support.GetForUserAsync(userEmail));
+});
+
+app.MapPost("/api/support/conversations/{id}/messages", async (
+    string id,
+    CreateSupportMessageRequest request,
+    SupportMessageService support,
+    IHubContext<SupportMessageHub> hub) =>
+{
+    var conversation = await support.AddCustomerMessageAsync(id, request);
+    if (conversation is not null)
+    {
+        await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+    }
+
+    return conversation is null ? Results.NotFound() : Results.Ok(conversation);
+});
+
+app.MapGet("/api/admin/support/conversations", async (
+    SupportMessageService support,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await support.GetAllAsync());
+});
+
+app.MapPost("/api/admin/support/conversations/{id}/reply", async (
+    string id,
+    AdminSupportReplyRequest request,
+    SupportMessageService support,
+    AdminAuthService auth,
+    HttpContext context,
+    IHubContext<SupportMessageHub> hub) =>
+{
+    var admin = auth.ValidateRequest(context);
+    if (admin?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    var conversation = await support.AddAdminReplyAsync(id, admin.Email, request.Body);
+    if (conversation is not null)
+    {
+        await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+    }
+
+    return conversation is null ? Results.NotFound() : Results.Ok(conversation);
+});
+
+app.MapPost("/api/admin/support/conversations/{id}/close", async (
+    string id,
+    SupportMessageService support,
+    AdminAuthService auth,
+    HttpContext context,
+    IHubContext<SupportMessageHub> hub) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var conversation = await support.CloseAsync(id);
+    if (conversation is not null)
+    {
+        await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+    }
+
+    return conversation is null ? Results.NotFound() : Results.Ok(conversation);
 });
 
 app.MapGet("/api/notifications", (string userEmail, NotificationService notifications) =>

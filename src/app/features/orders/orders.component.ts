@@ -5,13 +5,16 @@ import { RouterLink } from '@angular/router';
 import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
+import { OrderService } from '@core/services/order.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { ToastService } from '@core/services/toast.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-orders-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css'
 })
@@ -19,9 +22,12 @@ export class OrdersPageComponent {
   filter = signal('all');
   sort = signal('newest');
   query = signal('');
+  loading = signal(false);
+  userOrders = signal<Order[]>([]);
   selectedOrder = signal<Order | null>(null);
+  readonly trackingSteps = ['Processing', 'Packed', 'Shipped', 'OutForDelivery', 'Delivered'];
   readonly orders = computed(() => {
-    const all = [...(this.auth.currentUser()?.orders || [])];
+    const all = [...this.userOrders()];
     const status = this.filter();
     const query = this.query().trim().toLowerCase();
     let result = status === 'all' ? all : all.filter((order) => order.status.toLowerCase() === status);
@@ -43,25 +49,81 @@ export class OrdersPageComponent {
   constructor(
     readonly auth: AuthService,
     private readonly cart: CartService,
+    private readonly orderService: OrderService,
     private readonly toast: ToastService,
-    private readonly scrollLock: ScrollLockService
+    private readonly scrollLock: ScrollLockService,
+    private readonly i18n: LocalizationService
   ) {
     effect((onCleanup) => {
       if (!this.selectedOrder()) return;
       this.scrollLock.lock();
       onCleanup(() => this.scrollLock.unlock());
     });
+
+    effect(() => {
+      const user = this.auth.currentUser();
+      if (!user) {
+        this.userOrders.set([]);
+        return;
+      }
+
+      this.userOrders.set(user.orders || []);
+      this.loadOrders(user.email);
+    });
   }
 
   count(status: string): number {
-    const orders = this.auth.currentUser()?.orders || [];
+    const orders = this.userOrders();
     return status === 'all' ? orders.length : orders.filter((order) => order.status.toLowerCase() === status).length;
   }
 
   reorder(order: Order): void {
     for (const item of order.items) this.cart.add(item.id, item.quantity);
     this.selectedOrder.set(null);
-    this.toast.show('Items added to cart!');
+    this.toast.show(this.i18n.t('itemsAddedToCart'));
+  }
+
+  statusLabel(status: string): string {
+    return this.i18n.t(`status_${status.toLowerCase()}`);
+  }
+
+  trackingIndex(order: Order): number {
+    if (order.status === 'Cancelled') return -1;
+    return Math.max(0, this.trackingSteps.indexOf(order.status));
+  }
+
+  trackingPercent(order: Order): number {
+    const index = this.trackingIndex(order);
+    if (index < 0) return 100;
+    return (index / (this.trackingSteps.length - 1)) * 100;
+  }
+
+  trackingTitle(status: string): string {
+    const labels: Record<string, string> = {
+      Processing: 'Confirmed',
+      Packed: 'Packed',
+      Shipped: 'Shipped',
+      OutForDelivery: 'Out for delivery',
+      Delivered: 'Delivered',
+      Cancelled: 'Cancelled'
+    };
+    return labels[status] || status;
+  }
+
+  private loadOrders(userEmail: string): void {
+    this.loading.set(true);
+    this.orderService.getForUser(userEmail).subscribe({
+      next: (orders) => {
+        this.userOrders.set(orders);
+        const user = this.auth.currentUser();
+        if (user) this.auth.updateCurrentUser({ ...user, orders });
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.toast.show('Could not load orders.', 'error');
+      }
+    });
   }
 }
 

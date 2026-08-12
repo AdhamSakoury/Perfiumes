@@ -101,6 +101,10 @@
   @apply w-11 h-11 md:w-12 md:h-12 rounded-xl bg-nubian-sand text-nubian-brown hover:bg-nubian-gold hover:text-nubian-dark transition-colors border border-nubian-gold/30;
 }
 
+.chatbot-admin-help {
+  @apply w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-nubian-sand/60 dark:bg-nubian-dark/40 text-sm font-semibold text-nubian-brown dark:text-nubian-gold border-t border-nubian-gold/20 hover:bg-nubian-gold hover:text-nubian-dark transition-colors disabled:opacity-60;
+}
+
 @media (max-width: 480px) {
   .chatbot-root {
     @apply left-3 right-3 bottom-3;

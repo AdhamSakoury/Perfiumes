@@ -1,0 +1,80 @@
+<section class="page-shell admin-orders-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="admin-orders-empty">
+      <h1>Admin login required</h1>
+      <a routerLink="/login">Go to login</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="admin-orders-empty">
+      <h1>Admins only</h1>
+      <a routerLink="/">Back home</a>
+    </div>
+  } @else {
+    <div class="admin-orders-header">
+      <div>
+        <p>Admin Dashboard</p>
+        <h1>Orders</h1>
+      </div>
+      <button type="button" (click)="load()" [disabled]="loading">
+        <i class="fas fa-rotate"></i>
+        <span>{{ loading ? 'Loading' : 'Refresh' }}</span>
+      </button>
+    </div>
+
+    @if (loading && !orders.length) {
+      <div class="admin-orders-empty">
+        <h1>Loading orders...</h1>
+        <p class="admin-orders-empty-line">Fetching the latest orders from the database.</p>
+      </div>
+    } @else if (loadError) {
+      <div class="admin-orders-empty">
+        <h1>Orders unavailable</h1>
+        <p class="admin-orders-empty-line">{{ loadError }}</p>
+        <button type="button" (click)="load()">Try again</button>
+      </div>
+    } @else {
+      <div class="orders-list">
+        @for (order of orders; track order.id) {
+          <article class="order-card">
+            <div class="order-card-main">
+              <div class="order-title">
+                <strong>{{ order.id }}</strong>
+                <span>{{ order.shippingAddress.name }} · {{ order.date | date:'MMM d, y' }} · {{ order.date | date:'shortTime' }}</span>
+              </div>
+
+              <div class="order-summary">
+                <b>{{ order.total | currency }}</b>
+                <span class="status-pill">{{ order.status }}</span>
+              </div>
+            </div>
+
+            <div class="order-items">
+              @for (item of order.items; track item.id) {
+                <span>{{ item.name }} x{{ item.quantity }}</span>
+              }
+            </div>
+
+            <div class="status-controls">
+              <label>
+                <span>Status</span>
+                <select [(ngModel)]="draftStatus[order.id]" name="status-{{ order.id }}">
+                  @for (status of statuses; track status) {
+                    <option [value]="status">{{ status }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" (click)="updateStatus(order)" [disabled]="updatingId === order.id || draftStatus[order.id] === order.status">
+                <i class="fas fa-rotate"></i>
+                <span>{{ updatingId === order.id ? 'Saving' : 'Update Status' }}</span>
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <div class="admin-orders-empty">
+            <p class="admin-orders-empty-line">No orders yet.</p>
+          </div>
+        }
+      </div>
+    }
+  }
+</section>

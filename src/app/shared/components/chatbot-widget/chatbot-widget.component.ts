@@ -6,6 +6,9 @@ import { Perfume } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { ChatbotService } from '@core/services/chatbot.service';
 import { StorageService } from '@core/services/storage.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { SupportMessageService } from '@core/services/support-message.service';
 
 interface ChatMessage {
   role: 'bot' | 'user';
@@ -18,7 +21,7 @@ const CHAT_HISTORY_PREFIX = 'gnouby_chat_history_v2';
 @Component({
   selector: 'app-chatbot-widget',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, RouterLink],
+  imports: [CurrencyPipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './chatbot-widget.component.html',
   styleUrl: './chatbot-widget.component.css'
 })
@@ -27,6 +30,7 @@ export class ChatbotWidgetComponent {
 
   readonly open = signal(false);
   readonly sending = signal(false);
+  readonly creatingSupport = signal(false);
   message = '';
   messages: ChatMessage[] = [this.welcomeMessage()];
   private activeHistoryKey = this.historyKey();
@@ -34,7 +38,9 @@ export class ChatbotWidgetComponent {
   constructor(
     private readonly auth: AuthService,
     private readonly chatbot: ChatbotService,
-    private readonly storage: StorageService
+    private readonly storage: StorageService,
+    private readonly i18n: LocalizationService,
+    private readonly support: SupportMessageService
   ) {
     this.messages = this.readHistory();
 
@@ -84,7 +90,7 @@ export class ChatbotWidgetComponent {
           ...this.messages,
           {
             role: 'bot',
-            text: 'Could not reach the backend right now. Make sure the .NET 10 API is running on localhost:5156.'
+            text: this.i18n.t('chatbotBackendError')
           }
         ];
         this.saveHistory();
@@ -100,6 +106,54 @@ export class ChatbotWidgetComponent {
     this.messages = [this.welcomeMessage()];
     this.saveHistory();
     this.scrollSoon();
+  }
+
+  contactAdmin(): void {
+    const user = this.auth.currentUser();
+    if (!user) {
+      this.messages = [
+        ...this.messages,
+        {
+          role: 'bot',
+          text: 'Please login first so the admin can reply to your account.'
+        }
+      ];
+      this.saveHistory();
+      this.scrollSoon();
+      return;
+    }
+
+    const lastUserMessage = [...this.messages].reverse().find((item) => item.role === 'user')?.text;
+    const body = lastUserMessage || this.message.trim() || 'I need help from an admin about the chatbot answer.';
+    if (this.creatingSupport()) return;
+
+    this.creatingSupport.set(true);
+    this.support.createConversation(user, body).subscribe({
+      next: () => {
+        this.creatingSupport.set(false);
+        this.messages = [
+          ...this.messages,
+          {
+            role: 'bot',
+            text: 'I sent this to the admin team. You can continue here, and an admin can reply from the dashboard.'
+          }
+        ];
+        this.saveHistory();
+        this.scrollSoon();
+      },
+      error: () => {
+        this.creatingSupport.set(false);
+        this.messages = [
+          ...this.messages,
+          {
+            role: 'bot',
+            text: 'I could not send this to the admin right now. Please try again in a moment.'
+          }
+        ];
+        this.saveHistory();
+        this.scrollSoon();
+      }
+    });
   }
 
   useFallback(event: Event): void {
@@ -133,7 +187,7 @@ export class ChatbotWidgetComponent {
   private welcomeMessage(): ChatMessage {
     return {
       role: 'bot',
-      text: 'Hi! I am Gnouby Assistant. Tell me what you want: woody, fresh, sweet, oriental, men/women, or your budget.'
+      text: this.i18n.t('chatbotWelcome')
     };
   }
 }

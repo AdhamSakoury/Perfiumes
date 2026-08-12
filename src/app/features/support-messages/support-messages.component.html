@@ -1,0 +1,96 @@
+<section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="messages-empty">
+      <h1>Login required</h1>
+      <p>Please login to see admin replies.</p>
+      <a routerLink="/login">Go to login</a>
+    </div>
+  } @else {
+    <div class="messages-header">
+      <div>
+        <p>Support</p>
+        <h1>Messages</h1>
+      </div>
+      <div class="messages-actions">
+        <button type="button" class="new-message-btn" (click)="startNewMessage()">
+          <i class="fas fa-pen"></i>
+          <span>New Message</span>
+        </button>
+        <button type="button" (click)="load()" [disabled]="loading">
+          <i class="fas fa-rotate"></i>
+          <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="messages-layout">
+      <aside class="thread-list custom-scrollbar">
+        @for (conversation of conversations; track conversation.id) {
+          <button type="button" (click)="select(conversation)" class="thread-row" [class.active]="conversation.id === selected?.id">
+            <span class="thread-avatar"><i class="fas fa-headset"></i></span>
+            <span class="thread-copy">
+              <strong>{{ conversation.subject }}</strong>
+              <small>{{ conversation.status }} · {{ conversation.updatedAt | date:'shortTime' }}</small>
+            </span>
+          </button>
+        } @empty {
+          <button type="button" class="empty-new-message" (click)="startNewMessage()">
+            <i class="fas fa-headset"></i>
+            <span>Send your first message to admin</span>
+          </button>
+        }
+      </aside>
+
+      <main class="thread-panel">
+        @if (composing || !selected) {
+          <header>
+            <div>
+              <h2>Admin Support</h2>
+              <p>{{ support.connected() ? 'Live now' : 'Connecting...' }}</p>
+            </div>
+            <span [class.connected]="support.connected()">{{ support.connected() ? 'live' : 'offline' }}</span>
+          </header>
+
+          <div class="thread-messages custom-scrollbar">
+            <div class="support-start">
+              <i class="fas fa-headset"></i>
+              <strong>Start a conversation</strong>
+              <p>Send your message and the admin will receive it live.</p>
+            </div>
+          </div>
+
+          <form (ngSubmit)="createConversation()" class="thread-reply">
+            <textarea name="newMessage" [(ngModel)]="newMessage" rows="1" placeholder="Message admin" dir="auto"></textarea>
+            <button type="submit" [disabled]="creating || !newMessage.trim()" aria-label="Send message">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        } @else if (selected; as conversation) {
+          <header>
+            <div>
+              <h2>Admin Support</h2>
+              <p>{{ conversation.subject }}</p>
+            </div>
+            <span [class.connected]="support.connected()">{{ support.connected() ? 'live' : conversation.status }}</span>
+          </header>
+
+          <div class="thread-messages custom-scrollbar">
+            @for (message of conversation.messages; track message.id) {
+              <article class="thread-message" [class.mine]="message.senderRole === 'customer'">
+                <p>{{ message.body }}</p>
+                <time>{{ message.createdAt | date:'shortTime' }}</time>
+              </article>
+            }
+          </div>
+
+          <form (ngSubmit)="send()" class="thread-reply">
+            <textarea name="replyText" [(ngModel)]="replyText" rows="1" placeholder="Message admin" dir="auto"></textarea>
+            <button type="submit" [disabled]="sending || !replyText.trim() || conversation.status === 'closed'" aria-label="Send message">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        }
+      </main>
+    </div>
+  }
+</section>

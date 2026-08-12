@@ -11,7 +11,11 @@ public sealed record AuthUserResponse(
     string FullName,
     string Email,
     string? ProfilePhoto,
-    string Role);
+    string Role,
+    string Phone,
+    string Address,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
 
 public sealed record AuthLoginResponse(
     string AccessToken,

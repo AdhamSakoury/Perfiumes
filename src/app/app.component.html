@@ -1,10 +1,15 @@
-<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen">
+<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen flex flex-col" [class.admin-sidebar-mode]="showAdminSidebar()">
       <app-navbar />
-      <main>
+      @if (showAdminSidebar()) {
+        <app-admin-sidebar />
+      }
+      <main class="flex-1">
         <router-outlet />
       </main>
-      <app-footer />
-      <app-chatbot-widget />
+      @if (!showAdminSidebar()) {
+        <app-footer />
+        <app-chatbot-widget />
+      }
 
       @if (toast.toast(); as activeToast) {
         <div class="toast active" [class.error]="activeToast.type === 'error'" [class.success]="activeToast.type === 'success'">

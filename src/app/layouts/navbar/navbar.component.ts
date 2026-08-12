@@ -17,6 +17,7 @@ import { ThemeService } from '@core/services/theme.service';
 export class NavbarComponent {
   readonly mobileOpen = signal(false);
   readonly notificationsOpen = signal(false);
+  readonly adminMenuOpen = signal(false);
 
   constructor(
     readonly auth: AuthService,
@@ -49,9 +50,15 @@ export class NavbarComponent {
 
   toggleNotifications(): void {
     this.notificationsOpen.set(!this.notificationsOpen());
+    if (this.notificationsOpen()) this.adminMenuOpen.set(false);
     if (this.notificationsOpen()) {
       this.notifications.load();
     }
+  }
+
+  toggleAdminMenu(): void {
+    this.adminMenuOpen.set(!this.adminMenuOpen());
+    if (this.adminMenuOpen()) this.notificationsOpen.set(false);
   }
 
   toggleLanguage(): void {

@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { PerfumeService } from './perfume.service';
 import { StorageService } from './storage.service';
 import { ToastService } from './toast.service';
+import { LocalizationService } from './localization.service';
 
 const CART_KEY = 'gnouby_cart';
 const PROMO_KEY = 'gnouby_promo';
@@ -29,7 +30,8 @@ export class CartService {
     private readonly perfumes: PerfumeService,
     private readonly auth: AuthService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {}
 
   add(perfumeId: number, quantity = 1): boolean {
@@ -43,7 +45,7 @@ export class CartService {
     if (existing) existing.quantity += quantity;
     else items.push({ perfumeId, quantity });
     this.save(items);
-    this.toast.show('Added to cart!', 'success');
+    this.toast.show(this.i18n.t('addedToCart'), 'success');
     return true;
   }
 
@@ -69,14 +71,14 @@ export class CartService {
     const discount = this.perfumes.promoCodes[normalized];
     if (!normalized || !discount) {
       this.clearPromo();
-      this.toast.show('Invalid promo code. Try NUBIAN10 or WELCOME15', 'error');
+      this.toast.show(this.i18n.t('invalidPromo'), 'error');
       return false;
     }
 
     const promo = { code: normalized, discount };
     this.storage.set(PROMO_KEY, promo);
     this.promo.set(promo);
-    this.toast.show(`${normalized} applied! ${Math.round(discount * 100)}% off`, 'success');
+    this.toast.show(this.i18n.t('promoApplied').replace('{code}', normalized).replace('{discount}', String(Math.round(discount * 100))), 'success');
     return true;
   }
 

@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { PerfumeService } from './perfume.service';
 import { StorageService } from './storage.service';
 import { ToastService } from './toast.service';
+import { LocalizationService } from './localization.service';
 
 const WISHLIST_KEY = 'gnouby_wishlist';
 
@@ -20,7 +21,8 @@ export class WishlistService {
     private readonly perfumeService: PerfumeService,
     private readonly auth: AuthService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {}
 
   has(id: number): boolean {
@@ -44,7 +46,7 @@ export class WishlistService {
     if (!this.has(id)) {
       const ids = [...this.ids(), id];
       this.save(ids);
-      this.toast.show('Added to wishlist!', 'success');
+      this.toast.show(this.i18n.t('addedToWishlist'), 'success');
     }
     return true;
   }

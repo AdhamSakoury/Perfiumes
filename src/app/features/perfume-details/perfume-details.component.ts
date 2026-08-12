@@ -6,11 +6,12 @@ import { StarRatingComponent } from '@shared/components/star-rating/star-rating.
 import { CartService } from '@core/services/cart.service';
 import { PerfumeService } from '@core/services/perfume.service';
 import { WishlistService } from '@core/services/wishlist.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-perfume-details-page',
   standalone: true,
-  imports: [CurrencyPipe, PerfumeCardComponent, RouterLink, StarRatingComponent],
+  imports: [CurrencyPipe, PerfumeCardComponent, RouterLink, StarRatingComponent, TranslatePipe],
   templateUrl: './perfume-details.component.html',
   styleUrl: './perfume-details.component.css'
 })

@@ -1,7 +1,9 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
 declare global {
@@ -39,6 +41,7 @@ interface GoogleButtonOptions {
 @Component({
   selector: 'app-google-sign-in-button',
   standalone: true,
+  imports: [TranslatePipe],
   templateUrl: './google-sign-in-button.component.html',
   styleUrl: './google-sign-in-button.component.css'
 })
@@ -53,6 +56,7 @@ export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly toast: ToastService,
+    private readonly i18n: LocalizationService,
     private readonly zone: NgZone
   ) {}
 
@@ -63,7 +67,7 @@ export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
 
     this.loadGoogleScript()
       .then(() => this.renderGoogleButton())
-      .catch(() => this.toast.show('Could not load Google sign-in. Please try again.'));
+      .catch(() => this.toast.show(this.i18n.t('googleLoadFailed')));
   }
 
   ngOnDestroy(): void {
@@ -72,11 +76,11 @@ export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
 
   startGoogleSignIn(): void {
     if (!this.configured) {
-      this.toast.show('Add your Google Client ID first to enable Google login.');
+      this.toast.show(this.i18n.t('googleClientIdMissing'));
       return;
     }
 
-    this.toast.show('Google login is loading. If the button does not appear, refresh the page.');
+    this.toast.show(this.i18n.t('googleLoadingHint'));
   }
 
   private renderGoogleButton(): void {
@@ -102,7 +106,7 @@ export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
 
   private handleCredential(response: GoogleCredentialResponse): void {
     if (!response.credential) {
-      this.toast.show('Google did not return a login credential.');
+      this.toast.show(this.i18n.t('googleCredentialMissing'));
       return;
     }
 
@@ -110,12 +114,12 @@ export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
     this.auth.loginWithGoogle(response.credential).subscribe({
       next: () => {
         this.loading = false;
-        this.toast.show('Signed in with Google successfully.');
+        this.toast.show(this.i18n.t('googleLoginSuccess'));
         void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || '/account');
       },
       error: () => {
         this.loading = false;
-        this.toast.show('Google login failed. Check the backend Client ID setting.');
+        this.toast.show(this.i18n.t('googleLoginFailed'));
       }
     });
   }

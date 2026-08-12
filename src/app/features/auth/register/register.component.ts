@@ -2,11 +2,13 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-register-page',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TranslatePipe],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css'
 })
@@ -18,9 +20,10 @@ export class RegisterPageComponent {
   terms = false;
   showPassword = false;
   strength = 0;
+  loading = false;
   errors: Record<string, string | undefined> = {};
 
-  constructor(private readonly auth: AuthService, private readonly router: Router) {
+  constructor(private readonly auth: AuthService, private readonly router: Router, private readonly i18n: LocalizationService) {
     if (this.auth.currentUser()) void this.router.navigateByUrl('/account');
   }
 
@@ -34,22 +37,31 @@ export class RegisterPageComponent {
 
   submit(): void {
     this.errors = {};
-    if (this.fullName.trim().length < 2) this.errors['fullName'] = 'Please enter your full name';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) this.errors['email'] = 'Please enter a valid email address';
+    if (this.fullName.trim().length < 2) this.errors['fullName'] = this.i18n.t('fullNameRequired');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) this.errors['email'] = this.i18n.t('validEmailError');
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(this.password)) {
-      this.errors['password'] = 'Password must contain uppercase, lowercase, number, and special character';
+      this.errors['password'] = this.i18n.t('passwordComplexityError');
     }
-    if (this.password !== this.confirmPassword) this.errors['confirmPassword'] = 'Passwords do not match';
-    if (!this.terms) this.errors['terms'] = 'You must agree to the terms';
+    if (this.password !== this.confirmPassword) this.errors['confirmPassword'] = this.i18n.t('passwordsMismatch');
+    if (!this.terms) this.errors['terms'] = this.i18n.t('termsRequired');
     if (Object.values(this.errors).some(Boolean)) return;
 
-    const result = this.auth.register(this.fullName.trim(), this.email.trim(), this.password);
-    if (!result.success) {
-      this.errors['email'] = result.message;
-      return;
-    }
+    this.loading = true;
+    this.auth.register(this.fullName.trim(), this.email.trim(), this.password).subscribe({
+      next: (result) => {
+        this.loading = false;
+        if (!result.success) {
+          this.errors['email'] = result.message;
+          return;
+        }
 
-    void this.router.navigateByUrl('/account');
+        void this.router.navigateByUrl('/account');
+      },
+      error: (error) => {
+        this.loading = false;
+        this.errors['email'] = error?.error?.message || 'Registration failed';
+      }
+    });
   }
 }
 

@@ -2,6 +2,10 @@
   position: relative;
 }
 
+.account-page-inner {
+  width: 100%;
+}
+
 .profile-header-glass {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
@@ -39,6 +43,80 @@
 
 :host .page-enter {
   animation: account-page-enter 420ms ease-out both;
+}
+
+:host-context(.admin-sidebar-mode) .account-page-shell {
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: clamp(1rem, 2vw, 2rem);
+}
+
+:host-context(.admin-sidebar-mode) .profile-header-wrapper {
+  margin-bottom: 1.35rem;
+}
+
+:host-context(.admin-sidebar-mode) .profile-header-glass {
+  border-radius: 1rem;
+  padding: clamp(1.15rem, 1.8vw, 1.75rem);
+}
+
+:host-context(.admin-sidebar-mode) .account-profile-grid {
+  align-items: center;
+  gap: 1.25rem;
+}
+
+:host-context(.admin-sidebar-mode) .account-profile-title {
+  font-size: clamp(2rem, 3.2vw, 3.4rem);
+  line-height: 1.05;
+}
+
+:host-context(.admin-sidebar-mode) .account-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+:host-context(.admin-sidebar-mode) .account-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+:host-context(.admin-sidebar-mode) .account-card-grid > div,
+:host-context(.admin-sidebar-mode) .account-section-card {
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+:host-context(.admin-sidebar-mode) .account-section-card {
+  margin-bottom: 1.25rem;
+}
+
+:host-context(.admin-sidebar-mode) .account-section-card .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 1280px) {
+  :host-context(.admin-sidebar-mode) .account-info-grid,
+  :host-context(.admin-sidebar-mode) .account-card-grid,
+  :host-context(.admin-sidebar-mode) .account-section-card .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  :host-context(.admin-sidebar-mode) .account-page-shell {
+    max-width: 80rem;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  :host-context(.admin-sidebar-mode) .account-info-grid,
+  :host-context(.admin-sidebar-mode) .account-card-grid,
+  :host-context(.admin-sidebar-mode) .account-section-card .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .account-modal-root {

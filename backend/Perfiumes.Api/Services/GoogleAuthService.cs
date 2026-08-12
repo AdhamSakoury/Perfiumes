@@ -3,7 +3,7 @@ using Perfiumes.Api.Models;
 
 namespace Perfiumes.Api.Services;
 
-public sealed class GoogleAuthService(HttpClient httpClient, IConfiguration configuration, AdminAuthService auth)
+public sealed class GoogleAuthService(HttpClient httpClient, IConfiguration configuration, AdminAuthService auth, UserService users)
 {
     private readonly string _clientId = configuration["GoogleAuth:ClientId"] ?? "";
 
@@ -21,18 +21,12 @@ public sealed class GoogleAuthService(HttpClient httpClient, IConfiguration conf
         }
 
         var role = auth.RoleForGoogleEmail(tokenInfo.Email);
-        var token = auth.CreateToken(tokenInfo.Email, role);
-
-        return new AuthLoginResponse(
-            token.AccessToken,
-            "Bearer",
-            token.ExpiresAt,
-            new AuthUserResponse(
-                $"google_{tokenInfo.Subject}",
-                tokenInfo.Name,
-                tokenInfo.Email,
-                tokenInfo.Picture,
-                role));
+        return await users.UpsertGoogleUserAsync(
+            $"google_{tokenInfo.Subject}",
+            tokenInfo.Name,
+            tokenInfo.Email,
+            tokenInfo.Picture,
+            role);
     }
 
     private async Task<GoogleTokenInfo?> VerifyCredentialAsync(string credential, CancellationToken cancellationToken)

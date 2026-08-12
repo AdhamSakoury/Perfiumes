@@ -1,50 +1,58 @@
-<nav class="fixed w-full z-50 bg-white/90 dark:bg-nubian-dark/90 backdrop-blur-md border-b border-nubian-gold/30 transition-colors duration-300">
-      <div class="w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20">
-        <div class="flex justify-between items-center h-20">
-          <a routerLink="/" class="logo-container flex items-center">
-            <img src="/images/logo-light.png" alt="Gnouby Perfumes" class="logo-image logo-light h-10 w-auto">
-            <img src="/images/logo-dark.png" alt="Gnouby Perfumes" class="logo-image logo-dark h-10 w-auto">
-            <div class="brand-text ml-3">
-              <span class="brand-name block text-xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">Gnouby</span>
-              <span class="brand-tagline block text-xs tracking-widest text-nubian-earth dark:text-nubian-sand">PERFUMES</span>
+<nav class="main-navbar" [class.rtl-navbar]="i18n.isRtl()">
+      <div class="navbar-container">
+        <div class="navbar-inner">
+          <a routerLink="/" class="logo-container navbar-logo">
+            <img src="/images/logo-light.png" [alt]="i18n.t('brandName')" class="logo-image logo-light h-10 w-auto">
+            <img src="/images/logo-dark.png" [alt]="i18n.t('brandName')" class="logo-image logo-dark h-10 w-auto">
+            <div class="brand-text">
+              <span class="brand-name block text-xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ i18n.t('brandName') }}</span>
+              <span class="brand-tagline block text-xs tracking-widest text-nubian-earth dark:text-nubian-sand">{{ i18n.t('brandTagline') }}</span>
             </div>
           </a>
 
-          <div class="hidden md:flex items-center space-x-8">
-            <a routerLink="/" routerLinkActive="text-nubian-gold" [routerLinkActiveOptions]="{ exact: true }" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium">{{ i18n.t('home') }}</a>
-            <a routerLink="/perfumes" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium">{{ i18n.t('perfumes') }}</a>
-            <a routerLink="/wishlist" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium"><i class="fas fa-heart mr-1"></i> {{ i18n.t('wishlist') }}</a>
-            <a routerLink="/cart" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium relative">
-              <i class="fas fa-shopping-cart mr-1"></i> {{ i18n.t('cart') }}
-              @if (cart.count() > 0) {
-                <span class="absolute -top-2 -right-2 bg-nubian-terracotta text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ cart.count() }}</span>
-              }
-            </a>
-            @if (auth.currentUser()) {
-              @if (auth.currentUser()?.role === 'admin') {
-                <a routerLink="/admin/products" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium">
-                  <i class="fas fa-boxes-stacked mr-1"></i> {{ i18n.t('admin') }}
+          <div class="desktop-nav-links">
+            <a routerLink="/" routerLinkActive="nav-link-active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">{{ i18n.t('home') }}</a>
+            <a routerLink="/perfumes" routerLinkActive="nav-link-active" class="nav-link">{{ i18n.t('perfumes') }}</a>
+            @if (auth.currentUser()?.role === 'admin') {
+              <a routerLink="/admin" routerLinkActive="nav-link-active" class="nav-link">
+                <i class="fas fa-gauge-high nav-link-icon"></i><span>Dashboard</span>
+              </a>
+            }
+            @if (auth.currentUser()?.role !== 'admin') {
+              <a routerLink="/wishlist" routerLinkActive="nav-link-active" class="nav-link"><i class="fas fa-heart nav-link-icon"></i><span>{{ i18n.t('wishlist') }}</span></a>
+              <a routerLink="/cart" routerLinkActive="nav-link-active" class="nav-link nav-link-cart">
+                <i class="fas fa-shopping-cart nav-link-icon"></i><span>{{ i18n.t('cart') }}</span>
+                @if (cart.count() > 0) {
+                  <span class="cart-badge">{{ cart.count() }}</span>
+                }
+              </a>
+              @if (auth.currentUser()) {
+                <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
+                  <i class="fas fa-envelope nav-link-icon"></i><span>Messages</span>
+                </a>
+                <a routerLink="/orders" routerLinkActive="nav-link-active" class="nav-link">
+                  <i class="fas fa-truck-fast nav-link-icon"></i><span>{{ i18n.t('orders') }}</span>
+                </a>
+                <a routerLink="/account" routerLinkActive="nav-link-active" class="nav-link">
+                  <i class="fas fa-user nav-link-icon"></i><span>{{ i18n.t('account') }}</span>
                 </a>
               }
-              <a routerLink="/account" routerLinkActive="text-nubian-gold" class="text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors font-medium">
-                <i class="fas fa-user mr-1"></i> {{ i18n.t('account') }}
-              </a>
             }
           </div>
 
-          <div class="hidden md:flex items-center gap-3">
+          <div class="desktop-nav-actions">
             <div class="navbar-action-group">
-              <button type="button" (click)="toggleLanguage()" class="navbar-icon-button language-button" [attr.aria-label]="i18n.isRtl() ? 'Switch to English' : 'التبديل إلى العربية'">
+              <button type="button" (click)="toggleLanguage()" class="navbar-icon-button language-button" [attr.aria-label]="i18n.isRtl() ? i18n.t('switchToEnglish') : i18n.t('switchToArabic')">
                 <i class="fas fa-language"></i>
                 <span>{{ i18n.language() === 'ar' ? 'EN' : 'AR' }}</span>
               </button>
-              <button type="button" (click)="theme.toggle()" class="navbar-icon-button" aria-label="Toggle dark mode">
+              <button type="button" (click)="theme.toggle()" class="navbar-icon-button" [attr.aria-label]="i18n.t('toggleDarkMode')">
                 <i class="fas" [class.fa-sun]="theme.isDark()" [class.fa-moon]="!theme.isDark()"></i>
               </button>
             </div>
 
             @if (auth.currentUser(); as user) {
-              <div class="flex items-center gap-3">
+              <div class="user-actions">
                 <div class="notification-wrapper">
                   <button type="button" (click)="toggleNotifications()" class="notification-button" [attr.aria-label]="i18n.t('notifications')">
                     <i class="fas fa-bell"></i>
@@ -59,11 +67,11 @@
                           <h3>{{ i18n.t('notifications') }}</h3>
                           <span class="notification-live" [class.connected]="notifications.connected()">
                             <i class="fas fa-circle"></i>
-                            {{ notifications.connected() ? 'Live' : 'Offline' }}
+                            {{ notifications.connected() ? i18n.t('live') : i18n.t('offline') }}
                           </span>
                         </div>
                         <div class="notification-actions">
-                          <button type="button" (click)="notifications.sendTestNotification()">Test</button>
+                          <button type="button" (click)="notifications.sendTestNotification()">{{ i18n.t('notificationTest') }}</button>
                           <button type="button" (click)="notifications.markAllAsRead()">{{ i18n.t('markAllRead') }}</button>
                         </div>
                       </div>
@@ -71,7 +79,7 @@
                         @for (item of notifications.notifications(); track item.id) {
                           <button type="button" class="notification-item" [class.unread]="!item.isRead" (click)="notifications.markAsRead(item.id)">
                             <i class="fas" [class.fa-gift]="item.type === 'promo'" [class.fa-receipt]="item.type === 'order'" [class.fa-circle-info]="item.type !== 'promo' && item.type !== 'order'"></i>
-                            <span>
+                            <span class="notification-copy" dir="auto">
                               <strong>{{ item.title }}</strong>
                               <small>{{ item.message }}</small>
                             </span>
@@ -83,10 +91,10 @@
                     </div>
                   }
                 </div>
-                <span class="hidden xl:block text-sm font-medium text-nubian-brown dark:text-nubian-sand border-r border-nubian-gold/30 pr-4">
+                <span class="navbar-user-name">
                   {{ firstName(user.fullName) }}
                 </span>
-                <button type="button" (click)="auth.logout()" class="group relative px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transform hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                <button type="button" (click)="auth.logout()" class="logout-button group">
                   <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
                   <span class="relative flex items-center gap-2">
                     <i class="fas fa-sign-out-alt text-sm group-hover:rotate-180 transition-transform duration-300"></i>
@@ -95,7 +103,7 @@
                 </button>
               </div>
             } @else {
-              <div class="flex items-center space-x-3">
+              <div class="auth-actions">
                 <a routerLink="/login" class="px-4 py-2 text-nubian-brown dark:text-nubian-gold border border-nubian-brown dark:border-nubian-gold rounded-lg hover:bg-nubian-brown hover:text-white transition-all">{{ i18n.t('login') }}</a>
                 <a routerLink="/register" class="px-4 py-2 bg-nubian-brown text-white rounded-lg hover:bg-nubian-gold transition-all">{{ i18n.t('register') }}</a>
               </div>
@@ -103,14 +111,14 @@
           </div>
 
           <div class="flex items-center gap-2 md:hidden">
-            <button type="button" (click)="toggleLanguage()" class="navbar-icon-button language-button compact" [attr.aria-label]="i18n.isRtl() ? 'Switch to English' : 'التبديل إلى العربية'">
+            <button type="button" (click)="toggleLanguage()" class="navbar-icon-button language-button compact" [attr.aria-label]="i18n.isRtl() ? i18n.t('switchToEnglish') : i18n.t('switchToArabic')">
               <i class="fas fa-language"></i>
               <span>{{ i18n.language() === 'ar' ? 'EN' : 'AR' }}</span>
             </button>
-            <button type="button" (click)="theme.toggle()" class="navbar-icon-button compact" aria-label="Toggle dark mode">
+            <button type="button" (click)="theme.toggle()" class="navbar-icon-button compact" [attr.aria-label]="i18n.t('toggleDarkMode')">
               <i class="fas" [class.fa-sun]="theme.isDark()" [class.fa-moon]="!theme.isDark()"></i>
             </button>
-            <button type="button" (click)="mobileOpen.set(!mobileOpen())" class="p-2 text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors" aria-label="Open menu">
+            <button type="button" (click)="mobileOpen.set(!mobileOpen())" class="p-2 text-nubian-brown dark:text-nubian-sand hover:text-nubian-gold transition-colors" [attr.aria-label]="i18n.t('openMenu')">
               <i class="fas text-2xl" [class.fa-bars]="!mobileOpen()" [class.fa-times]="mobileOpen()"></i>
             </button>
           </div>
@@ -119,7 +127,7 @@
 
       @if (mobileOpen()) {
         <div class="md:hidden">
-          <button type="button" class="mobile-menu-backdrop" (click)="mobileOpen.set(false)" aria-label="Close menu"></button>
+          <button type="button" class="mobile-menu-backdrop" (click)="mobileOpen.set(false)" [attr.aria-label]="i18n.t('closeMenu')"></button>
           <aside class="mobile-menu-panel">
             <div class="mobile-nav-list">
               <a routerLink="/" (click)="mobileOpen.set(false)" class="mobile-nav-row">
@@ -130,17 +138,25 @@
                 <i class="fas fa-spray-can-sparkles"></i>
                 <span>{{ i18n.t('perfumes') }}</span>
               </a>
-              <a routerLink="/wishlist" (click)="mobileOpen.set(false)" class="mobile-nav-row">
-                <i class="fas fa-heart"></i>
-                <span>{{ i18n.t('wishlist') }}</span>
-              </a>
-              <a routerLink="/cart" (click)="mobileOpen.set(false)" class="mobile-nav-row">
-                <i class="fas fa-shopping-cart"></i>
-                <span>{{ i18n.t('cart') }}</span>
-                @if (cart.count() > 0) {
-                  <span class="ml-auto bg-nubian-terracotta text-white text-[10px] rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ cart.count() }}</span>
-                }
-              </a>
+              @if (auth.currentUser()?.role === 'admin') {
+                <a routerLink="/admin" (click)="mobileOpen.set(false)" class="mobile-nav-row">
+                  <i class="fas fa-gauge-high"></i>
+                  <span>Dashboard</span>
+                </a>
+              }
+              @if (auth.currentUser()?.role !== 'admin') {
+                <a routerLink="/wishlist" (click)="mobileOpen.set(false)" class="mobile-nav-row">
+                  <i class="fas fa-heart"></i>
+                  <span>{{ i18n.t('wishlist') }}</span>
+                </a>
+                <a routerLink="/cart" (click)="mobileOpen.set(false)" class="mobile-nav-row">
+                  <i class="fas fa-shopping-cart"></i>
+                  <span>{{ i18n.t('cart') }}</span>
+                  @if (cart.count() > 0) {
+                    <span class="ml-auto bg-nubian-terracotta text-white text-[10px] rounded-full min-w-5 h-5 px-1 flex items-center justify-center">{{ cart.count() }}</span>
+                  }
+                </a>
+              }
             </div>
             @if (auth.currentUser(); as user) {
               <div class="px-3 pb-3">
@@ -153,22 +169,22 @@
                     <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 truncate">{{ user.email }}</p>
                   </div>
                 </div>
-                <div class="mobile-account-links">
-                  @if (user.role === 'admin') {
-                    <a routerLink="/admin/products" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
-                      <i class="fas fa-boxes-stacked"></i>
-                      <span>{{ i18n.t('admin') }}</span>
+                @if (user.role !== 'admin') {
+                  <div class="mobile-account-links">
+                    <a routerLink="/messages" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
+                      <i class="fas fa-envelope"></i>
+                      <span>Messages</span>
                     </a>
-                  }
-                  <a routerLink="/account" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
-                    <i class="fas fa-user-circle"></i>
-                    <span>{{ i18n.t('account') }}</span>
-                  </a>
-                  <a routerLink="/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
-                    <i class="fas fa-receipt"></i>
-                    <span>{{ i18n.t('orders') }}</span>
-                  </a>
-                </div>
+                    <a routerLink="/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
+                      <i class="fas fa-truck-fast"></i>
+                      <span>{{ i18n.t('orders') }}</span>
+                    </a>
+                    <a routerLink="/account" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
+                      <i class="fas fa-user-circle"></i>
+                      <span>{{ i18n.t('account') }}</span>
+                    </a>
+                  </div>
+                }
                 <button type="button" (click)="auth.logout(); mobileOpen.set(false)" class="group relative w-full mt-2 px-5 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg shadow-red-500/30 transition-all duration-300 overflow-hidden">
                   <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
                   <span class="relative flex items-center justify-center gap-2">
