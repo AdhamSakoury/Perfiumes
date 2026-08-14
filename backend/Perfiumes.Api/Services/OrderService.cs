@@ -69,6 +69,15 @@ BEGIN
     );
     CREATE INDEX [IX_OrderTrackingEvents_OrderId] ON [OrderTrackingEvents] ([OrderId]);
 END
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_UserEmail' AND object_id = OBJECT_ID(N'[Orders]'))
+    CREATE INDEX [IX_Orders_UserEmail] ON [Orders] ([UserEmail]);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Date' AND object_id = OBJECT_ID(N'[Orders]'))
+    CREATE INDEX [IX_Orders_Date] ON [Orders] ([Date]);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Status_Date' AND object_id = OBJECT_ID(N'[Orders]'))
+    CREATE INDEX [IX_Orders_Status_Date] ON [Orders] ([Status], [Date]);
 """);
     }
 
@@ -77,6 +86,7 @@ END
         var normalizedEmail = userEmail.Trim().ToLowerInvariant();
         var orders = await db.Orders
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(order => order.Items)
             .Include(order => order.TrackingEvents)
             .Where(order => order.UserEmail == normalizedEmail)
@@ -90,6 +100,7 @@ END
     {
         var orders = await db.Orders
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(order => order.Items)
             .Include(order => order.TrackingEvents)
             .OrderByDescending(order => order.Date)
@@ -102,6 +113,7 @@ END
     {
         var order = await db.Orders
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(item => item.Items)
             .Include(item => item.TrackingEvents)
             .FirstOrDefaultAsync(item => item.Id == id);
@@ -205,6 +217,7 @@ END
     {
         return new OrderDto(
             order.Id,
+            order.UserEmail,
             order.Date,
             order.Status,
             order.Items.Select(item => new OrderItemDto(item.ProductId, item.Name, item.Price, item.Image, item.Quantity)).ToList(),

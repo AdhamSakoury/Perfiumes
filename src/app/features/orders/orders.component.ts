@@ -26,6 +26,7 @@ export class OrdersPageComponent {
   userOrders = signal<Order[]>([]);
   selectedOrder = signal<Order | null>(null);
   readonly trackingSteps = ['Processing', 'Packed', 'Shipped', 'OutForDelivery', 'Delivered'];
+  private requestedEmail: string | null = null;
   readonly orders = computed(() => {
     const all = [...this.userOrders()];
     const status = this.filter();
@@ -67,8 +68,13 @@ export class OrdersPageComponent {
         return;
       }
 
-      this.userOrders.set(user.orders || []);
-      this.loadOrders(user.email);
+      const cachedOrders = user.orders || [];
+      const email = user.email.toLowerCase();
+      this.userOrders.set(cachedOrders);
+      if (this.requestedEmail === email) return;
+
+      this.requestedEmail = email;
+      this.loadOrders(email, cachedOrders.length === 0);
     });
   }
 
@@ -110,8 +116,8 @@ export class OrdersPageComponent {
     return labels[status] || status;
   }
 
-  private loadOrders(userEmail: string): void {
-    this.loading.set(true);
+  private loadOrders(userEmail: string, showBusy: boolean): void {
+    this.loading.set(showBusy);
     this.orderService.getForUser(userEmail).subscribe({
       next: (orders) => {
         this.userOrders.set(orders);
@@ -121,7 +127,7 @@ export class OrdersPageComponent {
       },
       error: () => {
         this.loading.set(false);
-        this.toast.show('Could not load orders.', 'error');
+        if (showBusy || !this.userOrders().length) this.toast.show('Could not load orders.', 'error');
       }
     });
   }

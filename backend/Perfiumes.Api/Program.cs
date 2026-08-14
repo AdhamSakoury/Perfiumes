@@ -69,6 +69,7 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<ProductRepository>().EnsureSeedAsync();
     await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);
+    await scope.ServiceProvider.GetRequiredService<SupportMessageService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
 }
 
@@ -113,6 +114,42 @@ app.MapGet("/", () => Results.Ok(new
         "POST /api/notifications"
     }
 }));
+
+async Task PublishNotificationAsync(
+    NotificationService notifications,
+    IHubContext<NotificationHub> hub,
+    string userEmail,
+    string title,
+    string message,
+    string type = "info",
+    string? link = null)
+{
+    if (string.IsNullOrWhiteSpace(userEmail))
+    {
+        return;
+    }
+
+    var notification = notifications.Create(userEmail.Trim().ToLowerInvariant(), title, message, type, link);
+    await hub
+        .Clients
+        .Group(NotificationHub.GroupName(notification.UserEmail))
+        .SendAsync(NotificationHub.NotificationCreatedEvent, notification);
+}
+
+async Task PublishAdminNotificationAsync(
+    UserService users,
+    NotificationService notifications,
+    IHubContext<NotificationHub> hub,
+    string title,
+    string message,
+    string type = "info",
+    string? link = null)
+{
+    foreach (var adminEmail in await users.GetAdminEmailsAsync())
+    {
+        await PublishNotificationAsync(notifications, hub, adminEmail, title, message, type, link);
+    }
+}
 
 app.MapPost("/api/admin/login", async (AdminLoginRequest request, UserService users) =>
 {
@@ -206,7 +243,12 @@ app.MapGet("/api/orders/{id}", async (string id, OrderService orders) =>
     return order is null ? Results.NotFound() : Results.Ok(order);
 });
 
-app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService orders) =>
+app.MapPost("/api/orders", async (
+    CreateOrderRequest request,
+    OrderService orders,
+    UserService users,
+    NotificationService notifications,
+    IHubContext<NotificationHub> notificationHub) =>
 {
     if (string.IsNullOrWhiteSpace(request.UserEmail) || request.Items.Count == 0)
     {
@@ -214,6 +256,23 @@ app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService order
     }
 
     var order = await orders.CreateAsync(request);
+    await PublishNotificationAsync(
+        notifications,
+        notificationHub,
+        order.UserEmail,
+        "Order placed",
+        $"Your order {order.Id} was received and is now processing.",
+        "order",
+        "/orders");
+    await PublishAdminNotificationAsync(
+        users,
+        notifications,
+        notificationHub,
+        "New order",
+        $"{order.UserEmail} placed order {order.Id} for {order.Total:0.##} EGP.",
+        "order",
+        "/admin/orders");
+
     return Results.Created($"/api/orders/{order.Id}", order);
 });
 
@@ -236,8 +295,10 @@ app.MapPut("/api/admin/orders/{id}/status", async (
     string id,
     UpdateOrderStatusRequest request,
     OrderService orders,
+    NotificationService notifications,
     AdminAuthService auth,
-    HttpContext context) =>
+    HttpContext context,
+    IHubContext<NotificationHub> notificationHub) =>
 {
     if (!auth.IsAuthorized(context))
     {
@@ -245,6 +306,18 @@ app.MapPut("/api/admin/orders/{id}/status", async (
     }
 
     var order = await orders.UpdateStatusAsync(id, request.Status, request.Note);
+    if (order is not null)
+    {
+        await PublishNotificationAsync(
+            notifications,
+            notificationHub,
+            order.UserEmail,
+            $"Order {order.Status}",
+            $"Your order {order.Id} status changed to {order.Status}.",
+            "order",
+            "/orders");
+    }
+
     return order is null ? Results.NotFound() : Results.Ok(order);
 });
 
@@ -383,7 +456,10 @@ app.MapPost("/api/chatbot/message", async (
 app.MapPost("/api/support/conversations", async (
     CreateSupportConversationRequest request,
     SupportMessageService support,
-    IHubContext<SupportMessageHub> hub) =>
+    UserService users,
+    NotificationService notifications,
+    IHubContext<SupportMessageHub> hub,
+    IHubContext<NotificationHub> notificationHub) =>
 {
     if (string.IsNullOrWhiteSpace(request.UserEmail) || string.IsNullOrWhiteSpace(request.Message))
     {
@@ -393,6 +469,15 @@ app.MapPost("/api/support/conversations", async (
     var conversation = await support.CreateAsync(request);
     await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationCreatedEvent, conversation);
     await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+    await PublishAdminNotificationAsync(
+        users,
+        notifications,
+        notificationHub,
+        "New support message",
+        $"{conversation.UserName} sent a new message: {conversation.Subject}",
+        "info",
+        "/admin/messages");
+
     return Results.Created($"/api/support/conversations/{conversation.Id}", conversation);
 });
 
@@ -405,13 +490,24 @@ app.MapPost("/api/support/conversations/{id}/messages", async (
     string id,
     CreateSupportMessageRequest request,
     SupportMessageService support,
-    IHubContext<SupportMessageHub> hub) =>
+    UserService users,
+    NotificationService notifications,
+    IHubContext<SupportMessageHub> hub,
+    IHubContext<NotificationHub> notificationHub) =>
 {
     var conversation = await support.AddCustomerMessageAsync(id, request);
     if (conversation is not null)
     {
         await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
         await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await PublishAdminNotificationAsync(
+            users,
+            notifications,
+            notificationHub,
+            "New support message",
+            $"{conversation.UserName} replied in {conversation.Subject}.",
+            "info",
+            "/admin/messages");
     }
 
     return conversation is null ? Results.NotFound() : Results.Ok(conversation);
@@ -436,7 +532,9 @@ app.MapPost("/api/admin/support/conversations/{id}/reply", async (
     SupportMessageService support,
     AdminAuthService auth,
     HttpContext context,
-    IHubContext<SupportMessageHub> hub) =>
+    NotificationService notifications,
+    IHubContext<SupportMessageHub> hub,
+    IHubContext<NotificationHub> notificationHub) =>
 {
     var admin = auth.ValidateRequest(context);
     if (admin?.Role != "admin")
@@ -449,6 +547,14 @@ app.MapPost("/api/admin/support/conversations/{id}/reply", async (
     {
         await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
         await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await PublishNotificationAsync(
+            notifications,
+            notificationHub,
+            conversation.UserEmail,
+            "Support replied",
+            $"Admin replied to {conversation.Subject}.",
+            "info",
+            "/messages");
     }
 
     return conversation is null ? Results.NotFound() : Results.Ok(conversation);
@@ -459,7 +565,9 @@ app.MapPost("/api/admin/support/conversations/{id}/close", async (
     SupportMessageService support,
     AdminAuthService auth,
     HttpContext context,
-    IHubContext<SupportMessageHub> hub) =>
+    NotificationService notifications,
+    IHubContext<SupportMessageHub> hub,
+    IHubContext<NotificationHub> notificationHub) =>
 {
     if (!auth.IsAuthorized(context))
     {
@@ -471,6 +579,14 @@ app.MapPost("/api/admin/support/conversations/{id}/close", async (
     {
         await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
         await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await PublishNotificationAsync(
+            notifications,
+            notificationHub,
+            conversation.UserEmail,
+            "Support conversation closed",
+            $"Your conversation about {conversation.Subject} was closed.",
+            "info",
+            "/messages");
     }
 
     return conversation is null ? Results.NotFound() : Results.Ok(conversation);
@@ -515,7 +631,7 @@ app.MapPost("/api/notifications", async (
     NotificationService notifications,
     IHubContext<NotificationHub> hub) =>
 {
-    var notification = notifications.Create(request.UserEmail, request.Title, request.Message, request.Type);
+    var notification = notifications.Create(request.UserEmail, request.Title, request.Message, request.Type, request.Link);
     await hub
         .Clients
         .Group(NotificationHub.GroupName(request.UserEmail))

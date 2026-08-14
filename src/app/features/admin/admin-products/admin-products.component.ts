@@ -134,7 +134,7 @@ export class AdminProductsComponent {
         next: () => {
           this.toast.show(this.isEditing ? this.i18n.t('productUpdated') : this.i18n.t('productAdded'));
           this.resetForm();
-          this.perfumeService.loadProducts();
+          this.perfumeService.loadProducts(true);
           this.setPage(1);
           this.saving = false;
         },
@@ -168,7 +168,7 @@ export class AdminProductsComponent {
         next: () => {
           this.toast.show(this.i18n.t('productDeleted'));
           if (this.form.id === product.id) this.resetForm();
-          this.perfumeService.loadProducts();
+          this.perfumeService.loadProducts(true);
           if (this.paginatedProducts.length === 1 && this.safeCurrentPage > 1) {
             this.setPage(this.safeCurrentPage - 1);
           }

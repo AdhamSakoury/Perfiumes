@@ -6,6 +6,7 @@ public sealed record AppNotification(
     string Title,
     string Message,
     string Type,
+    string? Link,
     bool IsRead,
     DateTimeOffset CreatedAt);
 
@@ -13,4 +14,5 @@ public sealed record CreateNotificationRequest(
     string UserEmail,
     string Title,
     string Message,
-    string Type = "info");
+    string Type = "info",
+    string? Link = null);

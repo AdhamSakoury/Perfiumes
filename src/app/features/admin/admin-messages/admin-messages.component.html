@@ -1,76 +1,130 @@
-<section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+<section class="admin-messages-page page-shell page-enter w-full">
   @if (!auth.currentUser()) {
-    <div class="support-empty">
+    <div class="support-state">
       <h1>Admin login required</h1>
       <p>Please login first to manage support messages.</p>
       <a routerLink="/login">Go to login</a>
     </div>
   } @else if (!isAdmin) {
-    <div class="support-empty">
+    <div class="support-state">
       <h1>Admins only</h1>
       <p>This inbox is only available for admin accounts.</p>
       <a routerLink="/">Back home</a>
     </div>
   } @else {
-    <div class="support-header">
-      <div>
-        <p>Admin Inbox</p>
-        <h1>Messages</h1>
-      </div>
-      <button type="button" (click)="load()" [disabled]="loading">
-        <i class="fas fa-rotate"></i>
-        <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
-      </button>
-    </div>
+    <div class="inbox-shell">
+      <header class="inbox-topbar">
+        <div class="inbox-title">
+          <span>Support Inbox</span>
+          <h1>Messages</h1>
+        </div>
 
-    <div class="support-layout">
-      <aside class="conversation-list custom-scrollbar">
-        @for (conversation of conversations; track conversation.id) {
-          <button type="button" (click)="select(conversation)" class="conversation-row" [class.active]="conversation.id === selected?.id">
-            <span class="conversation-avatar">{{ conversation.userName.slice(0, 1).toUpperCase() }}</span>
-            <span class="conversation-copy">
-              <strong>{{ conversation.userName }}</strong>
-              <small>{{ conversation.subject }}</small>
-            </span>
-            <em>{{ conversation.updatedAt | date:'shortTime' }}</em>
+        <div class="inbox-actions">
+          <span class="count-pill">{{ conversations.length }} conversations</span>
+          <button type="button" (click)="load()" [disabled]="loading" aria-label="Refresh messages">
+            <i class="fas fa-rotate"></i>
+            <span>{{ loading ? 'Refreshing' : 'Refresh' }}</span>
           </button>
-        } @empty {
-          <p class="no-conversations">No support messages yet.</p>
-        }
-      </aside>
+        </div>
+      </header>
 
-      <main class="message-panel">
-        @if (selected; as conversation) {
-          <header class="message-header">
-            <div>
-              <h2>{{ conversation.userName }}</h2>
-              <p>{{ conversation.userEmail }} · {{ conversation.status }}</p>
-            </div>
-            <button type="button" (click)="closeSelected()" [disabled]="conversation.status === 'closed'">
-              <i class="fas fa-check"></i>
-              <span>Close</span>
-            </button>
-          </header>
-
-          <div class="message-thread custom-scrollbar">
-            @for (message of conversation.messages; track message.id) {
-              <article class="message-bubble" [class.admin]="message.senderRole === 'admin'">
-                <p>{{ message.body }}</p>
-                <time>{{ message.createdAt | date:'shortTime' }}</time>
-              </article>
-            }
+      <div class="inbox-layout">
+        <aside class="conversation-pane">
+          <div class="pane-head">
+            <strong>Conversations</strong>
+            <span>{{ loading && !conversations.length ? 'Loading' : conversations.length }}</span>
           </div>
 
-          <form (ngSubmit)="reply()" class="reply-form">
-            <textarea name="replyText" [(ngModel)]="replyText" rows="1" placeholder="Message {{ conversation.userName }}" dir="auto"></textarea>
-            <button type="submit" [disabled]="replying || !replyText.trim() || conversation.status === 'closed'" aria-label="Send reply">
-              <i class="fas fa-paper-plane"></i>
-            </button>
-          </form>
-        } @else {
-          <div class="no-selection">Select a conversation to reply.</div>
-        }
-      </main>
+          <div class="conversation-list custom-scrollbar">
+            @if (loading && !conversations.length) {
+              @for (item of [1, 2, 3, 4]; track item) {
+                <div class="conversation-row skeleton-row">
+                  <span class="conversation-avatar skeleton-avatar"></span>
+                  <span class="conversation-copy">
+                    <span class="skeleton-line wide"></span>
+                    <span class="skeleton-line"></span>
+                    <span class="skeleton-line short"></span>
+                  </span>
+                </div>
+              }
+            } @else if (!conversations.length) {
+              <div class="conversation-empty">
+                <i class="fas fa-inbox"></i>
+                <strong>No messages</strong>
+                <span>New conversations will show here.</span>
+              </div>
+            } @else {
+              @for (conversation of conversations; track conversation.id) {
+                <button type="button" (click)="select(conversation)" class="conversation-row" [class.active]="conversation.id === selected?.id">
+                  <span class="conversation-avatar">{{ conversation.userName.slice(0, 1).toUpperCase() }}</span>
+                  <span class="conversation-copy">
+                    <span class="conversation-title">
+                      <strong>{{ conversation.userName }}</strong>
+                      <b class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</b>
+                    </span>
+                    <small>{{ conversation.subject }}</small>
+                    <em>{{ conversation.messages[conversation.messages.length - 1]?.body }}</em>
+                  </span>
+                  <span class="conversation-time">{{ conversation.updatedAt | date:'shortTime' }}</span>
+                </button>
+              }
+            }
+          </div>
+        </aside>
+
+        <section class="chat-pane">
+          @if (selected; as conversation) {
+            <header class="chat-header">
+              <div class="chat-person">
+                <span class="conversation-avatar">{{ conversation.userName.slice(0, 1).toUpperCase() }}</span>
+                <div>
+                  <h2>{{ conversation.userName }}</h2>
+                  <p>{{ conversation.userEmail }} - {{ conversation.status }}</p>
+                </div>
+              </div>
+
+              <button type="button" (click)="closeSelected()" [disabled]="conversation.status === 'closed'">
+                <i class="fas fa-check"></i>
+                <span>Close</span>
+              </button>
+            </header>
+
+            <div class="message-thread custom-scrollbar">
+              @for (message of conversation.messages; track message.id) {
+                <article class="message-bubble" [class.admin]="message.senderRole === 'admin'">
+                  <strong>{{ message.senderRole === 'admin' ? 'Gnouby Support' : message.senderName }}</strong>
+                  <p>{{ message.body }}</p>
+                  <time>{{ message.createdAt | date:'shortTime' }}</time>
+                </article>
+              }
+            </div>
+
+            <form (ngSubmit)="reply()" class="reply-form">
+              <textarea name="replyText" [(ngModel)]="replyText" rows="2" placeholder="Reply to {{ conversation.userName }}" dir="auto"></textarea>
+              <button type="submit" [disabled]="replying || !replyText.trim() || conversation.status === 'closed'" aria-label="Send reply">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </form>
+          } @else {
+            <div class="chat-state">
+              @if (loading) {
+                <i class="fas fa-spinner"></i>
+                <h2>Loading messages</h2>
+                <p>The inbox is opening now.</p>
+              } @else if (loadError) {
+                <i class="fas fa-triangle-exclamation"></i>
+                <h2>Messages unavailable</h2>
+                <p>{{ loadError }}</p>
+                <button type="button" (click)="load()">Try again</button>
+              } @else {
+                <i class="fas fa-comments"></i>
+                <h2>Select a conversation</h2>
+                <p>Choose a customer from the left to reply.</p>
+              }
+            </div>
+          }
+        </section>
+      </div>
     </div>
   }
 </section>

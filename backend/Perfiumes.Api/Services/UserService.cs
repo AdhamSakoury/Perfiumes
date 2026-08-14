@@ -136,6 +136,15 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
         return CreateLoginResponse(user);
     }
 
+    public async Task<IReadOnlyList<string>> GetAdminEmailsAsync()
+    {
+        return await db.Users
+            .AsNoTracking()
+            .Where(user => user.Role == "admin")
+            .Select(user => user.Email)
+            .ToListAsync();
+    }
+
     private async Task SeedUserAsync(SeedUser seedUser)
     {
         var normalizedEmail = seedUser.Email.Trim().ToLowerInvariant();

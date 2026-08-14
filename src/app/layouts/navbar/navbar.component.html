@@ -77,7 +77,7 @@
                       </div>
                       <div class="notification-list custom-scrollbar">
                         @for (item of notifications.notifications(); track item.id) {
-                          <button type="button" class="notification-item" [class.unread]="!item.isRead" (click)="notifications.markAsRead(item.id)">
+                          <button type="button" class="notification-item" [class.unread]="!item.isRead" (click)="openNotification(item)">
                             <i class="fas" [class.fa-gift]="item.type === 'promo'" [class.fa-receipt]="item.type === 'order'" [class.fa-circle-info]="item.type !== 'promo' && item.type !== 'order'"></i>
                             <span class="notification-copy" dir="auto">
                               <strong>{{ item.title }}</strong>

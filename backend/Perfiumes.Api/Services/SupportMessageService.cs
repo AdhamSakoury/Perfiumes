@@ -7,6 +7,23 @@ namespace Perfiumes.Api.Services;
 
 public sealed class SupportMessageService(PerfiumesDbContext db)
 {
+    public async Task EnsureSchemaAsync()
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportConversations_UserEmail' AND object_id = OBJECT_ID(N'[SupportConversations]'))
+    CREATE INDEX [IX_SupportConversations_UserEmail] ON [SupportConversations] ([UserEmail]);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportConversations_UpdatedAt' AND object_id = OBJECT_ID(N'[SupportConversations]'))
+    CREATE INDEX [IX_SupportConversations_UpdatedAt] ON [SupportConversations] ([UpdatedAt]);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportConversations_Status_UpdatedAt' AND object_id = OBJECT_ID(N'[SupportConversations]'))
+    CREATE INDEX [IX_SupportConversations_Status_UpdatedAt] ON [SupportConversations] ([Status], [UpdatedAt]);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportMessages_ConversationId' AND object_id = OBJECT_ID(N'[SupportMessages]'))
+    CREATE INDEX [IX_SupportMessages_ConversationId] ON [SupportMessages] ([ConversationId]);
+""");
+    }
+
     public async Task<SupportConversation> CreateAsync(CreateSupportConversationRequest request)
     {
         var now = DateTimeOffset.UtcNow;
@@ -46,6 +63,7 @@ public sealed class SupportMessageService(PerfiumesDbContext db)
         var normalizedEmail = userEmail.Trim().ToLowerInvariant();
         var conversations = await db.SupportConversations
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(item => item.Messages)
             .Where(item => item.UserEmail == normalizedEmail)
             .OrderByDescending(item => item.UpdatedAt)
@@ -58,6 +76,7 @@ public sealed class SupportMessageService(PerfiumesDbContext db)
     {
         var conversations = await db.SupportConversations
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(item => item.Messages)
             .OrderByDescending(item => item.Status == "open")
             .ThenByDescending(item => item.UpdatedAt)

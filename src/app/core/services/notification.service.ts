@@ -9,6 +9,7 @@ export interface AppNotification {
   title: string;
   message: string;
   type: 'info' | 'order' | 'promo' | 'system';
+  link?: string | null;
   isRead: boolean;
   createdAt: string;
 }

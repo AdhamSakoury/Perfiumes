@@ -1,12 +1,13 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Order, OrderStatus } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
-import { finalize, switchMap, throwError, timeout } from 'rxjs';
+import { catchError, finalize, Observable, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-orders',
@@ -15,13 +16,20 @@ import { finalize, switchMap, throwError, timeout } from 'rxjs';
   templateUrl: './admin-orders.component.html',
   styleUrl: './admin-orders.component.css'
 })
-export class AdminOrdersComponent {
+export class AdminOrdersComponent implements OnDestroy {
+  private static cachedOrders: Order[] = [];
+
   readonly statuses: OrderStatus[] = ['Processing', 'Packed', 'Shipped', 'OutForDelivery', 'Delivered', 'Cancelled'];
   orders: Order[] = [];
   loading = false;
   updatingId: string | null = null;
   draftStatus: Record<string, OrderStatus> = {};
   loadError = '';
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly refreshOnFocus = (): void => this.load(true);
+  private readonly refreshOnVisible = (): void => {
+    if (document.visibilityState === 'visible') this.load(true);
+  };
 
   constructor(
     readonly auth: AuthService,
@@ -34,27 +42,27 @@ export class AdminOrdersComponent {
       return;
     }
 
-    this.applyOrders(this.seedOrders());
-    this.load();
+    if (AdminOrdersComponent.cachedOrders.length) this.applyOrders(AdminOrdersComponent.cachedOrders);
+    this.load(AdminOrdersComponent.cachedOrders.length > 0);
+    this.startAutoRefresh();
   }
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
   }
 
-  load(): void {
-    const token = this.auth.currentAccessToken();
-    if (!this.isAdmin) return;
+  ngOnDestroy(): void {
+    if (this.refreshTimer) window.clearInterval(this.refreshTimer);
+    window.removeEventListener('focus', this.refreshOnFocus);
+    document.removeEventListener('visibilitychange', this.refreshOnVisible);
+  }
 
-    this.loading = this.orders.length === 0;
-    this.loadError = '';
-    const request = token
-      ? this.ordersApi.getAdminOrders(token)
-      : this.auth.refreshAdminAccessToken().pipe(
-          switchMap((freshToken) => freshToken ? this.ordersApi.getAdminOrders(freshToken) : throwError(() => new Error('No admin token')))
-        );
+  load(silent = false): void {
+    if (!this.isAdmin || this.loading) return;
 
-    request.pipe(
+    this.loading = !silent;
+    if (!silent) this.loadError = '';
+    this.adminRequest((token) => this.ordersApi.getAdminOrders(token)).pipe(
       timeout(10000),
       finalize(() => {
         this.loading = false;
@@ -62,23 +70,24 @@ export class AdminOrdersComponent {
     ).subscribe({
       next: (response) => {
         const orders = Array.isArray(response) ? response : [response].filter(Boolean);
-        if (orders.length) this.applyOrders(orders);
+        this.applyOrders(orders);
       },
       error: () => {
-        this.applyOrders(this.seedOrders());
+        if (!this.orders.length) this.loadError = 'Could not load orders from the database. Check the API connection and admin login.';
+        else this.toast.show('Could not refresh orders.', 'error');
       }
     });
   }
 
   updateStatus(order: Order): void {
-    const token = this.auth.currentAccessToken();
     const status = this.draftStatus[order.id];
-    if (!token || !status || status === order.status || this.updatingId) return;
+    if (!status || status === order.status || this.updatingId) return;
 
     this.updatingId = order.id;
-    this.ordersApi.updateStatus(order.id, status, token).subscribe({
+    this.adminRequest((token) => this.ordersApi.updateStatus(order.id, status, token)).subscribe({
       next: (updated) => {
         this.orders = this.orders.map((item) => (item.id === updated.id ? updated : item));
+        AdminOrdersComponent.cachedOrders = this.orders;
         this.draftStatus[updated.id] = updated.status;
         this.updatingId = null;
       },
@@ -91,59 +100,38 @@ export class AdminOrdersComponent {
 
   private applyOrders(orders: Order[]): void {
     this.orders = orders;
+    AdminOrdersComponent.cachedOrders = orders;
     this.loadError = '';
     this.loading = false;
     this.draftStatus = {};
     for (const order of orders) this.draftStatus[order.id] = order.status;
   }
 
-  private seedOrders(): Order[] {
-    const now = new Date();
-    return [
-      this.seedOrder('ORD-DEMO-1001', 'Processing', 121.5, 'Mariam Hassan', 'Cairo', now, 'Gnouby Amber Silk', 1),
-      this.seedOrder('ORD-DEMO-1002', 'Packed', 190, 'Laila Fathy', 'Alexandria', now, 'Gnouby Oud Noir', 1),
-      this.seedOrder('ORD-DEMO-1003', 'Shipped', 405, 'Hana Mahmoud', 'Cairo', now, 'Gnouby Rose Musk', 3),
-      this.seedOrder('ORD-DEMO-1004', 'OutForDelivery', 120, 'Karim Adel', 'Alexandria', now, 'Gnouby Citrus Veil', 1),
-      this.seedOrder('ORD-DEMO-1005', 'Delivered', 801, 'Dina Tarek', 'Cairo', now, 'Gnouby Velvet Night', 2)
-    ];
+  private adminRequest<T>(request: (token: string) => Observable<T>): Observable<T> {
+    const currentToken = this.auth.currentAccessToken();
+    if (currentToken) return request(currentToken).pipe(catchError((error) => this.retryWithFreshToken(error, request)));
+
+    return this.auth.refreshAdminAccessToken().pipe(
+      switchMap((token) => (token ? request(token) : throwError(() => new Error('No admin token'))))
+    );
   }
 
-  private seedOrder(
-    id: string,
-    status: OrderStatus,
-    total: number,
-    customer: string,
-    city: string,
-    now: Date,
-    itemName: string,
-    quantity: number
-  ): Order {
-    return {
-      id,
-      date: new Date(now.getTime() - Number(id.slice(-1)) * 86400000).toISOString(),
-      status,
-      subtotal: total,
-      discount: 0,
-      total,
-      promoCode: null,
-      shippingAddress: {
-        name: customer,
-        street: `${city} main street`,
-        city,
-        state: '',
-        zip: '11000',
-        country: 'Egypt'
-      },
-      items: [
-        {
-          id: Number(id.slice(-1)),
-          name: itemName,
-          price: total / quantity,
-          image: 'assets/images/perfumes/001.jpg',
-          quantity
-        }
-      ],
-      trackingEvents: []
-    };
+  private retryWithFreshToken<T>(error: unknown, request: (token: string) => Observable<T>): Observable<T> {
+    if (!(error instanceof HttpErrorResponse) || (error.status !== 401 && error.status !== 403)) {
+      return throwError(() => error);
+    }
+
+    return this.auth.refreshAdminAccessToken().pipe(
+      switchMap((token) => (token ? request(token) : throwError(() => error)))
+    );
+  }
+
+  private startAutoRefresh(): void {
+    if (!this.isAdmin) return;
+    this.refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') this.load(true);
+    }, 30000);
+    window.addEventListener('focus', this.refreshOnFocus);
+    document.addEventListener('visibilitychange', this.refreshOnVisible);
   }
 }

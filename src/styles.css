@@ -80,7 +80,7 @@ html.dark .nubian-pattern {
   padding-top: 7rem;
 }
 
-.admin-sidebar-mode main {
+.admin-sidebar-mode > main {
   padding-inline-start: var(--admin-sidebar-width);
 }
 
@@ -96,7 +96,7 @@ html.dark .nubian-pattern {
 }
 
 @media (max-width: 980px) {
-  .admin-sidebar-mode main {
+  .admin-sidebar-mode > main {
     padding-inline-start: 0;
   }
 }

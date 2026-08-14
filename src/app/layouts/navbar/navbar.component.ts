@@ -1,9 +1,9 @@
 import { Component, effect, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
 import { LocalizationService } from '@core/services/localization.service';
-import { NotificationService } from '@core/services/notification.service';
+import { AppNotification, NotificationService } from '@core/services/notification.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { ThemeService } from '@core/services/theme.service';
 
@@ -25,6 +25,7 @@ export class NavbarComponent {
     readonly i18n: LocalizationService,
     readonly notifications: NotificationService,
     readonly theme: ThemeService,
+    private readonly router: Router,
     private readonly scrollLock: ScrollLockService
   ) {
     effect((onCleanup) => {
@@ -63,6 +64,16 @@ export class NavbarComponent {
 
   toggleLanguage(): void {
     this.i18n.setLanguage(this.i18n.language() === 'ar' ? 'en' : 'ar');
+  }
+
+  openNotification(notification: AppNotification): void {
+    this.notifications.markAsRead(notification.id);
+    this.notificationsOpen.set(false);
+    this.mobileOpen.set(false);
+
+    if (notification.link) {
+      void this.router.navigateByUrl(notification.link);
+    }
   }
 }
 

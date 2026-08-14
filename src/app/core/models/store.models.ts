@@ -80,6 +80,7 @@ export interface OrderTrackingEvent {
 
 export interface Order {
   id: string;
+  userEmail?: string;
   date: string;
   status: OrderStatus;
   items: OrderItem[];

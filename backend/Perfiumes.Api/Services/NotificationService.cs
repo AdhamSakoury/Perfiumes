@@ -40,7 +40,7 @@ public sealed class NotificationService
         }
     }
 
-    public AppNotification Create(string userEmail, string title, string message, string type = "info")
+    public AppNotification Create(string userEmail, string title, string message, string type = "info", string? link = null)
     {
         lock (_sync)
         {
@@ -52,6 +52,7 @@ public sealed class NotificationService
                 title,
                 message,
                 string.IsNullOrWhiteSpace(type) ? "info" : type,
+                string.IsNullOrWhiteSpace(link) ? null : link.Trim(),
                 false,
                 DateTimeOffset.UtcNow);
 
@@ -76,6 +77,7 @@ public sealed class NotificationService
                 "Welcome to Gnouby",
                 "Your account is ready. Explore perfumes and save favorites.",
                 "system",
+                "/",
                 false,
                 now.AddMinutes(-8)),
             new AppNotification(
@@ -84,6 +86,7 @@ public sealed class NotificationService
                 "Wishlist synced",
                 "Your wishlist is saved for this account.",
                 "info",
+                "/wishlist",
                 false,
                 now.AddMinutes(-4)),
             new AppNotification(
@@ -92,6 +95,7 @@ public sealed class NotificationService
                 "New luxury picks",
                 "Fresh recommendations are available in the perfume collection.",
                 "promo",
+                "/perfumes",
                 true,
                 now.AddHours(-2))
         ];

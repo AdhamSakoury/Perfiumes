@@ -33,7 +33,6 @@ public sealed class ProductRepository(PerfiumesDbContext db, IWebHostEnvironment
 
     public async Task<IReadOnlyList<Product>> GetAllAsync()
     {
-        await EnsureSeedAsync();
         var products = await db.Products
             .AsNoTracking()
             .OrderBy(product => product.Id)
@@ -44,7 +43,6 @@ public sealed class ProductRepository(PerfiumesDbContext db, IWebHostEnvironment
 
     public async Task<Product?> GetByIdAsync(int id)
     {
-        await EnsureSeedAsync();
         var product = await db.Products.AsNoTracking().FirstOrDefaultAsync(item => item.Id == id);
         return product is null ? null : ToDto(product);
     }

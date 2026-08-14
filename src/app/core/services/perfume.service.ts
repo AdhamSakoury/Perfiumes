@@ -4,6 +4,7 @@ import { Injectable, signal } from '@angular/core';
 import { filters, promoCodes } from '../data/perfumes.data';
 import { Perfume, ProductFilters } from '@core/models/store.models';
 import { environment } from '../../../environments/environment';
+import { finalize } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class PerfumeService {
@@ -12,6 +13,7 @@ export class PerfumeService {
   readonly loadError = signal<string | null>(null);
   readonly filters = filters;
   readonly promoCodes = promoCodes;
+  private hasLoadedProducts = false;
 
   constructor(private readonly http: HttpClient) {
     this.loadProducts();
@@ -21,18 +23,23 @@ export class PerfumeService {
     return this.products();
   }
 
-  loadProducts(): void {
-    this.loading.set(true);
+  loadProducts(force = false): void {
+    if (this.loading()) return;
+    if (this.hasLoadedProducts && !force) return;
+
+    const hasProducts = this.products().length > 0;
+    this.loading.set(!hasProducts);
     this.loadError.set(null);
 
-    this.http.get<Perfume[]>(`${environment.apiBaseUrl}/api/products`).subscribe({
+    this.http.get<Perfume[]>(`${environment.apiBaseUrl}/api/products`).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: (products) => {
+        this.hasLoadedProducts = true;
         this.products.set(products);
-        this.loading.set(false);
       },
       error: () => {
-        this.products.set([]);
-        this.loading.set(false);
+        if (!hasProducts) this.products.set([]);
         this.loadError.set('Could not load products from the backend.');
       }
     });

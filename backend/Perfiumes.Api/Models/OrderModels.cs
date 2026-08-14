@@ -8,6 +8,7 @@ public sealed record OrderTrackingEventDto(string Id, string Status, string Titl
 
 public sealed record OrderDto(
     string Id,
+    string UserEmail,
     DateTimeOffset Date,
     string Status,
     IReadOnlyList<OrderItemDto> Items,

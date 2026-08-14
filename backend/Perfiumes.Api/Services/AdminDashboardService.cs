@@ -51,9 +51,8 @@ END
     public async Task<AdminDashboardSummaryDto> GetSummaryAsync()
     {
         await EnsureWalletsForUsersAsync();
-        await EnsureDemoDashboardDataAsync();
 
-        var productsCount = (await products.GetAllAsync()).Count;
+        var productsCount = await db.Products.CountAsync();
         var totalUsers = await db.Users.CountAsync();
         var totalCustomers = await db.Users.CountAsync(user => user.Role == "customer");
         var totalOrders = await db.Orders.CountAsync();
@@ -158,12 +157,18 @@ END
 
     private async Task EnsureWalletsForUsersAsync()
     {
-        var users = await db.Users.ToListAsync();
-        var walletUserIds = await db.UserWallets.Select(wallet => wallet.UserId).ToListAsync();
-        var existing = walletUserIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var users = await db.Users
+            .AsNoTracking()
+            .Where(user => !db.UserWallets.Any(wallet => wallet.UserId == user.Id))
+            .ToListAsync();
+        if (users.Count == 0)
+        {
+            return;
+        }
+
         var now = DateTimeOffset.UtcNow;
 
-        foreach (var user in users.Where(user => !existing.Contains(user.Id)))
+        foreach (var user in users)
         {
             db.UserWallets.Add(new UserWalletEntity
             {

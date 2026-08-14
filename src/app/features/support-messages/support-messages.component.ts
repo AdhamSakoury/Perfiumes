@@ -42,7 +42,8 @@ export class SupportMessagesComponent {
     }
 
     this.support.connectForCurrentUser();
-    this.load();
+    this.conversations = this.support.conversations();
+    this.load(this.conversations.length === 0);
   }
 
   get selected(): SupportConversation | null {
@@ -50,11 +51,11 @@ export class SupportMessagesComponent {
     return this.conversations.find((item) => item.id === this.selectedId) || null;
   }
 
-  load(): void {
+  load(showBusy = true): void {
     const user = this.auth.currentUser();
     if (!user) return;
 
-    this.loading = true;
+    this.loading = showBusy && this.conversations.length === 0;
     this.support.getMyConversations(user.email).subscribe({
       next: (items) => {
         this.conversations = items;

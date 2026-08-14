@@ -30,7 +30,7 @@
             <span class="thread-avatar"><i class="fas fa-headset"></i></span>
             <span class="thread-copy">
               <strong>{{ conversation.subject }}</strong>
-              <small>{{ conversation.status }} · {{ conversation.updatedAt | date:'shortTime' }}</small>
+              <small>{{ conversation.status }} - {{ conversation.updatedAt | date:'shortTime' }}</small>
             </span>
           </button>
         } @empty {

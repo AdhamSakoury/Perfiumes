@@ -54,6 +54,9 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
         {
             entity.ToTable("SupportConversations");
             entity.HasKey(conversation => conversation.Id);
+            entity.HasIndex(conversation => conversation.UserEmail);
+            entity.HasIndex(conversation => conversation.UpdatedAt);
+            entity.HasIndex(conversation => new { conversation.Status, conversation.UpdatedAt });
             entity.Property(conversation => conversation.Id).HasMaxLength(64);
             entity.Property(conversation => conversation.UserId).HasMaxLength(64);
             entity.Property(conversation => conversation.UserName).HasMaxLength(160);
@@ -70,6 +73,9 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
         {
             entity.ToTable("Orders");
             entity.HasKey(order => order.Id);
+            entity.HasIndex(order => order.UserEmail);
+            entity.HasIndex(order => order.Date);
+            entity.HasIndex(order => new { order.Status, order.Date });
             entity.Property(order => order.Id).HasMaxLength(64);
             entity.Property(order => order.UserEmail).HasMaxLength(256);
             entity.Property(order => order.Status).HasMaxLength(32);
