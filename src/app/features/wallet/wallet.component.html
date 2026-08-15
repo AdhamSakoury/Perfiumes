@@ -1,0 +1,143 @@
+<section class="wallet-page page-shell page-enter w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  @if (auth.currentUser(); as user) {
+    <div class="wallet-hero">
+      <div>
+        <span class="wallet-kicker">Wallet</span>
+        <h1>{{ user.fullName }}</h1>
+        <p>Track your balance, credit, debit, and latest wallet activity.</p>
+      </div>
+      <button type="button" (click)="refresh()" [disabled]="loading()">
+        <i class="fas fa-rotate" [class.is-spinning]="loading()"></i>
+        <span>{{ loading() ? 'Loading...' : 'Refresh' }}</span>
+      </button>
+    </div>
+
+    @if (loadError()) {
+      <div class="wallet-empty">
+        <i class="fas fa-wallet"></i>
+        <h2>Wallet unavailable</h2>
+        <p>{{ loadError() }}</p>
+        <button type="button" (click)="refresh()">Try again</button>
+      </div>
+    } @else if (loading() && !wallet()) {
+      <div class="wallet-empty">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <h2>Loading wallet...</h2>
+        <p>Fetching the latest balance from your account.</p>
+      </div>
+    } @else if (wallet(); as currentWallet) {
+      <div class="wallet-summary-grid">
+        <article class="wallet-balance-card metric-balance">
+          <span class="wallet-card-icon"><i class="fas fa-wallet"></i></span>
+          <p>Available balance</p>
+          <strong>{{ currentWallet.balance | currency:currentWallet.currency:'symbol-narrow' }}</strong>
+          <small>Updated {{ currentWallet.updatedAt | date:'medium' }}</small>
+        </article>
+        <article class="metric-credit">
+          <span class="wallet-card-icon credit"><i class="fas fa-arrow-up"></i></span>
+          <p>Lifetime credit</p>
+          <strong>{{ currentWallet.lifetimeCredit | currency:currentWallet.currency:'symbol-narrow' }}</strong>
+        </article>
+        <article class="metric-debit">
+          <span class="wallet-card-icon debit"><i class="fas fa-arrow-down"></i></span>
+          <p>Lifetime debit</p>
+          <strong>{{ currentWallet.lifetimeDebit | currency:currentWallet.currency:'symbol-narrow' }}</strong>
+        </article>
+        <article class="metric-count">
+          <span class="wallet-card-icon"><i class="fas fa-receipt"></i></span>
+          <p>Transactions</p>
+          <strong>{{ transactions().length }}</strong>
+        </article>
+      </div>
+
+      <div class="wallet-content-grid">
+        <section class="wallet-panel">
+          <div class="wallet-panel-title">
+            <div>
+              <p>Activity</p>
+              <h2>Transaction history</h2>
+            </div>
+            <span>{{ currentWallet.currency }}</span>
+          </div>
+
+          <div class="transaction-list">
+            @for (transaction of transactions(); track transaction.id) {
+              <article class="transaction-row" [class.debit]="transaction.type === 'debit'">
+                <span class="transaction-icon">
+                  <i class="fas" [class]="transactionIcon(transaction)"></i>
+                </span>
+                <div>
+                  <strong>{{ transaction.reason || 'Wallet update' }}</strong>
+                  <small>{{ transaction.createdAt | date:'medium' }}</small>
+                  @if (transaction.referenceId) {
+                    <em>{{ transaction.referenceId }}</em>
+                  }
+                </div>
+                <b>
+                  {{ transaction.type === 'debit' ? '-' : '+' }}{{ transaction.amount | currency:currentWallet.currency:'symbol-narrow' }}
+                </b>
+              </article>
+            } @empty {
+              <div class="wallet-empty compact">
+                <i class="fas fa-receipt"></i>
+                <h2>No wallet activity yet</h2>
+                <p>Your credit and debit records will appear here.</p>
+              </div>
+            }
+          </div>
+        </section>
+
+        <aside class="wallet-panel wallet-help-panel">
+          <div class="wallet-panel-title">
+            <div>
+              <p>Account</p>
+              <h2>Add money</h2>
+            </div>
+          </div>
+          <form class="wallet-topup-form" (ngSubmit)="addMoney()">
+            <label>
+              <span>Amount</span>
+              <input type="number" min="1" step="0.01" [ngModel]="topUpAmount()" (ngModelChange)="topUpAmount.set($event)" name="topUpAmount" placeholder="0.00">
+            </label>
+            <button type="submit" [disabled]="topUpBusy() || topUpAmount() <= 0">
+              <i class="fas" [class.fa-plus]="!topUpBusy()" [class.fa-circle-notch]="topUpBusy()" [class.fa-spin]="topUpBusy()"></i>
+              <span>{{ topUpBusy() ? 'Adding...' : 'Add money' }}</span>
+            </button>
+          </form>
+
+          <div class="wallet-panel-title wallet-details-title">
+            <div>
+              <p>Account</p>
+              <h2>Wallet details</h2>
+            </div>
+          </div>
+          <dl>
+            <div>
+              <dt>Wallet ID</dt>
+              <dd>{{ currentWallet.id }}</dd>
+            </div>
+            <div>
+              <dt>Currency</dt>
+              <dd>{{ currentWallet.currency }}</dd>
+            </div>
+            <div>
+              <dt>Current user</dt>
+              <dd>{{ user.email }}</dd>
+            </div>
+          </dl>
+          <a routerLink="/orders">
+            <i class="fas fa-box"></i>
+            <span>View orders</span>
+          </a>
+        </aside>
+      </div>
+    }
+  } @else {
+    <div class="wallet-empty">
+      <i class="fas fa-user-lock"></i>
+      <h1>Login required</h1>
+      <p>Please login to view your wallet.</p>
+      <a routerLink="/login">Go to Login</a>
+    </div>
+  }
+</section>

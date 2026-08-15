@@ -1,4 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -9,6 +10,7 @@ import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { catchError, switchMap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-checkout-page',
@@ -19,6 +21,7 @@ import { TranslatePipe } from '@shared/pipes/translate.pipe';
 })
 export class CheckoutPageComponent {
   form = { name: '', email: '', phone: '', address: '', city: '', postal: '' };
+  paymentMethod: 'cashOnDelivery' | 'wallet' = 'cashOnDelivery';
   error = '';
   processing = false;
 
@@ -48,6 +51,7 @@ export class CheckoutPageComponent {
 
     const user = this.auth.currentUser();
     if (!user) return;
+
     this.processing = true;
 
     const order: Omit<Order, 'id' | 'date' | 'status' | 'trackingEvents'> & { userEmail: string } = {
@@ -62,6 +66,8 @@ export class CheckoutPageComponent {
       subtotal: this.cart.subtotal(),
       discount: this.cart.discount(),
       total: this.cart.total(),
+      paymentMethod: this.paymentMethod,
+      paymentStatus: this.paymentMethod === 'wallet' ? 'paid' : 'pending',
       shippingAddress: {
         name: this.form.name,
         street: this.form.address,
@@ -73,7 +79,14 @@ export class CheckoutPageComponent {
       promoCode: this.cart.promo()?.code || null
     };
 
-    this.orders.create(order).subscribe({
+    const orderRequest = this.paymentMethod === 'wallet'
+      ? this.auth.ensureAccessToken().pipe(
+        switchMap((token) => token ? this.orders.create(order, token) : throwError(() => new Error('No access token'))),
+        catchError((error) => this.retryWalletOrderAfterAuthError(error, order))
+      )
+      : this.orders.create(order);
+
+    orderRequest.subscribe({
       next: (createdOrder) => {
         this.auth.updateCurrentUser({ ...user, orders: [createdOrder, ...(user.orders || [])] });
         this.cart.clear();
@@ -82,11 +95,26 @@ export class CheckoutPageComponent {
         this.toast.show(this.i18n.t('orderPlacedSuccess'));
         void this.router.navigateByUrl('/orders');
       },
-      error: () => {
+      error: (error: unknown) => {
         this.processing = false;
-        this.error = 'Could not place your order. Please try again.';
+        this.error = error instanceof HttpErrorResponse
+          ? error.error?.message || 'Could not place your order. Please try again.'
+          : 'Could not place your order. Please try again.';
       }
     });
+  }
+
+  private retryWalletOrderAfterAuthError(
+    error: unknown,
+    order: Omit<Order, 'id' | 'date' | 'status' | 'trackingEvents'> & { userEmail: string }
+  ) {
+    if (!(error instanceof HttpErrorResponse) || (error.status !== 401 && error.status !== 403)) {
+      return throwError(() => error);
+    }
+
+    return this.auth.ensureAccessToken(true).pipe(
+      switchMap((token) => token ? this.orders.create(order, token) : throwError(() => error))
+    );
   }
 }
 

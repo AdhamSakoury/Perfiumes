@@ -56,6 +56,13 @@
   box-shadow: 0 14px 26px -20px rgba(245, 166, 35, 0.9);
 }
 
+.admin-orders-header button span,
+.admin-orders-header button i,
+.status-controls button span,
+.status-controls button i {
+  color: inherit;
+}
+
 .admin-orders-header button:disabled,
 .status-controls button:disabled {
   background: #8DA3A0;
@@ -65,8 +72,8 @@
   transform: none;
 }
 
-.admin-orders-header button:disabled i,
-.status-controls button:disabled i {
+.admin-orders-header button i.is-spinning,
+.status-controls button i.is-spinning {
   animation: gentle-spin 900ms linear infinite;
 }
 
@@ -149,7 +156,8 @@
   font-weight: 900;
 }
 
-.status-pill {
+.status-pill,
+.payment-pill {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -160,6 +168,16 @@
   padding: 0.35rem 0.65rem;
   white-space: nowrap;
   transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.payment-pill {
+  background: rgba(27, 77, 77, 0.09);
+  color: #153f3f;
+}
+
+.payment-pill.paid {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
 }
 
 .order-card:hover .status-pill {
@@ -264,6 +282,16 @@
 
 :host-context(.dark) .order-items span {
   background: rgba(245, 166, 35, 0.1);
+}
+
+:host-context(.dark) .payment-pill {
+  background: rgba(245, 166, 35, 0.1);
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .payment-pill.paid {
+  background: rgba(22, 163, 74, 0.18);
+  color: #86efac;
 }
 
 :host-context(.dark) .order-title span,

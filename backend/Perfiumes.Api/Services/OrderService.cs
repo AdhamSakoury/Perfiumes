@@ -78,6 +78,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Date' AND obje
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Status_Date' AND object_id = OBJECT_ID(N'[Orders]'))
     CREATE INDEX [IX_Orders_Status_Date] ON [Orders] ([Status], [Date]);
+
+IF COL_LENGTH(N'[Orders]', N'PaymentMethod') IS NULL
+    ALTER TABLE [Orders] ADD [PaymentMethod] nvarchar(32) NOT NULL CONSTRAINT [DF_Orders_PaymentMethod] DEFAULT N'cashOnDelivery';
+
+IF COL_LENGTH(N'[Orders]', N'PaymentStatus') IS NULL
+    ALTER TABLE [Orders] ADD [PaymentStatus] nvarchar(32) NOT NULL CONSTRAINT [DF_Orders_PaymentStatus] DEFAULT N'pending';
 """);
     }
 
@@ -121,19 +127,62 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Status_Date' A
         return order is null ? null : ToDto(order);
     }
 
-    public async Task<OrderDto> CreateAsync(CreateOrderRequest request)
+    public async Task<OrderDto> CreateAsync(CreateOrderRequest request, string? authenticatedEmail = null)
     {
         var now = DateTimeOffset.UtcNow;
         var id = $"ORD-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():X}";
+        var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
+        var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
+        var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
+
+        if (paymentMethod == "wallet")
+        {
+            if (string.IsNullOrWhiteSpace(authenticatedEmail)
+                || !authenticatedEmail.Trim().Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Wallet payment requires the logged-in customer.");
+            }
+
+            var wallet = await db.UserWallets
+                .Include(item => item.Transactions)
+                .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
+            if (wallet is null)
+            {
+                throw new InvalidOperationException("Wallet was not found for this customer.");
+            }
+
+            var amount = Math.Round(request.Total, 2);
+            if (amount <= 0 || wallet.Balance < amount)
+            {
+                throw new InvalidOperationException("Insufficient wallet balance.");
+            }
+
+            wallet.Balance -= amount;
+            wallet.LifetimeDebit += amount;
+            wallet.UpdatedAt = now;
+            wallet.Transactions.Add(new WalletTransactionEntity
+            {
+                Id = $"wtx_{Guid.NewGuid():N}",
+                WalletId = wallet.Id,
+                Amount = amount,
+                Type = "debit",
+                Reason = $"Payment for order {id}",
+                ReferenceId = id,
+                CreatedAt = now
+            });
+        }
+
         var order = new OrderEntity
         {
             Id = id,
-            UserEmail = request.UserEmail.Trim().ToLowerInvariant(),
+            UserEmail = normalizedEmail,
             Status = "Processing",
             Date = now,
             Subtotal = request.Subtotal,
             Discount = request.Discount,
             Total = request.Total,
+            PaymentMethod = paymentMethod,
+            PaymentStatus = paymentStatus,
             ShippingName = request.ShippingAddress.Name,
             ShippingStreet = request.ShippingAddress.Street,
             ShippingCity = request.ShippingAddress.City,
@@ -213,6 +262,13 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Status_Date' A
         return TrackingCopy.ContainsKey(cleaned) ? cleaned : "Processing";
     }
 
+    private static string NormalizePaymentMethod(string? paymentMethod)
+    {
+        return paymentMethod?.Trim().Equals("wallet", StringComparison.OrdinalIgnoreCase) == true
+            ? "wallet"
+            : "cashOnDelivery";
+    }
+
     private static OrderDto ToDto(OrderEntity order)
     {
         return new OrderDto(
@@ -224,6 +280,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Status_Date' A
             order.Subtotal,
             order.Discount,
             order.Total,
+            order.PaymentMethod,
+            order.PaymentStatus,
             new ShippingAddressDto(
                 order.ShippingName,
                 order.ShippingStreet,

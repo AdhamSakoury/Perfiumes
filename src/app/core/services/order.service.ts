@@ -14,8 +14,9 @@ export class OrderService {
     });
   }
 
-  create(order: Omit<Order, 'id' | 'date' | 'status' | 'trackingEvents'> & { userEmail: string }): Observable<Order> {
-    return this.http.post<Order>(`${environment.apiBaseUrl}/api/orders`, order);
+  create(order: Omit<Order, 'id' | 'date' | 'status' | 'trackingEvents'> & { userEmail: string }, token?: string): Observable<Order> {
+    const options = token ? { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) } : {};
+    return this.http.post<Order>(`${environment.apiBaseUrl}/api/orders`, order, options);
   }
 
   getAdminOrders(token: string): Observable<Order[]> {

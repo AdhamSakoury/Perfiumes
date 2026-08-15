@@ -95,6 +95,21 @@ export class AuthService {
     );
   }
 
+  ensureAccessToken(forceRefresh = false): Observable<string | null> {
+    const currentToken = this.currentAccessToken();
+    if (currentToken && !forceRefresh) return of(currentToken);
+
+    const user = this.currentUser();
+    if (!user) return of(null);
+    if (user.role === 'admin') return this.refreshAdminAccessToken();
+    if (!user.password || user.authProvider === 'google') return of(null);
+
+    return this.login(user.email, user.password, true).pipe(
+      map((result) => result.accessToken || null),
+      catchError(() => of(null))
+    );
+  }
+
   loginWithGoogle(credential: string, remember = true): Observable<AuthResult> {
     return this.http.post<GoogleLoginResponse>(`${environment.apiBaseUrl}/api/auth/google`, { credential }).pipe(
       map((response) => {

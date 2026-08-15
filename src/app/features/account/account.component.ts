@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe, DOCUMENT } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, Inject, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,6 +12,7 @@ import { WishlistService } from '@core/services/wishlist.service';
 import { WalletService } from '@core/services/wallet.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { catchError, switchMap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-account-page',
@@ -166,11 +168,11 @@ export class AccountPageComponent implements OnInit {
   }
 
   loadWallet(): void {
-    const token = this.auth.currentAccessToken();
-    if (!token) return;
-
     this.walletLoading.set(true);
-    this.walletService.getCurrentWallet(token).subscribe({
+    this.auth.ensureAccessToken().pipe(
+      switchMap((token) => token ? this.walletService.getCurrentWallet(token) : throwError(() => new Error('No access token'))),
+      catchError((error) => this.retryWalletLoadAfterAuthError(error))
+    ).subscribe({
       next: (wallet) => {
         this.wallet.set(wallet);
         this.walletLoading.set(false);
@@ -179,6 +181,16 @@ export class AccountPageComponent implements OnInit {
         this.walletLoading.set(false);
       }
     });
+  }
+
+  private retryWalletLoadAfterAuthError(error: unknown) {
+    if (!(error instanceof HttpErrorResponse) || (error.status !== 401 && error.status !== 403)) {
+      return throwError(() => error);
+    }
+
+    return this.auth.ensureAccessToken(true).pipe(
+      switchMap((token) => token ? this.walletService.getCurrentWallet(token) : throwError(() => error))
+    );
   }
 
   private emptyForm() {

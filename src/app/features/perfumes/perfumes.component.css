@@ -86,3 +86,49 @@
 :host-context(.dark) .mobile-sort-option.is-active {
   color: #F5A623;
 }
+
+.perfumes-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1.5rem;
+}
+
+.perfumes-pagination button {
+  min-width: 2.6rem;
+  height: 2.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1B4D4D;
+  font-weight: 900;
+}
+
+.perfumes-pagination button:hover:not(:disabled),
+.perfumes-pagination button.active {
+  border-color: #F5A623;
+  background: #F5A623;
+  color: #1A1510;
+}
+
+.perfumes-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+:host-context(.dark) .perfumes-pagination button {
+  background: rgba(29, 43, 43, 0.9);
+  color: #E6D5B8;
+  border-color: rgba(245, 166, 35, 0.24);
+}
+
+:host-context(.dark) .perfumes-pagination button:hover:not(:disabled),
+:host-context(.dark) .perfumes-pagination button.active {
+  background: #F5A623;
+  color: #1A1510;
+}

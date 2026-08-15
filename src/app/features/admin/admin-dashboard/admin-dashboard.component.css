@@ -71,6 +71,13 @@
   box-shadow: 0 14px 26px -20px rgba(245, 166, 35, 0.9);
 }
 
+.admin-topbar button span,
+.admin-topbar button i,
+.wallet-controls button span,
+.wallet-controls button i {
+  color: inherit;
+}
+
 .admin-topbar button:disabled,
 .wallet-controls button:disabled {
   background: #8DA3A0;
@@ -80,7 +87,7 @@
   transform: none;
 }
 
-.admin-topbar button:disabled i {
+.admin-topbar button i.is-spinning {
   animation: gentle-spin 900ms linear infinite;
 }
 

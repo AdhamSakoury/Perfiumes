@@ -94,6 +94,17 @@
   color: #1A1510;
 }
 
+.inbox-topbar button span,
+.inbox-topbar button i,
+.chat-header button span,
+.chat-header button i,
+.reply-form button span,
+.reply-form button i,
+.chat-state button span,
+.chat-state button i {
+  color: inherit;
+}
+
 .inbox-topbar button:disabled,
 .chat-header button:disabled,
 .reply-form button:disabled {
@@ -101,7 +112,7 @@
   cursor: not-allowed;
 }
 
-.inbox-topbar button:disabled i,
+.inbox-topbar button i.is-spinning,
 .chat-state .fa-spinner {
   animation: spin 900ms linear infinite;
 }

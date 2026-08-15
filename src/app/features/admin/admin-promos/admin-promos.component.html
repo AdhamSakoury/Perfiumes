@@ -1,0 +1,90 @@
+<section class="page-shell admin-promos-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="admin-promos-empty">
+      <h1>Admin login required</h1>
+      <a routerLink="/login">Go to login</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="admin-promos-empty">
+      <h1>Admins only</h1>
+      <a routerLink="/">Back home</a>
+    </div>
+  } @else {
+    <div class="admin-promos-main">
+      <header class="admin-promos-topbar">
+        <div>
+          <p>Marketing</p>
+          <h2>Promo Codes</h2>
+          <span>Create limited-time discounts and notify customers instantly.</span>
+        </div>
+        <button type="button" (click)="load()" [disabled]="loading">
+          <i class="fas fa-rotate"></i>
+          <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+        </button>
+      </header>
+
+      <div class="admin-promos-grid">
+        <form class="admin-promos-form" (ngSubmit)="create()">
+          <div>
+            <p>Create</p>
+            <h3>New promo code</h3>
+          </div>
+          <label>
+            <span>Code</span>
+            <input name="code" [(ngModel)]="form.code" placeholder="SUMMER20">
+          </label>
+          <label>
+            <span>Discount percent</span>
+            <input type="number" min="1" max="95" name="discountPercent" [(ngModel)]="form.discountPercent">
+          </label>
+          <label>
+            <span>Expires at</span>
+            <input type="datetime-local" name="expiresAt" [(ngModel)]="form.expiresAt">
+          </label>
+          <button type="submit" [disabled]="saving">
+            <i class="fas" [class.fa-plus]="!saving" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
+            <span>{{ saving ? 'Creating...' : 'Create promo' }}</span>
+          </button>
+        </form>
+
+        <section class="admin-promos-panel">
+          <div class="admin-promos-panel-title">
+            <div>
+              <p>Existing</p>
+              <h3>Promo codes</h3>
+            </div>
+            <span>{{ promos.length }} total</span>
+          </div>
+
+          @if (loading && !promos.length) {
+            <div class="admin-promos-empty inside">
+              <h1>Loading promos...</h1>
+            </div>
+          } @else if (loadError) {
+            <div class="admin-promos-empty inside">
+              <h1>Promos unavailable</h1>
+              <p>{{ loadError }}</p>
+            </div>
+          } @else {
+            <div class="admin-promos-list">
+              @for (promo of promos; track promo.id) {
+                <article>
+                  <div>
+                    <strong>{{ promo.code }}</strong>
+                    <small>{{ promo.discountPercent | number:'1.0-2' }}% off · expires {{ promo.expiresAt | date:'medium' }}</small>
+                    <em>Created by {{ promo.createdByEmail }}</em>
+                  </div>
+                  <span [class.expired]="promo.isExpired">{{ promo.isExpired ? 'Expired' : 'Active' }}</span>
+                </article>
+              } @empty {
+                <div class="admin-promos-empty inside">
+                  <h1>No promo codes yet</h1>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      </div>
+    </div>
+  }
+</section>

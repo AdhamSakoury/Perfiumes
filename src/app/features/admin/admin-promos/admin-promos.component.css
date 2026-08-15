@@ -1,0 +1,225 @@
+.admin-promos-page {
+  color: #153f3f;
+  padding-top: 6rem;
+}
+
+.admin-promos-main {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+}
+
+.admin-promos-topbar,
+.admin-promos-panel-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-promos-topbar p,
+.admin-promos-form p,
+.admin-promos-panel-title p {
+  color: #F5A623;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-promos-topbar h2,
+.admin-promos-form h3,
+.admin-promos-panel-title h3,
+.admin-promos-empty h1 {
+  color: #153f3f;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.admin-promos-topbar span,
+.admin-promos-panel-title span,
+.admin-promos-empty p {
+  color: #5D4E37;
+  font-weight: 700;
+}
+
+.admin-promos-grid {
+  display: grid;
+  grid-template-columns: minmax(17rem, 24rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.admin-promos-form,
+.admin-promos-panel,
+.admin-promos-empty {
+  border: 1px solid rgba(27, 77, 77, 0.1);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 34px -32px rgba(26, 21, 16, 0.42);
+  padding: 1rem;
+}
+
+.admin-promos-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-promos-form label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.admin-promos-form label span {
+  color: #5D4E37;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-promos-form input {
+  min-height: 2.55rem;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 0.45rem;
+  background: #fff;
+  color: #153f3f;
+  font-weight: 800;
+  outline: 0;
+  padding: 0.55rem 0.7rem;
+}
+
+.admin-promos-topbar button,
+.admin-promos-form button,
+.admin-promos-empty a {
+  min-height: 2.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.45rem;
+  background: #153f3f;
+  color: #fff;
+  font-weight: 900;
+  padding: 0.55rem 0.85rem;
+}
+
+.admin-promos-form button:hover,
+.admin-promos-topbar button:hover {
+  background: #F5A623;
+  color: #1A1510;
+}
+
+.admin-promos-topbar button span,
+.admin-promos-topbar button i,
+.admin-promos-form button span,
+.admin-promos-form button i {
+  color: inherit;
+}
+
+.admin-promos-form button:disabled,
+.admin-promos-topbar button:disabled {
+  background: #8DA3A0;
+  cursor: not-allowed;
+}
+
+.admin-promos-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-promos-list article {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(230, 213, 184, 0.58);
+  border-radius: 0.5rem;
+  background: rgba(245, 240, 230, 0.38);
+  padding: 0.85rem;
+}
+
+.admin-promos-list strong,
+.admin-promos-list small,
+.admin-promos-list em {
+  display: block;
+}
+
+.admin-promos-list strong {
+  color: #153f3f;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.admin-promos-list small,
+.admin-promos-list em {
+  color: #5D4E37;
+  font-size: 0.82rem;
+  font-style: normal;
+}
+
+.admin-promos-list article > span {
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.35rem 0.65rem;
+}
+
+.admin-promos-list article > span.expired {
+  background: rgba(198, 93, 59, 0.12);
+  color: #C65D3B;
+}
+
+.admin-promos-empty {
+  text-align: center;
+}
+
+.admin-promos-empty.inside {
+  box-shadow: none;
+}
+
+:host-context(.dark) .admin-promos-form,
+:host-context(.dark) .admin-promos-panel,
+:host-context(.dark) .admin-promos-empty {
+  background: rgba(22, 34, 34, 0.96);
+  border-color: rgba(245, 166, 35, 0.2);
+}
+
+:host-context(.dark) .admin-promos-form input {
+  background: #1D2B2B;
+  color: #E6D5B8;
+  border-color: rgba(245, 166, 35, 0.32);
+}
+
+:host-context(.dark) .admin-promos-topbar h2,
+:host-context(.dark) .admin-promos-form h3,
+:host-context(.dark) .admin-promos-panel-title h3,
+:host-context(.dark) .admin-promos-empty h1,
+:host-context(.dark) .admin-promos-list strong {
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .admin-promos-topbar span,
+:host-context(.dark) .admin-promos-panel-title span,
+:host-context(.dark) .admin-promos-form label span,
+:host-context(.dark) .admin-promos-list small,
+:host-context(.dark) .admin-promos-list em {
+  color: rgba(230, 213, 184, 0.75);
+}
+
+:host-context(.dark) .admin-promos-list article {
+  background: rgba(29, 43, 43, 0.78);
+  border-color: rgba(245, 166, 35, 0.16);
+}
+
+@media (max-width: 860px) {
+  .admin-promos-topbar,
+  .admin-promos-panel-title,
+  .admin-promos-list article {
+    flex-direction: column;
+  }
+
+  .admin-promos-grid {
+    grid-template-columns: 1fr;
+  }
+}

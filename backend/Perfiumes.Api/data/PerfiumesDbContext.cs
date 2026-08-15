@@ -14,6 +14,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
     public DbSet<SupportMessageEntity> SupportMessages => Set<SupportMessageEntity>();
     public DbSet<UserWalletEntity> UserWallets => Set<UserWalletEntity>();
     public DbSet<WalletTransactionEntity> WalletTransactions => Set<WalletTransactionEntity>();
+    public DbSet<PromoCodeEntity> PromoCodes => Set<PromoCodeEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +83,8 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(order => order.Subtotal).HasPrecision(18, 2);
             entity.Property(order => order.Discount).HasPrecision(18, 2);
             entity.Property(order => order.Total).HasPrecision(18, 2);
+            entity.Property(order => order.PaymentMethod).HasMaxLength(32);
+            entity.Property(order => order.PaymentStatus).HasMaxLength(32);
             entity.Property(order => order.ShippingName).HasMaxLength(160);
             entity.Property(order => order.ShippingStreet).HasMaxLength(500);
             entity.Property(order => order.ShippingCity).HasMaxLength(120);
@@ -166,6 +169,18 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(transaction => transaction.Type).HasMaxLength(24);
             entity.Property(transaction => transaction.Reason).HasMaxLength(260);
             entity.Property(transaction => transaction.ReferenceId).HasMaxLength(120);
+        });
+
+        modelBuilder.Entity<PromoCodeEntity>(entity =>
+        {
+            entity.ToTable("PromoCodes");
+            entity.HasKey(promo => promo.Id);
+            entity.HasIndex(promo => promo.Code).IsUnique();
+            entity.HasIndex(promo => promo.ExpiresAt);
+            entity.Property(promo => promo.Id).HasMaxLength(64);
+            entity.Property(promo => promo.Code).HasMaxLength(40);
+            entity.Property(promo => promo.Discount).HasPrecision(5, 4);
+            entity.Property(promo => promo.CreatedByEmail).HasMaxLength(256);
         });
     }
 }

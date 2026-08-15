@@ -49,6 +49,19 @@ export interface CartLine extends CartItem {
 export interface PromoData {
   code: string;
   discount: number;
+  expiresAt?: string;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discount: number;
+  discountPercent: number;
+  expiresAt: string;
+  createdAt: string;
+  createdByEmail: string;
+  isActive: boolean;
+  isExpired: boolean;
 }
 
 export interface OrderItem {
@@ -87,6 +100,8 @@ export interface Order {
   subtotal: number;
   discount: number;
   total: number;
+  paymentMethod?: 'cashOnDelivery' | 'wallet' | string;
+  paymentStatus?: 'pending' | 'paid' | string;
   shippingAddress: ShippingAddress;
   promoCode: string | null;
   trackingEvents?: OrderTrackingEvent[];

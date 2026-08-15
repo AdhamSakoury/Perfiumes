@@ -19,7 +19,9 @@ export class CartPageComponent {
   constructor(readonly cart: CartService, readonly auth: AuthService) {}
 
   applyPromo(): void {
-    if (this.cart.applyPromo(this.promoCode)) this.promoCode = '';
+    this.cart.applyPromo(this.promoCode).subscribe((applied) => {
+      if (applied) this.promoCode = '';
+    });
   }
 }
 

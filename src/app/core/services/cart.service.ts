@@ -3,9 +3,11 @@ import { Router } from '@angular/router';
 import { CartItem, CartLine, PromoData } from '@core/models/store.models';
 import { AuthService } from './auth.service';
 import { PerfumeService } from './perfume.service';
+import { PromoCodeService } from './promo-code.service';
 import { StorageService } from './storage.service';
 import { ToastService } from './toast.service';
 import { LocalizationService } from './localization.service';
+import { Observable, catchError, map, of, tap } from 'rxjs';
 
 const CART_KEY = 'gnouby_cart';
 const PROMO_KEY = 'gnouby_promo';
@@ -28,6 +30,7 @@ export class CartService {
   constructor(
     private readonly storage: StorageService,
     private readonly perfumes: PerfumeService,
+    private readonly promoCodes: PromoCodeService,
     private readonly auth: AuthService,
     private readonly router: Router,
     private readonly toast: ToastService,
@@ -66,20 +69,28 @@ export class CartService {
     this.items.set([]);
   }
 
-  applyPromo(code: string): boolean {
+  applyPromo(code: string): Observable<boolean> {
     const normalized = code.trim().toUpperCase();
-    const discount = this.perfumes.promoCodes[normalized];
-    if (!normalized || !discount) {
+    if (!normalized) {
       this.clearPromo();
       this.toast.show(this.i18n.t('invalidPromo'), 'error');
-      return false;
+      return of(false);
     }
 
-    const promo = { code: normalized, discount };
-    this.storage.set(PROMO_KEY, promo);
-    this.promo.set(promo);
-    this.toast.show(this.i18n.t('promoApplied').replace('{code}', normalized).replace('{discount}', String(Math.round(discount * 100))), 'success');
-    return true;
+    return this.promoCodes.validate(normalized).pipe(
+      tap((promo) => {
+        const appliedPromo = { code: promo.code, discount: promo.discount, expiresAt: promo.expiresAt };
+        this.storage.set(PROMO_KEY, appliedPromo);
+        this.promo.set(appliedPromo);
+        this.toast.show(this.i18n.t('promoApplied').replace('{code}', promo.code).replace('{discount}', String(Math.round(promo.discount * 100))), 'success');
+      }),
+      map(() => true),
+      catchError(() => {
+        this.clearPromo();
+        this.toast.show(this.i18n.t('invalidPromo'), 'error');
+        return of(false);
+      })
+    );
   }
 
   clearPromo(): void {

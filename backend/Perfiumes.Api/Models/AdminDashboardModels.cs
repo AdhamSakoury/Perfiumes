@@ -31,6 +31,8 @@ public sealed record AdminWalletDto(
 
 public sealed record AdjustWalletRequest(decimal Amount, string Type, string Reason, string? ReferenceId);
 
+public sealed record TopUpWalletRequest(decimal Amount, string? Reason);
+
 public sealed record WalletTransactionDto(
     string Id,
     decimal Amount,

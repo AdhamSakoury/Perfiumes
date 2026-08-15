@@ -116,6 +116,45 @@ END
         return wallet is null ? null : ToUserWalletDto(wallet);
     }
 
+    public async Task<UserWalletDto?> TopUpWalletForUserAsync(string userEmail, TopUpWalletRequest request)
+    {
+        if (request.Amount <= 0)
+        {
+            return null;
+        }
+
+        await EnsureWalletsForUsersAsync();
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var wallet = await db.UserWallets
+            .Include(item => item.Transactions)
+            .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
+
+        if (wallet is null)
+        {
+            return null;
+        }
+
+        var amount = Math.Round(request.Amount, 2);
+        var now = DateTimeOffset.UtcNow;
+
+        wallet.Balance += amount;
+        wallet.LifetimeCredit += amount;
+        wallet.UpdatedAt = now;
+        wallet.Transactions.Add(new WalletTransactionEntity
+        {
+            Id = $"wtx_{Guid.NewGuid():N}",
+            WalletId = wallet.Id,
+            Amount = amount,
+            Type = "credit",
+            Reason = string.IsNullOrWhiteSpace(request.Reason) ? "Wallet top up" : request.Reason.Trim(),
+            ReferenceId = $"topup_{Guid.NewGuid():N}",
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync();
+        return ToUserWalletDto(wallet);
+    }
+
     public async Task<AdminWalletDto?> AdjustWalletAsync(string walletId, AdjustWalletRequest request)
     {
         var wallet = await db.UserWallets.Include(item => item.User).FirstOrDefaultAsync(item => item.Id == walletId);

@@ -27,10 +27,24 @@
 
             <div>
               <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">{{ 'paymentMethod' | t }}</h3>
-              <label class="flex items-center gap-3 p-4 rounded-xl border border-nubian-gold">
-                <input type="radio" name="payment" checked class="custom-radio">
-                <span>{{ 'cashOnDelivery' | t }}</span>
-              </label>
+              <div class="grid gap-3">
+                <label class="checkout-payment-option" [class.active]="paymentMethod === 'cashOnDelivery'">
+                  <input type="radio" name="payment" value="cashOnDelivery" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <span class="payment-icon"><i class="fas fa-money-bill-wave"></i></span>
+                  <span>
+                    <strong>{{ 'cashOnDelivery' | t }}</strong>
+                    <small>Pay when your order arrives.</small>
+                  </span>
+                </label>
+                <label class="checkout-payment-option" [class.active]="paymentMethod === 'wallet'">
+                  <input type="radio" name="payment" value="wallet" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <span class="payment-icon"><i class="fas fa-wallet"></i></span>
+                  <span>
+                    <strong>Pay with wallet</strong>
+                    <small>Use your available wallet balance instantly.</small>
+                  </span>
+                </label>
+              </div>
             </div>
 
             <button type="submit" [disabled]="processing" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-70">

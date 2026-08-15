@@ -11,8 +11,12 @@
           </a>
 
           <div class="desktop-nav-links">
-            <a routerLink="/" routerLinkActive="nav-link-active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">{{ i18n.t('home') }}</a>
-            <a routerLink="/perfumes" routerLinkActive="nav-link-active" class="nav-link">{{ i18n.t('perfumes') }}</a>
+            <a routerLink="/" routerLinkActive="nav-link-active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">
+              <i class="fas fa-home nav-link-icon"></i><span>{{ i18n.t('home') }}</span>
+            </a>
+            <a routerLink="/perfumes" routerLinkActive="nav-link-active" class="nav-link">
+              <i class="fas fa-spray-can-sparkles nav-link-icon"></i><span>{{ i18n.t('perfumes') }}</span>
+            </a>
             @if (auth.currentUser()?.role === 'admin') {
               <a routerLink="/admin" routerLinkActive="nav-link-active" class="nav-link">
                 <i class="fas fa-gauge-high nav-link-icon"></i><span>Dashboard</span>
@@ -21,10 +25,13 @@
             @if (auth.currentUser()?.role !== 'admin') {
               <a routerLink="/wishlist" routerLinkActive="nav-link-active" class="nav-link"><i class="fas fa-heart nav-link-icon"></i><span>{{ i18n.t('wishlist') }}</span></a>
               <a routerLink="/cart" routerLinkActive="nav-link-active" class="nav-link nav-link-cart">
-                <i class="fas fa-shopping-cart nav-link-icon"></i><span>{{ i18n.t('cart') }}</span>
-                @if (cart.count() > 0) {
-                  <span class="cart-badge">{{ cart.count() }}</span>
-                }
+                <span class="nav-icon-wrap">
+                  <i class="fas fa-shopping-cart nav-link-icon"></i>
+                  @if (cart.count() > 0) {
+                    <span class="cart-badge">{{ cart.count() }}</span>
+                  }
+                </span>
+                <span>{{ i18n.t('cart') }}</span>
               </a>
               @if (auth.currentUser()) {
                 <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">

@@ -22,7 +22,7 @@
         <div class="inbox-actions">
           <span class="count-pill">{{ conversations.length }} conversations</span>
           <button type="button" (click)="load()" [disabled]="loading" aria-label="Refresh messages">
-            <i class="fas fa-rotate"></i>
+            <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
             <span>{{ loading ? 'Refreshing' : 'Refresh' }}</span>
           </button>
         </div>

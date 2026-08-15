@@ -94,7 +94,7 @@
       </div>
 
       <div class="account-card-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 hover:shadow-xl hover:border-nubian-gold/40 transition-all duration-300 group">
+        <a routerLink="/wallet" class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 hover:shadow-xl hover:border-nubian-gold/40 transition-all duration-300 group block">
           <div class="flex items-center space-x-4 mb-4">
             <div class="w-16 h-16 bg-gradient-to-br from-emerald-500/25 to-nubian-gold/25 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
               <i class="fas fa-wallet text-nubian-gold text-2xl"></i>
@@ -120,7 +120,7 @@
               <p class="text-sm text-nubian-earth dark:text-nubian-sand">No wallet activity yet.</p>
             }
           </div>
-        </div>
+        </a>
 
         <div class="bg-white dark:bg-nubian-earth rounded-2xl shadow-lg p-6 border border-nubian-gold/20 hover:shadow-xl hover:border-nubian-gold/40 transition-all duration-300 group">
           <div class="flex items-center space-x-4 mb-4">
@@ -176,7 +176,7 @@
           <i class="fas fa-bolt text-nubian-gold"></i>
           Quick Actions
         </h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
           <a routerLink="/cart" class="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-nubian-sand/30 to-nubian-gold/10 dark:from-nubian-dark/50 dark:to-nubian-earth/30 hover:from-nubian-gold/20 hover:to-nubian-terracotta/20 transition-all duration-300 group">
             <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <i class="fas fa-shopping-cart text-xl text-nubian-brown dark:text-nubian-gold"></i>
@@ -188,6 +188,12 @@
               <i class="fas fa-heart text-xl text-nubian-terracotta"></i>
             </div>
             <span class="text-sm font-medium">{{ 'wishlist' | t }}</span>
+          </a>
+          <a routerLink="/wallet" class="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-nubian-sand/30 to-nubian-gold/10 dark:from-nubian-dark/50 dark:to-nubian-earth/30 hover:from-nubian-gold/20 hover:to-nubian-terracotta/20 transition-all duration-300 group">
+            <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <i class="fas fa-wallet text-xl text-nubian-gold"></i>
+            </div>
+            <span class="text-sm font-medium">Wallet</span>
           </a>
           <a routerLink="/perfumes" class="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-nubian-sand/30 to-nubian-gold/10 dark:from-nubian-dark/50 dark:to-nubian-earth/30 hover:from-nubian-gold/20 hover:to-nubian-terracotta/20 transition-all duration-300 group">
             <div class="w-12 h-12 rounded-full bg-white dark:bg-nubian-dark shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">

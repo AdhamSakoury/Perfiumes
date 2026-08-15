@@ -19,6 +19,7 @@ import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
 export class AdminDashboardComponent {
   summary: AdminDashboardSummary | null = null;
   loading = false;
+  refreshing = false;
   loadError = '';
   walletDraft: Record<string, { amount: number; type: 'credit' | 'debit'; reason: string }> = {};
   updatingWalletId: string | null = null;
@@ -37,7 +38,7 @@ export class AdminDashboardComponent {
     }
 
     this.applySummary(this.localDemoSummary());
-    this.load();
+    this.load(false);
   }
 
   get isAdmin(): boolean {
@@ -58,27 +59,32 @@ export class AdminDashboardComponent {
     ];
   }
 
-  load(): void {
+  load(showRefreshState = true): void {
     this.startHardFallbackTimer();
     const token = this.auth.currentAccessToken();
     if (!this.isAdmin) return;
 
     this.retriedWithFreshToken = false;
     if (token) {
-      this.loadWithToken(token);
+      this.loadWithToken(token, showRefreshState);
       return;
     }
 
     this.loading = true;
+    if (showRefreshState) this.refreshing = true;
     this.loadError = '';
+    let handedOffToSummaryLoad = false;
     this.auth.refreshAdminAccessToken().pipe(
       finalize(() => {
+        if (handedOffToSummaryLoad) return;
         this.loading = false;
+        if (showRefreshState) this.refreshing = false;
       })
     ).subscribe({
       next: (freshToken) => {
         if (freshToken) {
-          this.loadWithToken(freshToken);
+          handedOffToSummaryLoad = true;
+          this.loadWithToken(freshToken, showRefreshState);
           return;
         }
 
@@ -92,22 +98,25 @@ export class AdminDashboardComponent {
     });
   }
 
-  private loadWithToken(token: string): void {
+  private loadWithToken(token: string, showRefreshState = true): void {
     this.loading = true;
+    if (showRefreshState) this.refreshing = true;
     this.loadError = '';
     this.dashboard.getSummary(token).pipe(
       timeout(10000),
       finalize(() => {
         this.loading = false;
+        if (showRefreshState) this.refreshing = false;
       })
     ).subscribe({
       next: (summary) => this.applySummary(summary),
-      error: (error: unknown) => this.handleLoadError(error, token)
+      error: (error: unknown) => this.handleLoadError(error, token, showRefreshState)
     });
   }
 
-  private retryWithFreshToken(): void {
+  private retryWithFreshToken(showRefreshState = true): void {
     this.loading = true;
+    if (showRefreshState) this.refreshing = true;
     this.auth.refreshAdminAccessToken().pipe(
       switchMap((freshToken) => {
         if (!freshToken) return throwError(() => new Error('No fresh admin token'));
@@ -115,11 +124,12 @@ export class AdminDashboardComponent {
       }),
       finalize(() => {
         this.loading = false;
+        if (showRefreshState) this.refreshing = false;
       })
     ).subscribe({
       next: (summary) => this.applySummary(summary),
       error: (error: unknown) => {
-        this.handleLoadError(error, null);
+        this.handleLoadError(error, null, showRefreshState);
       }
     });
   }
@@ -131,15 +141,16 @@ export class AdminDashboardComponent {
     }
     this.summary = summary;
     this.loading = false;
+    this.refreshing = false;
     this.loadError = '';
     this.retriedWithFreshToken = false;
     for (const wallet of summary.wallets) this.ensureWalletDraft(wallet);
   }
 
-  private handleLoadError(error: unknown, attemptedToken: string | null): void {
+  private handleLoadError(error: unknown, attemptedToken: string | null, showRefreshState = true): void {
     if (attemptedToken && error instanceof HttpErrorResponse && error.status === 401 && !this.retriedWithFreshToken) {
       this.retriedWithFreshToken = true;
-      this.retryWithFreshToken();
+      this.retryWithFreshToken(showRefreshState);
       return;
     }
 

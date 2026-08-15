@@ -58,6 +58,7 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<SupportMessageService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<AdminDashboardService>();
+builder.Services.AddScoped<PromoCodeService>();
 builder.Services.AddHttpClient<GoogleAuthService>();
 
 var app = builder.Build();
@@ -71,6 +72,7 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);
     await scope.ServiceProvider.GetRequiredService<SupportMessageService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
+    await scope.ServiceProvider.GetRequiredService<PromoCodeService>().EnsureSchemaAsync();
 }
 
 app.UseCors("Frontend");
@@ -95,12 +97,16 @@ app.MapGet("/", () => Results.Ok(new
         "GET /api/orders",
         "POST /api/orders",
         "GET /api/wallet",
+        "POST /api/wallet/top-up",
         "PUT /api/admin/orders/{id}/status",
         "GET /api/admin/orders",
         "DELETE /api/admin/orders/{id}",
         "GET /api/admin/dashboard",
         "GET /api/admin/wallets",
         "POST /api/admin/wallets/{id}/adjust",
+        "POST /api/promos/validate",
+        "GET /api/admin/promos",
+        "POST /api/admin/promos",
         "POST /api/products",
         "PUT /api/products/{id}",
         "DELETE /api/products/{id}",
@@ -148,6 +154,21 @@ async Task PublishAdminNotificationAsync(
     foreach (var adminEmail in await users.GetAdminEmailsAsync())
     {
         await PublishNotificationAsync(notifications, hub, adminEmail, title, message, type, link);
+    }
+}
+
+async Task PublishCustomersNotificationAsync(
+    UserService users,
+    NotificationService notifications,
+    IHubContext<NotificationHub> hub,
+    string title,
+    string message,
+    string type = "info",
+    string? link = null)
+{
+    foreach (var customerEmail in await users.GetCustomerEmailsAsync())
+    {
+        await PublishNotificationAsync(notifications, hub, customerEmail, title, message, type, link);
     }
 }
 
@@ -247,7 +268,9 @@ app.MapPost("/api/orders", async (
     CreateOrderRequest request,
     OrderService orders,
     UserService users,
+    AdminAuthService auth,
     NotificationService notifications,
+    HttpContext context,
     IHubContext<NotificationHub> notificationHub) =>
 {
     if (string.IsNullOrWhiteSpace(request.UserEmail) || request.Items.Count == 0)
@@ -255,13 +278,35 @@ app.MapPost("/api/orders", async (
         return Results.BadRequest(new { message = "User email and order items are required." });
     }
 
-    var order = await orders.CreateAsync(request);
+    var walletPayment = request.PaymentMethod?.Trim().Equals("wallet", StringComparison.OrdinalIgnoreCase) == true;
+    var principal = walletPayment ? auth.ValidateRequest(context) : null;
+    if (walletPayment && principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    OrderDto order;
+    try
+    {
+        order = await orders.CreateAsync(request, principal?.Email);
+    }
+    catch (UnauthorizedAccessException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
+
     await PublishNotificationAsync(
         notifications,
         notificationHub,
         order.UserEmail,
         "Order placed",
-        $"Your order {order.Id} was received and is now processing.",
+        order.PaymentMethod == "wallet"
+            ? $"Your order {order.Id} was paid from your wallet and is now processing."
+            : $"Your order {order.Id} was received and is now processing.",
         "order",
         "/orders");
     await PublishAdminNotificationAsync(
@@ -269,7 +314,7 @@ app.MapPost("/api/orders", async (
         notifications,
         notificationHub,
         "New order",
-        $"{order.UserEmail} placed order {order.Id} for {order.Total:0.##} EGP.",
+        $"{order.UserEmail} placed order {order.Id} for {order.Total:0.##} EGP via {order.PaymentMethod}.",
         "order",
         "/admin/orders");
 
@@ -289,6 +334,96 @@ app.MapGet("/api/wallet", async (
 
     var wallet = await dashboard.GetWalletForUserAsync(principal.Email);
     return wallet is null ? Results.NotFound() : Results.Ok(wallet);
+});
+
+app.MapPost("/api/wallet/top-up", async (
+    TopUpWalletRequest request,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    NotificationService notifications,
+    HttpContext context,
+    IHubContext<NotificationHub> notificationHub) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    var wallet = await dashboard.TopUpWalletForUserAsync(principal.Email, request);
+    if (wallet is null)
+    {
+        return Results.BadRequest(new { message = "Invalid wallet top up amount." });
+    }
+
+    await PublishNotificationAsync(
+        notifications,
+        notificationHub,
+        principal.Email,
+        "Wallet topped up",
+        $"{request.Amount:0.##} {wallet.Currency} was added to your wallet.",
+        "wallet",
+        "/wallet");
+
+    return Results.Ok(wallet);
+});
+
+app.MapPost("/api/promos/validate", async (
+    ValidatePromoCodeRequest request,
+    PromoCodeService promos) =>
+{
+    var promo = await promos.ValidateAsync(request.Code);
+    return promo is null ? Results.NotFound(new { message = "Invalid or expired promo code." }) : Results.Ok(promo);
+});
+
+app.MapGet("/api/admin/promos", async (
+    PromoCodeService promos,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await promos.GetAllAsync());
+});
+
+app.MapPost("/api/admin/promos", async (
+    CreatePromoCodeRequest request,
+    PromoCodeService promos,
+    UserService users,
+    AdminAuthService auth,
+    NotificationService notifications,
+    HttpContext context,
+    IHubContext<NotificationHub> notificationHub) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    PromoCodeDto promo;
+    try
+    {
+        promo = await promos.CreateAsync(request, principal.Email);
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
+
+    await PublishCustomersNotificationAsync(
+        users,
+        notifications,
+        notificationHub,
+        "New promo code",
+        $"Use {promo.Code} for {promo.DiscountPercent:0.##}% off before {promo.ExpiresAt:MMM d, yyyy h:mm tt}.",
+        "promo",
+        "/cart");
+
+    return Results.Created($"/api/admin/promos/{promo.Id}", promo);
 });
 
 app.MapPut("/api/admin/orders/{id}/status", async (

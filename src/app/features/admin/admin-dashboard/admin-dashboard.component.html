@@ -17,9 +17,9 @@
             <h2>Admin Dashboard</h2>
             <span>Live sales, orders, customers, wallets, and support activity.</span>
           </div>
-          <button type="button" (click)="load()" [disabled]="loading">
-            <i class="fas fa-rotate"></i>
-            <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+          <button type="button" (click)="load()" [disabled]="refreshing">
+            <i class="fas fa-rotate" [class.is-spinning]="refreshing"></i>
+            <span>{{ refreshing ? 'Loading...' : 'Refresh' }}</span>
           </button>
         </header>
 
@@ -78,7 +78,7 @@
                   <p>Finance</p>
                   <h3>User Wallets</h3>
                 </div>
-                <span>{{ summary.wallets.length }} shown</span>
+                <a routerLink="/admin/wallets">{{ summary.wallets.length }} shown</a>
               </div>
               <div class="wallet-list">
                 @for (wallet of summary.wallets; track wallet.id) {

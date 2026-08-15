@@ -9,6 +9,8 @@ public sealed class OrderEntity
     public decimal Subtotal { get; set; }
     public decimal Discount { get; set; }
     public decimal Total { get; set; }
+    public string PaymentMethod { get; set; } = "cashOnDelivery";
+    public string PaymentStatus { get; set; } = "pending";
     public string ShippingName { get; set; } = string.Empty;
     public string ShippingStreet { get; set; } = string.Empty;
     public string ShippingCity { get; set; } = string.Empty;

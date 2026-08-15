@@ -26,7 +26,7 @@
                 @if (sortOpen()) {
                   <div class="mobile-sort-menu">
                     @for (option of sortOptions; track option.value) {
-                      <button type="button" (click)="sort = option.value; sortOpen.set(false)" class="mobile-sort-option" [class.is-active]="sort === option.value">
+                      <button type="button" (click)="setSort(option.value)" class="mobile-sort-option" [class.is-active]="sort === option.value">
                         {{ option.labelKey | t }}
                       </button>
                     }
@@ -52,7 +52,7 @@
               <div class="space-y-2">
                 @for (rating of [0, 4, 4.5, 4.8]; track rating) {
                   <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="radio" name="rating" class="custom-radio" [value]="rating" [(ngModel)]="filters.rating">
+                    <input type="radio" name="rating" class="custom-radio" [value]="rating" [ngModel]="filters.rating" (ngModelChange)="setRating($event)">
                     <span>{{ ratingLabel(rating) }}</span>
                   </label>
                 }
@@ -62,8 +62,8 @@
             <div>
               <h3 class="font-semibold mb-3 text-nubian-brown dark:text-nubian-sand">{{ 'price' | t }}</h3>
               <div class="grid grid-cols-2 gap-3">
-                <input type="number" [(ngModel)]="filters.priceMin" class="px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" [min]="bounds.min" [max]="bounds.max">
-                <input type="number" [(ngModel)]="filters.priceMax" class="px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" [min]="bounds.min" [max]="bounds.max">
+                <input type="number" [ngModel]="filters.priceMin" (ngModelChange)="setPriceMin($event)" class="px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" [min]="bounds.min" [max]="bounds.max">
+                <input type="number" [ngModel]="filters.priceMax" (ngModelChange)="setPriceMax($event)" class="px-3 py-2 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" [min]="bounds.min" [max]="bounds.max">
               </div>
             </div>
 
@@ -85,14 +85,16 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ 'perfumes' | t }}</h1>
-              <p class="text-nubian-earth dark:text-nubian-sand mt-2">{{ 'showingFragrances' | t:{ count: displayed.length, plural: displayed.length === 1 ? '' : 's' } }}</p>
+              <p class="text-nubian-earth dark:text-nubian-sand mt-2">
+                Showing {{ pageStart }}-{{ pageEnd }} of {{ displayed.length }} fragrances
+              </p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
               <button type="button" (click)="filtersOpen.set(true)" class="lg:hidden inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-nubian-brown text-white font-semibold hover:bg-nubian-gold hover:text-nubian-dark transition-colors">
                 <i class="fas fa-filter"></i>
                 {{ 'filters' | t }}
               </button>
-              <select [(ngModel)]="sort" class="hidden lg:block px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
+              <select [ngModel]="sort" (ngModelChange)="setSort($event)" class="hidden lg:block px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2">
                 @for (option of sortOptions; track option.value) {
                   <option [value]="option.value">{{ option.labelKey | t }}</option>
                 }
@@ -102,10 +104,26 @@
 
           @if (displayed.length) {
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 gap-5">
-              @for (perfume of displayed; track perfume.id) {
+              @for (perfume of paginatedDisplayed; track perfume.id) {
                 <app-perfume-card [perfume]="perfume" />
               }
             </div>
+
+            @if (pageCount > 1) {
+              <nav class="perfumes-pagination" aria-label="Perfumes pagination">
+                <button type="button" (click)="previousPage()" [disabled]="safeCurrentPage === 1" aria-label="Previous page">
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                @for (page of pages; track page) {
+                  <button type="button" (click)="setPage(page)" [class.active]="safeCurrentPage === page" [attr.aria-current]="safeCurrentPage === page ? 'page' : null">
+                    {{ page }}
+                  </button>
+                }
+                <button type="button" (click)="nextPage()" [disabled]="safeCurrentPage === pageCount" aria-label="Next page">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </nav>
+            }
           } @else {
             <div class="text-center py-14 md:py-16 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg">
               <i class="fas fa-search text-2xl text-nubian-gold/60 mb-4"></i>

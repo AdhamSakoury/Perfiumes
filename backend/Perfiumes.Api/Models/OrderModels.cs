@@ -15,6 +15,8 @@ public sealed record OrderDto(
     decimal Subtotal,
     decimal Discount,
     decimal Total,
+    string PaymentMethod,
+    string PaymentStatus,
     ShippingAddressDto ShippingAddress,
     string? PromoCode,
     IReadOnlyList<OrderTrackingEventDto> TrackingEvents);
@@ -25,6 +27,7 @@ public sealed record CreateOrderRequest(
     decimal Subtotal,
     decimal Discount,
     decimal Total,
+    string? PaymentMethod,
     ShippingAddressDto ShippingAddress,
     string? PromoCode);
 

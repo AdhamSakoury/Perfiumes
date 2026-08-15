@@ -40,6 +40,9 @@
                   <div class="order-meta-row">
                     <span>{{ 'orderNumber' | t:{ id: order.id } }}</span>
                     <span class="order-status status-{{ order.status.toLowerCase() }}">{{ statusLabel(order.status) }}</span>
+                    <span class="order-status" [class.status-delivered]="order.paymentStatus === 'paid'" [class.status-pending]="order.paymentStatus !== 'paid'">
+                      {{ order.paymentMethod === 'wallet' ? 'Wallet paid' : 'Cash on delivery' }}
+                    </span>
                   </div>
                   <h3>{{ order.items[0].name }}</h3>
                   <p>{{ order.date | date:'mediumDate' }} - {{ 'itemCount' | t:{ count: order.items.length } }}</p>

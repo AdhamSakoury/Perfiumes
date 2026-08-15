@@ -13,4 +13,12 @@ export class WalletService {
       headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
     });
   }
+
+  topUpCurrentWallet(token: string, amount: number, reason = 'Wallet top up'): Observable<UserWallet> {
+    return this.http.post<UserWallet>(
+      `${environment.apiBaseUrl}/api/wallet/top-up`,
+      { amount, reason },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
 }

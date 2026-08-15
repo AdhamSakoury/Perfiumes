@@ -16,7 +16,7 @@
         <h1>Orders</h1>
       </div>
       <button type="button" (click)="load()" [disabled]="loading">
-        <i class="fas fa-rotate"></i>
+        <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
         <span>{{ loading ? 'Loading' : 'Refresh' }}</span>
       </button>
     </div>
@@ -45,6 +45,9 @@
               <div class="order-summary">
                 <b>{{ order.total | currency }}</b>
                 <span class="status-pill">{{ order.status }}</span>
+                <span class="payment-pill" [class.paid]="order.paymentStatus === 'paid'">
+                  {{ order.paymentMethod === 'wallet' ? 'Wallet' : 'Cash' }} - {{ order.paymentStatus || 'pending' }}
+                </span>
               </div>
             </div>
 
@@ -64,7 +67,7 @@
                 </select>
               </label>
               <button type="button" (click)="updateStatus(order)" [disabled]="updatingId === order.id || draftStatus[order.id] === order.status">
-                <i class="fas fa-rotate"></i>
+                <i class="fas fa-rotate" [class.is-spinning]="updatingId === order.id"></i>
                 <span>{{ updatingId === order.id ? 'Saving' : 'Update Status' }}</span>
               </button>
             </div>

@@ -98,24 +98,37 @@
   overflow: visible;
 }
 
+.nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+}
+
 .cart-badge {
   position: absolute;
-  top: 0.2rem;
-  right: 0.15rem;
-  min-width: 1rem;
-  height: 1rem;
-  padding-inline: 0.25rem;
+  top: -0.42rem;
+  right: -0.34rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding-inline: 0.24rem;
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #D3542F;
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 900;
   line-height: 1;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
-  transform: translate(35%, -35%);
+}
+
+:host-context(.dark) .cart-badge {
+  box-shadow: 0 0 0 2px rgba(15, 23, 23, 0.95);
 }
 
 .admin-menu-wrapper {
