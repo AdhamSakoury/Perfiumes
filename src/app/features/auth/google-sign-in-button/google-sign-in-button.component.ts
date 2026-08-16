@@ -1,42 +1,11 @@
-import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, ViewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '@core/services/auth.service';
+import { Component, Input } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: GoogleInitializeConfig) => void;
-          renderButton: (element: HTMLElement, options: GoogleButtonOptions) => void;
-          cancel: () => void;
-        };
-      };
-    };
-  }
-}
-
-interface GoogleInitializeConfig {
-  client_id: string;
-  callback: (response: GoogleCredentialResponse) => void;
-}
-
-interface GoogleCredentialResponse {
-  credential?: string;
-}
-
-interface GoogleButtonOptions {
-  type: 'standard';
-  theme: 'outline' | 'filled_blue' | 'filled_black';
-  size: 'large' | 'medium' | 'small';
-  text: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
-  shape: 'rectangular' | 'pill' | 'circle' | 'square';
-  width: number;
-}
+const GOOGLE_AUTH_STATE_KEY = 'gnouby_google_auth_state';
 
 @Component({
   selector: 'app-google-sign-in-button',
@@ -45,34 +14,18 @@ interface GoogleButtonOptions {
   templateUrl: './google-sign-in-button.component.html',
   styleUrl: './google-sign-in-button.component.css'
 })
-export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('googleButton', { static: true }) private readonly googleButton?: ElementRef<HTMLDivElement>;
+export class GoogleSignInButtonComponent {
+  @Input() mode: 'signin' | 'signup' = 'signin';
+  @Input() remember = true;
+  @Input() fallbackUrl = '/account';
 
-  loading = false;
   configured = environment.googleClientId !== 'PASTE_GOOGLE_CLIENT_ID_HERE';
 
   constructor(
-    private readonly auth: AuthService,
     private readonly route: ActivatedRoute,
-    private readonly router: Router,
     private readonly toast: ToastService,
-    private readonly i18n: LocalizationService,
-    private readonly zone: NgZone
+    private readonly i18n: LocalizationService
   ) {}
-
-  ngAfterViewInit(): void {
-    if (!this.configured) {
-      return;
-    }
-
-    this.loadGoogleScript()
-      .then(() => this.renderGoogleButton())
-      .catch(() => this.toast.show(this.i18n.t('googleLoadFailed')));
-  }
-
-  ngOnDestroy(): void {
-    window.google?.accounts.id.cancel();
-  }
 
   startGoogleSignIn(): void {
     if (!this.configured) {
@@ -80,71 +33,33 @@ export class GoogleSignInButtonComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    this.toast.show(this.i18n.t('googleLoadingHint'));
-  }
+    const state = this.randomToken();
+    const nonce = this.randomToken();
+    const redirect = this.route.snapshot.queryParamMap.get('redirect') || this.fallbackUrl;
+    sessionStorage.setItem(GOOGLE_AUTH_STATE_KEY, JSON.stringify({ state, nonce, redirect, remember: this.remember }));
 
-  private renderGoogleButton(): void {
-    const element = this.googleButton?.nativeElement;
-    if (!element || !window.google) {
-      return;
-    }
-
-    window.google.accounts.id.initialize({
+    const params = new URLSearchParams({
       client_id: environment.googleClientId,
-      callback: (response) => this.zone.run(() => this.handleCredential(response))
+      redirect_uri: `${window.location.origin}/google-callback`,
+      response_type: 'id_token',
+      scope: 'openid email profile',
+      nonce,
+      state,
+      prompt: 'select_account'
     });
 
-    window.google.accounts.id.renderButton(element, {
-      type: 'standard',
-      theme: 'outline',
-      size: 'large',
-      text: 'continue_with',
-      shape: 'rectangular',
-      width: 360
-    });
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
-  private handleCredential(response: GoogleCredentialResponse): void {
-    if (!response.credential) {
-      this.toast.show(this.i18n.t('googleCredentialMissing'));
-      return;
-    }
-
-    this.loading = true;
-    this.auth.loginWithGoogle(response.credential).subscribe({
-      next: () => {
-        this.loading = false;
-        this.toast.show(this.i18n.t('googleLoginSuccess'));
-        void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || '/account');
-      },
-      error: () => {
-        this.loading = false;
-        this.toast.show(this.i18n.t('googleLoginFailed'));
-      }
-    });
+  buttonLabelKey(): string {
+    return this.mode === 'signup' ? 'signUpWithGoogle' : 'continueWithGoogle';
   }
 
-  private loadGoogleScript(): Promise<void> {
-    if (window.google?.accounts?.id) {
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
-      if (existing) {
-        existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(), { once: true });
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject();
-      document.head.appendChild(script);
-    });
+  private randomToken(): string {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 }
 
+export { GOOGLE_AUTH_STATE_KEY };

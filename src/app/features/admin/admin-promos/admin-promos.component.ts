@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { PromoCode } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
 import { PromoCodeService } from '@core/services/promo-code.service';
 import { ToastService } from '@core/services/toast.service';
+<<<<<<< HEAD
 import { finalize, switchMap, throwError, timeout } from 'rxjs';
 
 type PromoCalendarDay = {
@@ -17,11 +19,15 @@ type PromoCalendarDay = {
   today: boolean;
   disabled: boolean;
 };
+=======
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { finalize, switchMap, throwError } from 'rxjs';
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 
 @Component({
   selector: 'app-admin-promos',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './admin-promos.component.html',
   styleUrl: './admin-promos.component.css'
 })
@@ -44,7 +50,8 @@ export class AdminPromosComponent {
     readonly auth: AuthService,
     private readonly promoService: PromoCodeService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {
     if (!this.auth.currentUser()) {
       void this.router.navigate(['/login'], { queryParams: { redirect: '/admin/promos' } });
@@ -180,7 +187,7 @@ export class AdminPromosComponent {
         this.promos = promos;
       },
       error: () => {
-        this.loadError = 'Could not load promo codes.';
+        this.loadError = this.i18n.t('promosLoadFailed');
       }
     });
   }
@@ -189,8 +196,13 @@ export class AdminPromosComponent {
     if (!this.isAdmin || this.saving) return;
     const code = this.form.code.trim().toUpperCase();
     const discount = Number(this.form.discountPercent);
+<<<<<<< HEAD
     if (!code || discount <= 0 || discount > 95 || !this.form.expiresAt || new Date(this.form.expiresAt) <= new Date()) {
       this.toast.show('Enter a valid promo code, discount, and expiration date.', 'error');
+=======
+    if (!code || discount <= 0 || discount > 95 || !this.form.expiresAt) {
+      this.toast.show(this.i18n.t('promoValidationError'), 'error');
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
       return;
     }
 
@@ -208,10 +220,14 @@ export class AdminPromosComponent {
         this.saving = false;
         this.promos = [promo, ...this.promos.filter((item) => item.id !== promo.id)];
         this.form = { code: '', discountPercent: 10, expiresAt: this.defaultExpiry() };
+<<<<<<< HEAD
         this.toast.show('Promo code created. Customer notifications are being sent.');
+=======
+        this.toast.show(this.i18n.t('promoCreated'));
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
       },
       error: (error) => {
-        this.toast.show(error?.error?.message || 'Could not create promo code.', 'error');
+        this.toast.show(error?.error?.message || this.i18n.t('promoCreateFailed'), 'error');
       }
     });
   }

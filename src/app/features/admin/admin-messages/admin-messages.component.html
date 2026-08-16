@@ -1,29 +1,29 @@
 <section class="admin-messages-page page-shell page-enter w-full">
   @if (!auth.currentUser()) {
     <div class="support-state">
-      <h1>Admin login required</h1>
-      <p>Please login first to manage support messages.</p>
-      <a routerLink="/login">Go to login</a>
+      <h1>{{ 'adminLoginRequired' | t }}</h1>
+      <p>{{ 'loginFirstSupportMessages' | t }}</p>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
     </div>
   } @else if (!isAdmin) {
     <div class="support-state">
-      <h1>Admins only</h1>
-      <p>This inbox is only available for admin accounts.</p>
-      <a routerLink="/">Back home</a>
+      <h1>{{ 'adminsOnly' | t }}</h1>
+      <p>{{ 'supportInboxAdminsOnly' | t }}</p>
+      <a routerLink="/">{{ 'backHome' | t }}</a>
     </div>
   } @else {
     <div class="inbox-shell">
       <header class="inbox-topbar">
         <div class="inbox-title">
-          <span>Support Inbox</span>
-          <h1>Messages</h1>
+          <span>{{ 'supportInbox' | t }}</span>
+          <h1>{{ 'messages' | t }}</h1>
         </div>
 
         <div class="inbox-actions">
-          <span class="count-pill">{{ conversations.length }} conversations</span>
-          <button type="button" (click)="load()" [disabled]="loading" aria-label="Refresh messages">
+          <span class="count-pill">{{ 'conversationCount' | t:{ count: conversations.length } }}</span>
+          <button type="button" (click)="load()" [disabled]="loading" [attr.aria-label]="'refreshMessages' | t">
             <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
-            <span>{{ loading ? 'Refreshing' : 'Refresh' }}</span>
+            <span>{{ loading ? ('refreshing' | t) : ('refresh' | t) }}</span>
           </button>
         </div>
       </header>
@@ -31,8 +31,8 @@
       <div class="inbox-layout">
         <aside class="conversation-pane">
           <div class="pane-head">
-            <strong>Conversations</strong>
-            <span>{{ loading && !conversations.length ? 'Loading' : conversations.length }}</span>
+            <strong>{{ 'conversations' | t }}</strong>
+            <span>{{ loading && !conversations.length ? ('loading' | t) : conversations.length }}</span>
           </div>
 
           <div class="conversation-list custom-scrollbar">
@@ -50,8 +50,8 @@
             } @else if (!conversations.length) {
               <div class="conversation-empty">
                 <i class="fas fa-inbox"></i>
-                <strong>No messages</strong>
-                <span>New conversations will show here.</span>
+                <strong>{{ 'noMessages' | t }}</strong>
+                <span>{{ 'newConversationsHint' | t }}</span>
               </div>
             } @else {
               @for (conversation of conversations; track conversation.id) {
@@ -60,7 +60,7 @@
                   <span class="conversation-copy">
                     <span class="conversation-title">
                       <strong>{{ conversation.userName }}</strong>
-                      <b class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</b>
+                      <b class="status-badge status-{{ conversation.status }}">{{ statusLabel(conversation.status) }}</b>
                     </span>
                     <small>{{ conversation.subject }}</small>
                     <em>{{ conversation.messages[conversation.messages.length - 1]?.body }}</em>
@@ -79,20 +79,20 @@
                 <span class="conversation-avatar">{{ conversation.userName.slice(0, 1).toUpperCase() }}</span>
                 <div>
                   <h2>{{ conversation.userName }}</h2>
-                  <p>{{ conversation.userEmail }} - {{ conversation.status }}</p>
+                  <p>{{ conversation.userEmail }} - {{ statusLabel(conversation.status) }}</p>
                 </div>
               </div>
 
               <button type="button" (click)="closeSelected()" [disabled]="conversation.status === 'closed'">
                 <i class="fas fa-check"></i>
-                <span>Close</span>
+                <span>{{ 'close' | t }}</span>
               </button>
             </header>
 
             <div class="message-thread custom-scrollbar">
               @for (message of conversation.messages; track message.id) {
                 <article class="message-bubble" [class.admin]="message.senderRole === 'admin'">
-                  <strong>{{ message.senderRole === 'admin' ? 'Gnouby Support' : message.senderName }}</strong>
+                  <strong>{{ message.senderRole === 'admin' ? ('gnoubySupport' | t) : message.senderName }}</strong>
                   <p>{{ message.body }}</p>
                   <time>{{ message.createdAt | date:'shortTime' }}</time>
                 </article>
@@ -100,8 +100,8 @@
             </div>
 
             <form (ngSubmit)="reply()" class="reply-form">
-              <textarea name="replyText" [(ngModel)]="replyText" rows="2" placeholder="Reply to {{ conversation.userName }}" dir="auto"></textarea>
-              <button type="submit" [disabled]="replying || !replyText.trim() || conversation.status === 'closed'" aria-label="Send reply">
+              <textarea name="replyText" [(ngModel)]="replyText" rows="2" [placeholder]="'replyTo' | t:{ name: conversation.userName }" dir="auto"></textarea>
+              <button type="submit" [disabled]="replying || !replyText.trim() || conversation.status === 'closed'" [attr.aria-label]="'sendReply' | t">
                 <i class="fas fa-paper-plane"></i>
               </button>
             </form>
@@ -109,17 +109,17 @@
             <div class="chat-state">
               @if (loading) {
                 <i class="fas fa-spinner"></i>
-                <h2>Loading messages</h2>
-                <p>The inbox is opening now.</p>
+                <h2>{{ 'loadingMessages' | t }}</h2>
+                <p>{{ 'inboxOpeningNow' | t }}</p>
               } @else if (loadError) {
                 <i class="fas fa-triangle-exclamation"></i>
-                <h2>Messages unavailable</h2>
+                <h2>{{ 'messagesUnavailable' | t }}</h2>
                 <p>{{ loadError }}</p>
-                <button type="button" (click)="load()">Try again</button>
+                <button type="button" (click)="load()">{{ 'tryAgain' | t }}</button>
               } @else {
                 <i class="fas fa-comments"></i>
-                <h2>Select a conversation</h2>
-                <p>Choose a customer from the left to reply.</p>
+                <h2>{{ 'selectConversation' | t }}</h2>
+                <p>{{ 'chooseCustomerToReply' | t }}</p>
               }
             </div>
           }

@@ -72,7 +72,7 @@
             <div>
               <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ 'perfumes' | t }}</h1>
               <p class="text-nubian-earth dark:text-nubian-sand mt-2">
-                Showing {{ pageStart }}-{{ pageEnd }} of {{ displayed.length }} fragrances
+                {{ 'showingFragrancesRange' | t:{ from: pageStart, to: pageEnd, total: displayed.length } }}
               </p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
@@ -81,6 +81,35 @@
                 {{ 'filters' | t }}
               </button>
               <app-custom-dropdown class="hidden lg:block" [value]="sort" (valueChange)="setSort($event)" [options]="translatedSortOptions" [ariaLabel]="'sort' | t" />
+            </div>
+          </div>
+
+          <div class="perfume-search-shell mb-6">
+            <div class="perfume-search-box">
+              <span class="perfume-search-icon">
+                <i class="fas fa-magnifying-glass"></i>
+              </span>
+              <input
+                type="search"
+                name="perfumeSearch"
+                [ngModel]="searchQuery"
+                (ngModelChange)="setSearchQuery($event)"
+                [placeholder]="'searchPerfumesPlaceholder' | t"
+                [attr.aria-label]="'searchPerfumes' | t"
+                autocomplete="off"
+              >
+              @if (searchQuery) {
+                <button type="button" class="perfume-search-clear" (click)="clearSearch()" [attr.aria-label]="'clearSearch' | t">
+                  <i class="fas fa-xmark"></i>
+                </button>
+              }
+            </div>
+            <div class="perfume-search-meta">
+              @if (searchQuery) {
+                <span>{{ 'searchResultsFor' | t:{ count: displayed.length, query: searchQuery } }}</span>
+              } @else {
+                <span>{{ 'searchPerfumesHint' | t }}</span>
+              }
             </div>
           </div>
 

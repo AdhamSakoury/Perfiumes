@@ -1,7 +1,7 @@
 import { Component, OnInit, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PerfumeCardComponent } from '@shared/components/perfume-card/perfume-card.component';
-import { ProductFilters } from '@core/models/store.models';
+import { Perfume, ProductFilters } from '@core/models/store.models';
 import { PerfumeService } from '@core/services/perfume.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { LocalizationService } from '@core/services/localization.service';
@@ -26,6 +26,7 @@ export class PerfumesPageComponent implements OnInit {
     { value: 'name', labelKey: 'name' }
   ];
   sort = 'default';
+  searchQuery = '';
   readonly pageSize = 12;
   currentPage = 1;
   filters: ProductFilters = {
@@ -67,7 +68,8 @@ export class PerfumesPageComponent implements OnInit {
   }
 
   get displayed() {
-    return this.perfumeService.sort(this.perfumeService.filter(this.perfumeService.perfumes, this.filters), this.sort);
+    const filtered = this.perfumeService.filter(this.perfumeService.perfumes, this.filters);
+    return this.perfumeService.sort(this.applySearch(filtered), this.sort);
   }
 
   get pageCount(): number {
@@ -148,9 +150,20 @@ export class PerfumesPageComponent implements OnInit {
     this.currentPage = 1;
   }
 
+  setSearchQuery(value: string): void {
+    this.searchQuery = value;
+    this.currentPage = 1;
+  }
+
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.currentPage = 1;
+  }
+
   resetFilters(): void {
     this.filters = { gender: [], rating: 0, brands: [], priceMin: this.bounds.min, priceMax: this.bounds.max };
     this.sort = 'default';
+    this.searchQuery = '';
     this.sortOpen.set(false);
     this.currentPage = 1;
   }
@@ -181,6 +194,26 @@ export class PerfumesPageComponent implements OnInit {
     return rating === 0
       ? this.i18n.t('anyRating')
       : this.i18n.t('starsAndUp').replace('{rating}', String(rating));
+  }
+
+  private applySearch(perfumes: Perfume[]): Perfume[] {
+    const query = this.searchQuery.trim().toLowerCase();
+    if (!query) return perfumes;
+
+    return perfumes.filter((perfume) => {
+      const searchable = [
+        perfume.name,
+        perfume.brand,
+        perfume.description,
+        perfume.category,
+        perfume.concentration,
+        perfume.gender,
+        ...perfume.notes,
+        ...perfume.season
+      ].join(' ').toLowerCase();
+
+      return searchable.includes(query);
+    });
   }
 }
 

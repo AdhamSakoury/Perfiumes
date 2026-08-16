@@ -4,11 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { GoogleSignInButtonComponent } from '../google-sign-in-button/google-sign-in-button.component';
 
 @Component({
   selector: 'app-register-page',
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslatePipe],
+  imports: [FormsModule, GoogleSignInButtonComponent, RouterLink, TranslatePipe],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css'
 })

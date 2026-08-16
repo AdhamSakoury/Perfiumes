@@ -6,14 +6,23 @@ import { Router, RouterLink } from '@angular/router';
 import { AdminWallet } from '@core/models/store.models';
 import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
+<<<<<<< HEAD
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
+=======
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 import { Observable, catchError, finalize, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-wallets',
   standalone: true,
+<<<<<<< HEAD
   imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
+=======
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
   templateUrl: './admin-wallets.component.html',
   styleUrl: './admin-wallets.component.css'
 })
@@ -42,7 +51,8 @@ export class AdminWalletsComponent {
     readonly auth: AuthService,
     private readonly dashboard: AdminDashboardService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {
     if (!this.auth.currentUser()) {
       void this.router.navigate(['/login'], { queryParams: { redirect: '/admin/wallets' } });
@@ -80,7 +90,7 @@ export class AdminWalletsComponent {
     ).subscribe({
       next: (wallets) => this.applyWallets(wallets),
       error: () => {
-        this.loadError = 'Could not load wallets from the database. Check the API connection and admin login.';
+        this.loadError = this.i18n.t('walletsLoadFailed');
       }
     });
   }
@@ -90,7 +100,7 @@ export class AdminWalletsComponent {
     if (!draft || draft.amount <= 0 || this.updatingWalletId) return;
 
     this.updatingWalletId = wallet.id;
-    this.adminRequest((token) => this.dashboard.adjustWallet(wallet.id, Number(draft.amount), draft.type, draft.reason || 'Admin adjustment', token)).pipe(
+    this.adminRequest((token) => this.dashboard.adjustWallet(wallet.id, Number(draft.amount), draft.type, draft.reason || this.i18n.t('adminAdjustment'), token)).pipe(
       finalize(() => {
         this.updatingWalletId = null;
       })
@@ -98,10 +108,10 @@ export class AdminWalletsComponent {
       next: (updated) => {
         this.wallets.set(this.wallets().map((item) => item.id === updated.id ? updated : item));
         this.walletDraft[updated.id] = { amount: 0, type: 'credit', reason: '' };
-        this.toast.show('Wallet updated.');
+        this.toast.show(this.i18n.t('walletUpdated'));
       },
       error: () => {
-        this.toast.show('Could not update wallet.', 'error');
+        this.toast.show(this.i18n.t('walletUpdateFailed'), 'error');
       }
     });
   }

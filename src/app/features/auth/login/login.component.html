@@ -1,21 +1,26 @@
-<section class="page-shell page-enter flex items-center justify-center px-4 py-16">
-      <div class="w-full max-w-md bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl p-6 border border-nubian-gold/20">
-        <div class="text-center mb-6">
+<section class="auth-page-shell page-shell page-enter">
+      <div class="auth-card bg-white dark:bg-nubian-surface shadow-2xl border border-nubian-gold/20">
+        <aside class="auth-visual" aria-hidden="true">
+          <img src="/images/auth/auth-visual.png" alt="">
+        </aside>
+
+        <div class="auth-content">
+        <div class="auth-header text-center">
           <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">{{ 'welcomeBack' | t }}</h1>
           <p class="text-nubian-earth dark:text-nubian-sand mt-2">{{ 'loginSubtitle' | t }}</p>
         </div>
 
-        <form (ngSubmit)="submit()" class="space-y-5">
+        <form (ngSubmit)="submit()" class="auth-form">
           <div>
             <label class="block font-medium mb-2">{{ 'email' | t }}</label>
-            <input type="email" name="email" [(ngModel)]="email" class="w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+            <input type="email" name="email" [(ngModel)]="email" class="auth-input w-full rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
             @if (errors.email) { <p class="text-sm mt-2 text-nubian-terracotta">{{ errors.email }}</p> }
           </div>
 
           <div>
             <label class="block font-medium mb-2">{{ 'password' | t }}</label>
             <div class="relative">
-              <input [type]="showPassword ? 'text' : 'password'" name="password" [(ngModel)]="password" class="w-full px-4 py-3 pr-12 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+              <input [type]="showPassword ? 'text' : 'password'" name="password" [(ngModel)]="password" class="auth-input w-full rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
               <button type="button" (click)="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-nubian-earth dark:text-nubian-sand" [attr.aria-label]="'togglePassword' | t">
                 <i class="fas" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
               </button>
@@ -28,23 +33,24 @@
             <span>{{ 'rememberMe' | t }}</span>
           </label>
 
-          <button type="submit" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+          <button type="submit" class="auth-submit w-full bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
             <i class="fas fa-sign-in-alt mr-2"></i> {{ 'login' | t }}
           </button>
         </form>
 
-        <div class="my-6 flex items-center gap-3">
+        <div class="auth-divider flex items-center gap-3">
           <span class="h-px flex-1 bg-nubian-gold/20"></span>
           <span class="text-xs uppercase tracking-widest text-nubian-earth dark:text-nubian-sand">{{ 'or' | t }}</span>
           <span class="h-px flex-1 bg-nubian-gold/20"></span>
         </div>
 
-        <app-google-sign-in-button />
+        <app-google-sign-in-button [remember]="remember" />
 
-        <p class="text-center mt-6 text-sm text-nubian-earth dark:text-nubian-sand">
+        <p class="auth-switch text-center text-sm text-nubian-earth dark:text-nubian-sand">
           {{ 'newToGnouby' | t }}
           <a routerLink="/register" class="text-nubian-gold font-semibold">{{ 'createAnAccount' | t }}</a>
         </p>
+        </div>
       </div>
     </section>
 

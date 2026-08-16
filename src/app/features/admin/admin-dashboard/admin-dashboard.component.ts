@@ -5,15 +5,24 @@ import { Router, RouterLink } from '@angular/router';
 import { AdminDashboardSummary, AdminWallet } from '@core/models/store.models';
 import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
+<<<<<<< HEAD
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
+=======
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
+<<<<<<< HEAD
   imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
+=======
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css'
 })
@@ -31,7 +40,8 @@ export class AdminDashboardComponent {
     readonly auth: AuthService,
     private readonly dashboard: AdminDashboardService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {
     if (!this.auth.currentUser()) {
       void this.router.navigate(['/login'], { queryParams: { redirect: '/admin' } });
@@ -58,13 +68,19 @@ export class AdminDashboardComponent {
     if (!summary) return [];
 
     return [
-      { label: 'Revenue', value: `$${summary.revenue.toFixed(2)}`, icon: 'fa-chart-line', tone: 'gold' },
-      { label: 'Orders', value: summary.totalOrders, icon: 'fa-bag-shopping', tone: 'teal' },
-      { label: 'Customers', value: summary.totalCustomers, icon: 'fa-users', tone: 'earth' },
-      { label: 'Wallet balance', value: `${summary.walletBalance.toFixed(2)} EGP`, icon: 'fa-wallet', tone: 'green' },
-      { label: 'Products', value: summary.totalProducts, icon: 'fa-boxes-stacked', tone: 'sand' },
-      { label: 'Open support', value: summary.openSupportMessages, icon: 'fa-headset', tone: 'red' }
+      { label: this.i18n.t('metricRevenue'), value: `$${summary.revenue.toFixed(2)}`, icon: 'fa-chart-line', tone: 'gold' },
+      { label: this.i18n.t('metricOrders'), value: summary.totalOrders, icon: 'fa-bag-shopping', tone: 'teal' },
+      { label: this.i18n.t('metricCustomers'), value: summary.totalCustomers, icon: 'fa-users', tone: 'earth' },
+      { label: this.i18n.t('metricWalletBalance'), value: `${summary.walletBalance.toFixed(2)} EGP`, icon: 'fa-wallet', tone: 'green' },
+      { label: this.i18n.t('metricProducts'), value: summary.totalProducts, icon: 'fa-boxes-stacked', tone: 'sand' },
+      { label: this.i18n.t('metricOpenSupport'), value: summary.openSupportMessages, icon: 'fa-headset', tone: 'red' }
     ];
+  }
+
+  statusLabel(status: string): string {
+    const key = `status_${status.toLowerCase().replaceAll(' ', '').replaceAll('-', '')}`;
+    const translated = this.i18n.t(key);
+    return translated === key ? status : translated;
   }
 
   load(showRefreshState = true): void {
@@ -96,11 +112,11 @@ export class AdminDashboardComponent {
           return;
         }
 
-        this.loadError = 'Please login again as admin.';
+        this.loadError = this.i18n.t('loginAgainAdmin');
         this.toast.show(this.loadError, 'error');
       },
       error: () => {
-        this.loadError = 'Please login again as admin.';
+        this.loadError = this.i18n.t('loginAgainAdmin');
         this.toast.show(this.loadError, 'error');
       }
     });
@@ -163,8 +179,8 @@ export class AdminDashboardComponent {
     }
 
     this.loadError = error instanceof HttpErrorResponse && error.status === 0
-      ? 'Backend is not reachable. Start Perfiumes.Api from Visual Studio, then try again.'
-      : 'Could not load admin dashboard. Please refresh or login again as admin.';
+      ? this.i18n.t('backendNotReachable')
+      : this.i18n.t('adminDashboardLoadFailed');
     this.toast.show(this.loadError, 'error');
     this.loadDemoSummary();
   }
@@ -175,7 +191,7 @@ export class AdminDashboardComponent {
     if (!token || !draft || draft.amount <= 0 || this.updatingWalletId) return;
 
     this.updatingWalletId = wallet.id;
-    this.dashboard.adjustWallet(wallet.id, Number(draft.amount), draft.type, draft.reason || 'Admin adjustment', token).pipe(
+    this.dashboard.adjustWallet(wallet.id, Number(draft.amount), draft.type, draft.reason || this.i18n.t('adminAdjustment'), token).pipe(
       finalize(() => {
         this.updatingWalletId = null;
       })
@@ -188,10 +204,10 @@ export class AdminDashboardComponent {
           wallets: this.summary.wallets.map((item) => item.id === updated.id ? updated : item)
         };
         this.walletDraft[wallet.id] = { amount: 0, type: 'credit', reason: '' };
-        this.toast.show('Wallet updated.');
+        this.toast.show(this.i18n.t('walletUpdated'));
       },
       error: () => {
-        this.toast.show('Could not update wallet.', 'error');
+        this.toast.show(this.i18n.t('walletUpdateFailed'), 'error');
       }
     });
   }

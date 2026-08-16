@@ -5,15 +5,24 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Order, OrderStatus } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
+<<<<<<< HEAD
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
+=======
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 import { catchError, finalize, Observable, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
+<<<<<<< HEAD
   imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
+=======
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
   templateUrl: './admin-orders.component.html',
   styleUrl: './admin-orders.component.css'
 })
@@ -36,7 +45,8 @@ export class AdminOrdersComponent implements OnDestroy {
     readonly auth: AuthService,
     private readonly ordersApi: OrderService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {
     if (!this.auth.currentUser()) {
       void this.router.navigate(['/login'], { queryParams: { redirect: '/admin/orders' } });
@@ -90,8 +100,8 @@ export class AdminOrdersComponent implements OnDestroy {
         this.applyOrders(orders);
       },
       error: () => {
-        if (!this.orders.length) this.loadError = 'Could not load orders from the database. Check the API connection and admin login.';
-        else this.toast.show('Could not refresh orders.', 'error');
+        if (!this.orders.length) this.loadError = this.i18n.t('ordersLoadFailed');
+        else this.toast.show(this.i18n.t('ordersRefreshFailed'), 'error');
       }
     });
   }
@@ -110,9 +120,19 @@ export class AdminOrdersComponent implements OnDestroy {
       },
       error: () => {
         this.updatingId = null;
-        this.toast.show('Could not update order status.', 'error');
+        this.toast.show(this.i18n.t('orderStatusUpdateFailed'), 'error');
       }
     });
+  }
+
+  statusLabel(status: string): string {
+    const key = `status_${status.toLowerCase().replaceAll(' ', '').replaceAll('-', '')}`;
+    const translated = this.i18n.t(key);
+    return translated === key ? status : translated;
+  }
+
+  paymentMethodLabel(method: string | undefined): string {
+    return method === 'wallet' ? this.i18n.t('wallet') : this.i18n.t('cash');
   }
 
   private applyOrders(orders: Order[]): void {

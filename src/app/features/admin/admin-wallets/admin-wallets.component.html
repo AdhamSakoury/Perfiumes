@@ -1,47 +1,47 @@
 <section class="page-shell admin-wallets-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
   @if (!auth.currentUser()) {
     <div class="admin-wallets-empty">
-      <h1>Admin login required</h1>
-      <a routerLink="/login">Go to login</a>
+      <h1>{{ 'adminLoginRequired' | t }}</h1>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
     </div>
   } @else if (!isAdmin) {
     <div class="admin-wallets-empty">
-      <h1>Admins only</h1>
-      <a routerLink="/">Back home</a>
+      <h1>{{ 'adminsOnly' | t }}</h1>
+      <a routerLink="/">{{ 'backHome' | t }}</a>
     </div>
   } @else {
     <div class="admin-wallets-main">
       <header class="admin-wallets-topbar">
         <div>
-          <p>Finance</p>
-          <h2>User Wallets</h2>
-          <span>Review customer balances and apply wallet adjustments.</span>
+          <p>{{ 'finance' | t }}</p>
+          <h2>{{ 'userWallets' | t }}</h2>
+          <span>{{ 'walletsSubtitle' | t }}</span>
         </div>
         <button type="button" (click)="load()" [disabled]="loading">
           <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
-          <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
         </button>
       </header>
 
       <div class="admin-wallets-metrics">
         <article class="metric-balance">
           <span><i class="fas fa-wallet"></i></span>
-          <p>Total balance</p>
+          <p>{{ 'totalBalance' | t }}</p>
           <strong>{{ totalBalance() | currency:'EGP':'symbol-narrow' }}</strong>
         </article>
         <article class="metric-credit">
           <span><i class="fas fa-arrow-up"></i></span>
-          <p>Lifetime credit</p>
+          <p>{{ 'lifetimeCredit' | t }}</p>
           <strong>{{ totalCredit() | currency:'EGP':'symbol-narrow' }}</strong>
         </article>
         <article class="metric-debit">
           <span><i class="fas fa-arrow-down"></i></span>
-          <p>Lifetime debit</p>
+          <p>{{ 'lifetimeDebit' | t }}</p>
           <strong>{{ totalDebit() | currency:'EGP':'symbol-narrow' }}</strong>
         </article>
         <article class="metric-count">
           <span><i class="fas fa-users"></i></span>
-          <p>Wallets</p>
+          <p>{{ 'wallets' | t }}</p>
           <strong>{{ wallets().length }}</strong>
         </article>
       </div>
@@ -49,25 +49,25 @@
       <section class="admin-wallets-panel">
         <div class="admin-wallets-panel-title">
           <div>
-            <p>Customers</p>
-            <h3>Wallet management</h3>
+            <p>{{ 'customers' | t }}</p>
+            <h3>{{ 'walletManagement' | t }}</h3>
           </div>
           <label>
             <i class="fas fa-search"></i>
-            <input [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search wallets">
+            <input [ngModel]="query()" (ngModelChange)="query.set($event)" [placeholder]="'searchWallets' | t">
           </label>
         </div>
 
         @if (loading && !wallets().length) {
           <div class="admin-wallets-empty inside">
-            <h1>Loading wallets...</h1>
-            <p>Fetching live wallet data.</p>
+            <h1>{{ 'loadingWallets' | t }}</h1>
+            <p>{{ 'fetchingWalletData' | t }}</p>
           </div>
         } @else if (loadError) {
           <div class="admin-wallets-empty inside">
-            <h1>Wallets unavailable</h1>
+            <h1>{{ 'walletsUnavailable' | t }}</h1>
             <p>{{ loadError }}</p>
-            <button type="button" (click)="load()">Try again</button>
+            <button type="button" (click)="load()">{{ 'tryAgain' | t }}</button>
           </div>
         } @else {
           <div class="admin-wallet-list">
@@ -82,27 +82,36 @@
                   </div>
                 </div>
                 <div class="admin-wallet-balance">
-                  <span>Balance</span>
+                  <span>{{ 'balance' | t }}</span>
                   <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
-                  <small>Updated {{ wallet.updatedAt | date:'short' }}</small>
+                  <small>{{ 'updated' | t }} {{ wallet.updatedAt | date:'short' }}</small>
                 </div>
                 <div class="admin-wallet-totals">
-                  <span>Credit {{ wallet.lifetimeCredit | currency:wallet.currency:'symbol-narrow' }}</span>
-                  <span>Debit {{ wallet.lifetimeDebit | currency:wallet.currency:'symbol-narrow' }}</span>
+                  <span>{{ 'credit' | t }} {{ wallet.lifetimeCredit | currency:wallet.currency:'symbol-narrow' }}</span>
+                  <span>{{ 'debit' | t }} {{ wallet.lifetimeDebit | currency:wallet.currency:'symbol-narrow' }}</span>
                 </div>
                 <div class="admin-wallet-controls">
+<<<<<<< HEAD
                   <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" placeholder="Amount">
                   <app-custom-dropdown [value]="walletDraft[wallet.id].type" (valueChange)="setWalletDraftType(wallet.id, $event)" [options]="walletTypeOptions" ariaLabel="Wallet adjustment type" [compact]="true" />
                   <input [(ngModel)]="walletDraft[wallet.id].reason" placeholder="Reason">
+=======
+                  <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" [placeholder]="'amount' | t">
+                  <select [(ngModel)]="walletDraft[wallet.id].type">
+                    <option value="credit">{{ 'credit' | t }}</option>
+                    <option value="debit">{{ 'debit' | t }}</option>
+                  </select>
+                  <input [(ngModel)]="walletDraft[wallet.id].reason" [placeholder]="'reason' | t">
+>>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
                   <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
-                    {{ updatingWalletId === wallet.id ? 'Saving...' : 'Apply' }}
+                    {{ updatingWalletId === wallet.id ? ('saving' | t) : ('apply' | t) }}
                   </button>
                 </div>
               </article>
             } @empty {
               <div class="admin-wallets-empty inside">
-                <h1>No wallets found</h1>
-                <p>Try a different search term.</p>
+                <h1>{{ 'noWalletsFound' | t }}</h1>
+                <p>{{ 'tryDifferentSearch' | t }}</p>
               </div>
             }
           </div>
