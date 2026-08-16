@@ -1,4 +1,4 @@
-import { Component, effect, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, effect, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
@@ -15,6 +15,8 @@ import { ThemeService } from '@core/services/theme.service';
   styleUrl: './navbar.component.css'
 })
 export class NavbarComponent {
+  @ViewChild('notificationWrapper') private readonly notificationWrapper?: ElementRef<HTMLElement>;
+
   readonly mobileOpen = signal(false);
   readonly notificationsOpen = signal(false);
   readonly adminMenuOpen = signal(false);
@@ -43,6 +45,17 @@ export class NavbarComponent {
         this.notificationsOpen.set(false);
       }
     });
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeNotificationsOnOutsideClick(event: MouseEvent): void {
+    if (!this.notificationsOpen()) return;
+
+    const wrapper = this.notificationWrapper?.nativeElement;
+    const target = event.target;
+    if (wrapper && target instanceof Node && !wrapper.contains(target)) {
+      this.notificationsOpen.set(false);
+    }
   }
 
   firstName(name: string): string {

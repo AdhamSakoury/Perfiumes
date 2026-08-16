@@ -92,18 +92,9 @@
                     </div>
                     <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
                     <div class="wallet-controls">
-<<<<<<< HEAD
-                      <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" placeholder="Amount">
-                      <app-custom-dropdown [value]="walletDraft[wallet.id].type" (valueChange)="setWalletDraftType(wallet.id, $event)" [options]="walletTypeOptions" ariaLabel="Wallet adjustment type" [compact]="true" />
-                      <input [(ngModel)]="walletDraft[wallet.id].reason" placeholder="Reason">
-=======
                       <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" [placeholder]="'amount' | t">
-                      <select [(ngModel)]="walletDraft[wallet.id].type">
-                        <option value="credit">{{ 'credit' | t }}</option>
-                        <option value="debit">{{ 'debit' | t }}</option>
-                      </select>
+                      <app-custom-dropdown [value]="walletDraft[wallet.id].type" (valueChange)="setWalletDraftType(wallet.id, $event)" [options]="walletTypeOptions" ariaLabel="Wallet adjustment type" [compact]="true" />
                       <input [(ngModel)]="walletDraft[wallet.id].reason" [placeholder]="'reason' | t">
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
                       <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
                         {{ updatingWalletId === wallet.id ? ('saving' | t) : ('apply' | t) }}
                       </button>

@@ -59,17 +59,8 @@
 
             <div class="status-controls">
               <label>
-<<<<<<< HEAD
-                <span>Status</span>
-                <app-custom-dropdown [value]="draftStatus[order.id]" (valueChange)="setDraftStatus(order.id, $event)" [options]="statusOptions" ariaLabel="Order status" [compact]="true" />
-=======
                 <span>{{ 'status' | t }}</span>
-                <select [(ngModel)]="draftStatus[order.id]" name="status-{{ order.id }}">
-                  @for (status of statuses; track status) {
-                    <option [value]="status">{{ statusLabel(status) }}</option>
-                  }
-                </select>
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
+                <app-custom-dropdown [value]="draftStatus[order.id]" (valueChange)="setDraftStatus(order.id, $event)" [options]="statusOptions" ariaLabel="Order status" [compact]="true" />
               </label>
               <button type="button" (click)="updateStatus(order)" [disabled]="updatingId === order.id || draftStatus[order.id] === order.status">
                 <i class="fas fa-rotate" [class.is-spinning]="updatingId === order.id"></i>

@@ -37,7 +37,6 @@
             <span>{{ 'discountPercent' | t }}</span>
             <input type="number" min="1" max="95" name="discountPercent" [(ngModel)]="form.discountPercent">
           </label>
-<<<<<<< HEAD
           <div class="promo-expiry-field">
             <div class="promo-expiry-head">
               <span class="promo-expiry-icon"><i class="fas fa-calendar-day"></i></span>
@@ -113,12 +112,6 @@
               <button type="button" (click)="shiftExpiry(30)">+30 days</button>
             </div>
           </div>
-=======
-          <label>
-            <span>{{ 'expiresAt' | t }}</span>
-            <input type="datetime-local" name="expiresAt" [(ngModel)]="form.expiresAt">
-          </label>
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
           <button type="submit" [disabled]="saving">
             <i class="fas" [class.fa-plus]="!saving" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
             <span>{{ saving ? ('creating' | t) : ('createPromo' | t) }}</span>

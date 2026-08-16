@@ -7,7 +7,7 @@ import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { PromoCodeService } from '@core/services/promo-code.service';
 import { ToastService } from '@core/services/toast.service';
-<<<<<<< HEAD
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { finalize, switchMap, throwError, timeout } from 'rxjs';
 
 type PromoCalendarDay = {
@@ -19,10 +19,6 @@ type PromoCalendarDay = {
   today: boolean;
   disabled: boolean;
 };
-=======
-import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { finalize, switchMap, throwError } from 'rxjs';
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 
 @Component({
   selector: 'app-admin-promos',
@@ -196,13 +192,8 @@ export class AdminPromosComponent {
     if (!this.isAdmin || this.saving) return;
     const code = this.form.code.trim().toUpperCase();
     const discount = Number(this.form.discountPercent);
-<<<<<<< HEAD
     if (!code || discount <= 0 || discount > 95 || !this.form.expiresAt || new Date(this.form.expiresAt) <= new Date()) {
-      this.toast.show('Enter a valid promo code, discount, and expiration date.', 'error');
-=======
-    if (!code || discount <= 0 || discount > 95 || !this.form.expiresAt) {
       this.toast.show(this.i18n.t('promoValidationError'), 'error');
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
       return;
     }
 
@@ -220,11 +211,7 @@ export class AdminPromosComponent {
         this.saving = false;
         this.promos = [promo, ...this.promos.filter((item) => item.id !== promo.id)];
         this.form = { code: '', discountPercent: 10, expiresAt: this.defaultExpiry() };
-<<<<<<< HEAD
-        this.toast.show('Promo code created. Customer notifications are being sent.');
-=======
         this.toast.show(this.i18n.t('promoCreated'));
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
       },
       error: (error) => {
         this.toast.show(error?.error?.message || this.i18n.t('promoCreateFailed'), 'error');

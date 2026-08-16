@@ -7,22 +7,15 @@ import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
-<<<<<<< HEAD
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
-=======
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-<<<<<<< HEAD
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
-=======
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css'
 })

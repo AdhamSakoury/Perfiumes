@@ -8,21 +8,14 @@ import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
-<<<<<<< HEAD
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
-=======
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
 import { catchError, finalize, Observable, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-<<<<<<< HEAD
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
-=======
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
->>>>>>> c82970e9d9c0ef81a7bb3e78cfa860c66875ff96
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-orders.component.html',
   styleUrl: './admin-orders.component.css'
 })
