@@ -1,0 +1,187 @@
+.auth-page-shell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(5.25rem, 8vh, 6.25rem) 1rem 2rem;
+}
+
+.auth-card {
+  width: min(100%, 70rem);
+  display: grid;
+  grid-template-columns: minmax(28rem, 0.78fr) minmax(38rem, 1fr);
+  gap: 0;
+  border-radius: 0.9rem;
+  padding: 0.55rem;
+  overflow: hidden;
+}
+
+.auth-content {
+  padding: clamp(1rem, 2.6vw, 1.35rem);
+}
+
+.auth-visual {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: #071a18;
+}
+
+.auth-visual::before {
+  content: none;
+}
+
+.auth-visual::after {
+  content: none;
+}
+
+.auth-visual > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
+  display: block;
+}
+
+.auth-header {
+  margin-bottom: clamp(0.9rem, 2.2vh, 1.25rem);
+}
+
+.auth-header h1 {
+  font-size: clamp(1.3rem, 2.35vw, 1.5rem);
+  line-height: 1.15;
+}
+
+.auth-header p {
+  font-size: clamp(0.84rem, 1.55vw, 0.92rem);
+}
+
+.auth-form {
+  display: grid;
+  gap: clamp(0.8rem, 1.8vh, 1rem);
+}
+
+.register-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.85rem;
+  row-gap: 0.85rem;
+}
+
+.register-form > label,
+.register-form > p,
+.register-form > button {
+  grid-column: 1 / -1;
+}
+
+.auth-form label,
+.auth-form span {
+  font-size: 0.9rem;
+}
+
+.auth-input {
+  min-height: 2.6rem;
+  padding: 0.55rem 2.75rem 0.55rem 0.85rem;
+  font-size: 0.93rem;
+}
+
+:host-context([dir="rtl"]) .auth-input {
+  padding-right: 0.85rem;
+  padding-left: 2.75rem;
+}
+
+.auth-submit {
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+}
+
+.auth-divider {
+  margin: clamp(0.9rem, 2vh, 1.15rem) 0;
+}
+
+.auth-switch {
+  margin-top: clamp(0.9rem, 2vh, 1.15rem);
+}
+
+@media (max-height: 760px) and (min-width: 640px) {
+  .auth-page-shell {
+    align-items: flex-start;
+    padding-top: 5.25rem;
+    padding-bottom: 0.8rem;
+  }
+
+  .auth-card {
+    width: min(100%, 64rem);
+    grid-template-columns: minmax(24rem, 0.68fr) minmax(34rem, 1fr);
+    padding: 0.45rem;
+  }
+
+  .auth-content {
+    padding: 0.75rem;
+  }
+
+  .auth-header {
+    margin-bottom: 0.65rem;
+  }
+
+  .auth-header h1 {
+    font-size: 1.22rem;
+  }
+
+  .auth-header p,
+  .auth-form label,
+  .auth-form span,
+  .auth-switch {
+    font-size: 0.78rem;
+  }
+
+  .auth-form {
+    gap: 0.55rem;
+  }
+
+  .register-form {
+    column-gap: 0.7rem;
+    row-gap: 0.55rem;
+  }
+
+  .auth-input {
+    min-height: 2.2rem;
+    padding-top: 0.42rem;
+    padding-bottom: 0.42rem;
+  }
+
+  .auth-submit {
+    min-height: 2.35rem;
+  }
+
+  .auth-divider {
+    margin: 0.6rem 0;
+  }
+
+  .auth-switch {
+    margin-top: 0.65rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .auth-card {
+    width: min(100%, 27rem);
+    display: block;
+    padding: clamp(1rem, 2.6vw, 1.35rem);
+  }
+
+  .auth-content {
+    padding: 0;
+  }
+
+  .auth-visual {
+    display: none;
+  }
+
+  .register-form {
+    grid-template-columns: 1fr;
+  }
+}

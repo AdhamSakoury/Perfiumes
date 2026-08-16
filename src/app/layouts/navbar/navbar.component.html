@@ -19,7 +19,7 @@
             </a>
             @if (auth.currentUser()?.role === 'admin') {
               <a routerLink="/admin" routerLinkActive="nav-link-active" class="nav-link">
-                <i class="fas fa-gauge-high nav-link-icon"></i><span>Dashboard</span>
+                <i class="fas fa-gauge-high nav-link-icon"></i><span>{{ i18n.t('dashboard') }}</span>
               </a>
             }
             @if (auth.currentUser()?.role !== 'admin') {
@@ -35,7 +35,7 @@
               </a>
               @if (auth.currentUser()) {
                 <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
-                  <i class="fas fa-envelope nav-link-icon"></i><span>Messages</span>
+                  <i class="fas fa-envelope nav-link-icon"></i><span>{{ i18n.t('messages') }}</span>
                 </a>
                 <a routerLink="/orders" routerLinkActive="nav-link-active" class="nav-link">
                   <i class="fas fa-truck-fast nav-link-icon"></i><span>{{ i18n.t('orders') }}</span>
@@ -148,7 +148,7 @@
               @if (auth.currentUser()?.role === 'admin') {
                 <a routerLink="/admin" (click)="mobileOpen.set(false)" class="mobile-nav-row">
                   <i class="fas fa-gauge-high"></i>
-                  <span>Dashboard</span>
+                  <span>{{ i18n.t('dashboard') }}</span>
                 </a>
               }
               @if (auth.currentUser()?.role !== 'admin') {
@@ -180,7 +180,7 @@
                   <div class="mobile-account-links">
                     <a routerLink="/messages" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
                       <i class="fas fa-envelope"></i>
-                      <span>Messages</span>
+                      <span>{{ i18n.t('messages') }}</span>
                     </a>
                     <a routerLink="/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
                       <i class="fas fa-truck-fast"></i>

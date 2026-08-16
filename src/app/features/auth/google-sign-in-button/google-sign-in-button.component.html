@@ -1,22 +1,7 @@
-@if (configured) {
-  <div class="flex justify-center">
-    <div #googleButton class="min-h-[44px]"></div>
-  </div>
-
-  @if (loading) {
-    <p class="text-center text-sm mt-3 text-nubian-earth dark:text-nubian-sand">{{ 'signingGoogle' | t }}</p>
-  }
-} @else {
-  <button
-    type="button"
-    (click)="startGoogleSignIn()"
-    class="w-full py-3 border border-nubian-sand dark:border-nubian-gold/25 rounded-lg font-semibold text-nubian-brown dark:text-nubian-sand hover:border-nubian-gold transition-colors">
-    <i class="fab fa-google mr-2 text-nubian-terracotta"></i>
-    Add Google Client ID
-  </button>
-}
-
-
-
-
-
+<button type="button" (click)="startGoogleSignIn()" class="google-custom-button">
+  <span class="google-mark">
+    <i class="fab fa-google"></i>
+  </span>
+  <span>{{ configured ? (buttonLabelKey() | t) : ('addGoogleClientId' | t) }}</span>
+  <i class="fas fa-arrow-right google-arrow"></i>
+</button>

@@ -93,7 +93,7 @@
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
   margin-bottom: 0.9rem;
 }
@@ -115,6 +115,14 @@
   box-shadow: 0 16px 34px -32px rgba(26, 21, 16, 0.42);
   animation: soft-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+:host-context([dir="rtl"]) .metric-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label icon"
+    "value value";
+  text-align: right;
 }
 
 .metric-card:nth-child(2) { animation-delay: 45ms; }
@@ -170,6 +178,10 @@
   white-space: normal;
   word-break: normal;
   overflow-wrap: normal;
+}
+
+:host-context([dir="rtl"]) .metric-card strong {
+  text-align: right;
 }
 
 .dashboard-grid {
@@ -254,6 +266,11 @@
   transform: translateX(3px);
 }
 
+:host-context([dir="rtl"]) .order-feed article:hover,
+:host-context([dir="rtl"]) .wallet-row:hover {
+  transform: translateX(-3px);
+}
+
 .order-feed article {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -283,6 +300,11 @@
   font-size: 0.95rem;
   font-weight: 900;
   text-align: right;
+}
+
+:host-context([dir="rtl"]) .order-feed b,
+:host-context([dir="rtl"]) .wallet-row b {
+  text-align: left;
 }
 
 .wallet-row {
@@ -400,7 +422,7 @@
 
 @media (max-width: 1180px) {
   .metric-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-grid {
@@ -435,5 +457,10 @@
   .order-feed b,
   .wallet-row b {
     text-align: left;
+  }
+
+  :host-context([dir="rtl"]) .order-feed b,
+  :host-context([dir="rtl"]) .wallet-row b {
+    text-align: right;
   }
 }

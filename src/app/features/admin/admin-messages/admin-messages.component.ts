@@ -5,15 +5,17 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { SupportConversation, SupportMessage } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
+import { LocalizationService } from '@core/services/localization.service';
 import { SupportMessageService } from '@core/services/support-message.service';
 import { ToastService } from '@core/services/toast.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize, switchMap, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-admin-messages',
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink],
+  imports: [DatePipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './admin-messages.component.html',
   styleUrl: './admin-messages.component.css'
 })
@@ -30,7 +32,8 @@ export class AdminMessagesComponent {
     readonly auth: AuthService,
     private readonly support: SupportMessageService,
     private readonly router: Router,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly i18n: LocalizationService
   ) {
     effect(() => {
       const items = this.support.conversations();
@@ -74,8 +77,8 @@ export class AdminMessagesComponent {
         this.applyConversations(items);
       },
       error: () => {
-        this.loadError = 'Could not load support messages.';
-        this.toast.show('Could not load support messages.', 'error');
+        this.loadError = this.i18n.t('supportMessagesLoadFailed');
+        this.toast.show(this.i18n.t('supportMessagesLoadFailed'), 'error');
       }
     });
   }
@@ -103,7 +106,7 @@ export class AdminMessagesComponent {
         this.support.upsertConversation(selected);
         this.replyText = body;
         this.replying = false;
-        this.toast.show('Reply failed.', 'error');
+        this.toast.show(this.i18n.t('replyFailed'), 'error');
       }
     });
   }
@@ -114,7 +117,7 @@ export class AdminMessagesComponent {
 
     this.adminRequest((token) => this.support.closeConversation(selected.id, token)).subscribe({
       next: (updated) => this.replaceConversation(updated),
-      error: () => this.toast.show('Could not close conversation.', 'error')
+      error: () => this.toast.show(this.i18n.t('conversationCloseFailed'), 'error')
     });
   }
 
@@ -188,10 +191,16 @@ export class AdminMessagesComponent {
         this.tokenLoading = false;
         this.loading = false;
         this.replying = false;
-        this.loadError = 'Please login again as admin.';
-        this.toast.show('Please login again as admin.', 'error');
+        this.loadError = this.i18n.t('loginAgainAdmin');
+        this.toast.show(this.i18n.t('loginAgainAdmin'), 'error');
         return throwError(() => refreshError);
       })
     );
+  }
+
+  statusLabel(status: string): string {
+    const key = `conversationStatus_${status}`;
+    const translated = this.i18n.t(key);
+    return translated === key ? status : translated;
   }
 }

@@ -1,39 +1,39 @@
-<button type="button" class="admin-sidebar-toggle" (click)="open.set(!open())" aria-label="Open admin sidebar">
+<button type="button" class="admin-sidebar-toggle" (click)="open.set(!open())" [attr.aria-label]="'openAdminSidebar' | t">
   <i class="fas" [class.fa-bars]="!open()" [class.fa-times]="open()"></i>
 </button>
 
-<button type="button" class="admin-sidebar-backdrop" [class.show]="open()" (click)="close()" aria-label="Close admin sidebar"></button>
+<button type="button" class="admin-sidebar-backdrop" [class.show]="open()" (click)="close()" [attr.aria-label]="'closeAdminSidebar' | t"></button>
 
 <aside class="admin-global-sidebar" [class.open]="open()">
   <div class="admin-sidebar-head">
     <span class="admin-avatar">{{ (auth.currentUser()?.fullName || 'A').slice(0, 1).toUpperCase() }}</span>
     <div>
-      <strong>{{ auth.currentUser()?.fullName || 'Admin' }}</strong>
+      <strong>{{ auth.currentUser()?.fullName || ('admin' | t) }}</strong>
       <small>{{ auth.currentUser()?.email }}</small>
     </div>
   </div>
 
   <nav class="admin-side-nav">
     <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="close()">
-      <i class="fas fa-gauge-high"></i><span>Dashboard</span>
+      <i class="fas fa-gauge-high"></i><span>{{ 'dashboard' | t }}</span>
     </a>
     <a routerLink="/admin/products" routerLinkActive="active" (click)="close()">
-      <i class="fas fa-boxes-stacked"></i><span>Products</span>
+      <i class="fas fa-boxes-stacked"></i><span>{{ 'products' | t }}</span>
     </a>
     <a routerLink="/admin/orders" routerLinkActive="active" (click)="close()">
-      <i class="fas fa-clipboard-list"></i><span>Orders</span>
+      <i class="fas fa-clipboard-list"></i><span>{{ 'orders' | t }}</span>
     </a>
     <a routerLink="/admin/wallets" routerLinkActive="active" (click)="close()">
-      <i class="fas fa-wallet"></i><span>Wallets</span>
+      <i class="fas fa-wallet"></i><span>{{ 'wallets' | t }}</span>
     </a>
     <a routerLink="/admin/promos" routerLinkActive="active" (click)="close()">
-      <i class="fas fa-tags"></i><span>Promo Codes</span>
+      <i class="fas fa-tags"></i><span>{{ 'promoCodes' | t }}</span>
     </a>
     <a routerLink="/admin/messages" routerLinkActive="active" (click)="close()">
-      <i class="fas fa-headset"></i><span>Support Inbox</span>
+      <i class="fas fa-headset"></i><span>{{ 'supportInbox' | t }}</span>
     </a>
     <a routerLink="/account" routerLinkActive="active" (click)="close()">
-      <i class="fas fa-user"></i><span>Account</span>
+      <i class="fas fa-user"></i><span>{{ 'account' | t }}</span>
     </a>
   </nav>
 </aside>

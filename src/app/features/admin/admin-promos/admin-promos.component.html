@@ -1,68 +1,68 @@
 <section class="page-shell admin-promos-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
   @if (!auth.currentUser()) {
     <div class="admin-promos-empty">
-      <h1>Admin login required</h1>
-      <a routerLink="/login">Go to login</a>
+      <h1>{{ 'adminLoginRequired' | t }}</h1>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
     </div>
   } @else if (!isAdmin) {
     <div class="admin-promos-empty">
-      <h1>Admins only</h1>
-      <a routerLink="/">Back home</a>
+      <h1>{{ 'adminsOnly' | t }}</h1>
+      <a routerLink="/">{{ 'backHome' | t }}</a>
     </div>
   } @else {
     <div class="admin-promos-main">
       <header class="admin-promos-topbar">
         <div>
-          <p>Marketing</p>
-          <h2>Promo Codes</h2>
-          <span>Create limited-time discounts and notify customers instantly.</span>
+          <p>{{ 'marketing' | t }}</p>
+          <h2>{{ 'promoCodes' | t }}</h2>
+          <span>{{ 'promosSubtitle' | t }}</span>
         </div>
         <button type="button" (click)="load()" [disabled]="loading">
           <i class="fas fa-rotate"></i>
-          <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
         </button>
       </header>
 
       <div class="admin-promos-grid">
         <form class="admin-promos-form" (ngSubmit)="create()">
           <div>
-            <p>Create</p>
-            <h3>New promo code</h3>
+            <p>{{ 'create' | t }}</p>
+            <h3>{{ 'newPromoCode' | t }}</h3>
           </div>
           <label>
-            <span>Code</span>
+            <span>{{ 'code' | t }}</span>
             <input name="code" [(ngModel)]="form.code" placeholder="SUMMER20">
           </label>
           <label>
-            <span>Discount percent</span>
+            <span>{{ 'discountPercent' | t }}</span>
             <input type="number" min="1" max="95" name="discountPercent" [(ngModel)]="form.discountPercent">
           </label>
           <label>
-            <span>Expires at</span>
+            <span>{{ 'expiresAt' | t }}</span>
             <input type="datetime-local" name="expiresAt" [(ngModel)]="form.expiresAt">
           </label>
           <button type="submit" [disabled]="saving">
             <i class="fas" [class.fa-plus]="!saving" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
-            <span>{{ saving ? 'Creating...' : 'Create promo' }}</span>
+            <span>{{ saving ? ('creating' | t) : ('createPromo' | t) }}</span>
           </button>
         </form>
 
         <section class="admin-promos-panel">
           <div class="admin-promos-panel-title">
             <div>
-              <p>Existing</p>
-              <h3>Promo codes</h3>
+              <p>{{ 'existing' | t }}</p>
+              <h3>{{ 'promoCodes' | t }}</h3>
             </div>
-            <span>{{ promos.length }} total</span>
+            <span>{{ 'totalCount' | t:{ count: promos.length } }}</span>
           </div>
 
           @if (loading && !promos.length) {
             <div class="admin-promos-empty inside">
-              <h1>Loading promos...</h1>
+              <h1>{{ 'loadingPromos' | t }}</h1>
             </div>
           } @else if (loadError) {
             <div class="admin-promos-empty inside">
-              <h1>Promos unavailable</h1>
+              <h1>{{ 'promosUnavailable' | t }}</h1>
               <p>{{ loadError }}</p>
             </div>
           } @else {
@@ -71,14 +71,14 @@
                 <article>
                   <div>
                     <strong>{{ promo.code }}</strong>
-                    <small>{{ promo.discountPercent | number:'1.0-2' }}% off · expires {{ promo.expiresAt | date:'medium' }}</small>
-                    <em>Created by {{ promo.createdByEmail }}</em>
+                    <small>{{ 'percentOffExpires' | t:{ discount: (promo.discountPercent | number:'1.0-2') || promo.discountPercent, date: (promo.expiresAt | date:'medium') || promo.expiresAt } }}</small>
+                    <em>{{ 'createdBy' | t:{ email: promo.createdByEmail } }}</em>
                   </div>
-                  <span [class.expired]="promo.isExpired">{{ promo.isExpired ? 'Expired' : 'Active' }}</span>
+                  <span [class.expired]="promo.isExpired">{{ promo.isExpired ? ('expired' | t) : ('active' | t) }}</span>
                 </article>
               } @empty {
                 <div class="admin-promos-empty inside">
-                  <h1>No promo codes yet</h1>
+                  <h1>{{ 'noPromoCodesYet' | t }}</h1>
                 </div>
               }
             </div>

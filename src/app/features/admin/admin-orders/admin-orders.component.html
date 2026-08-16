@@ -1,36 +1,36 @@
 <section class="page-shell admin-orders-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
   @if (!auth.currentUser()) {
     <div class="admin-orders-empty">
-      <h1>Admin login required</h1>
-      <a routerLink="/login">Go to login</a>
+      <h1>{{ 'adminLoginRequired' | t }}</h1>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
     </div>
   } @else if (!isAdmin) {
     <div class="admin-orders-empty">
-      <h1>Admins only</h1>
-      <a routerLink="/">Back home</a>
+      <h1>{{ 'adminsOnly' | t }}</h1>
+      <a routerLink="/">{{ 'backHome' | t }}</a>
     </div>
   } @else {
     <div class="admin-orders-header">
       <div>
-        <p>Admin Dashboard</p>
-        <h1>Orders</h1>
+        <p>{{ 'adminDashboard' | t }}</p>
+        <h1>{{ 'orders' | t }}</h1>
       </div>
       <button type="button" (click)="load()" [disabled]="loading">
         <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
-        <span>{{ loading ? 'Loading' : 'Refresh' }}</span>
+        <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
       </button>
     </div>
 
     @if (loading && !orders.length) {
       <div class="admin-orders-empty">
-        <h1>Loading orders...</h1>
-        <p class="admin-orders-empty-line">Fetching the latest orders from the database.</p>
+        <h1>{{ 'loadingOrders' | t }}</h1>
+        <p class="admin-orders-empty-line">{{ 'fetchingLatestOrders' | t }}</p>
       </div>
     } @else if (loadError) {
       <div class="admin-orders-empty">
-        <h1>Orders unavailable</h1>
+        <h1>{{ 'ordersUnavailable' | t }}</h1>
         <p class="admin-orders-empty-line">{{ loadError }}</p>
-        <button type="button" (click)="load()">Try again</button>
+        <button type="button" (click)="load()">{{ 'tryAgain' | t }}</button>
       </div>
     } @else {
       <div class="orders-list">
@@ -44,9 +44,9 @@
 
               <div class="order-summary">
                 <b>{{ order.total | currency }}</b>
-                <span class="status-pill">{{ order.status }}</span>
+                <span class="status-pill">{{ statusLabel(order.status) }}</span>
                 <span class="payment-pill" [class.paid]="order.paymentStatus === 'paid'">
-                  {{ order.paymentMethod === 'wallet' ? 'Wallet' : 'Cash' }} - {{ order.paymentStatus || 'pending' }}
+                  {{ paymentMethodLabel(order.paymentMethod) }} - {{ order.paymentStatus || ('pending' | t) }}
                 </span>
               </div>
             </div>
@@ -59,22 +59,22 @@
 
             <div class="status-controls">
               <label>
-                <span>Status</span>
+                <span>{{ 'status' | t }}</span>
                 <select [(ngModel)]="draftStatus[order.id]" name="status-{{ order.id }}">
                   @for (status of statuses; track status) {
-                    <option [value]="status">{{ status }}</option>
+                    <option [value]="status">{{ statusLabel(status) }}</option>
                   }
                 </select>
               </label>
               <button type="button" (click)="updateStatus(order)" [disabled]="updatingId === order.id || draftStatus[order.id] === order.status">
                 <i class="fas fa-rotate" [class.is-spinning]="updatingId === order.id"></i>
-                <span>{{ updatingId === order.id ? 'Saving' : 'Update Status' }}</span>
+                <span>{{ updatingId === order.id ? ('saving' | t) : ('updateStatus' | t) }}</span>
               </button>
             </div>
           </article>
         } @empty {
           <div class="admin-orders-empty">
-            <p class="admin-orders-empty-line">No orders yet.</p>
+            <p class="admin-orders-empty-line">{{ 'noOrdersYet' | t }}</p>
           </div>
         }
       </div>
