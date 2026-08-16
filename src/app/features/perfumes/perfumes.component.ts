@@ -5,12 +5,13 @@ import { ProductFilters } from '@core/models/store.models';
 import { PerfumeService } from '@core/services/perfume.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-perfumes-page',
   standalone: true,
-  imports: [FormsModule, PerfumeCardComponent, TranslatePipe],
+  imports: [FormsModule, PerfumeCardComponent, CustomDropdownComponent, TranslatePipe],
   templateUrl: './perfumes.component.html',
   styleUrl: './perfumes.component.css'
 })
@@ -101,6 +102,22 @@ export class PerfumesPageComponent implements OnInit {
 
   get brands() {
     return this.perfumeService.brands();
+  }
+
+  get translatedSortOptions(): CustomDropdownOption[] {
+    return this.sortOptions.map((option) => ({
+      value: option.value,
+      label: this.i18n.t(option.labelKey),
+      icon: option.value === 'price-low'
+        ? 'fa-arrow-down-1-9'
+        : option.value === 'price-high'
+          ? 'fa-arrow-up-9-1'
+          : option.value === 'rating'
+            ? 'fa-star'
+            : option.value === 'name'
+              ? 'fa-arrow-down-a-z'
+              : 'fa-sparkles'
+    }));
   }
 
   toggleArray(key: 'gender' | 'brands', value: string, event: Event): void {

@@ -7,6 +7,7 @@ import { AuthService } from '@core/services/auth.service';
 import { PerfumeService } from '@core/services/perfume.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 type ProductForm = Omit<Perfume, 'id' | 'notes' | 'season'> & {
@@ -34,7 +35,7 @@ const EMPTY_FORM: ProductForm = {
 @Component({
   selector: 'app-admin-products',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [CurrencyPipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-products.component.html',
   styleUrl: './admin-products.component.css'
 })
@@ -95,6 +96,14 @@ export class AdminProductsComponent {
 
   get isEditing(): boolean {
     return typeof this.form.id === 'number';
+  }
+
+  get genderOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'Men', label: this.i18n.t('men'), icon: 'fa-mars' },
+      { value: 'Women', label: this.i18n.t('women'), icon: 'fa-venus' },
+      { value: 'Unisex', label: this.i18n.t('unisex'), icon: 'fa-venus-mars' }
+    ];
   }
 
   setPage(page: number): void {

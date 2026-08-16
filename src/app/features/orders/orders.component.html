@@ -11,12 +11,7 @@
           <i class="fas fa-search"></i>
           <input [ngModel]="query()" (ngModelChange)="query.set($event)" [placeholder]="'searchOrders' | t">
         </label>
-        <select [ngModel]="sort()" (ngModelChange)="sort.set($event)" class="orders-select">
-          <option value="newest">{{ 'newest' | t }}</option>
-          <option value="oldest">{{ 'oldest' | t }}</option>
-          <option value="highest">{{ 'highestTotal' | t }}</option>
-          <option value="lowest">{{ 'lowestTotal' | t }}</option>
-        </select>
+        <app-custom-dropdown class="orders-select" [value]="sort()" (valueChange)="sort.set($event)" [options]="sortOptions" [ariaLabel]="'sort' | t" />
       </div>
     </div>
 

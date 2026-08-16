@@ -92,10 +92,7 @@
                 </div>
                 <div class="admin-wallet-controls">
                   <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" placeholder="Amount">
-                  <select [(ngModel)]="walletDraft[wallet.id].type">
-                    <option value="credit">Credit</option>
-                    <option value="debit">Debit</option>
-                  </select>
+                  <app-custom-dropdown [value]="walletDraft[wallet.id].type" (valueChange)="setWalletDraftType(wallet.id, $event)" [options]="walletTypeOptions" ariaLabel="Wallet adjustment type" [compact]="true" />
                   <input [(ngModel)]="walletDraft[wallet.id].reason" placeholder="Reason">
                   <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
                     {{ updatingWalletId === wallet.id ? 'Saving...' : 'Apply' }}

@@ -145,17 +145,11 @@
           <div class="settings-form-grid mt-5">
             <label class="settings-field">
               <span>{{ i18n.t('language') }}</span>
-              <select name="language" [ngModel]="settings.language" (ngModelChange)="setLanguage($event)">
-                <option value="en">{{ i18n.t('english') }}</option>
-                <option value="ar">{{ i18n.t('arabic') }}</option>
-              </select>
+              <app-custom-dropdown [value]="settings.language" (valueChange)="setLanguage($event)" [options]="languageOptions" [ariaLabel]="i18n.t('language')" />
             </label>
             <label class="settings-field">
               <span>{{ i18n.t('profilePrivacy') }}</span>
-              <select name="profileVisibility" [(ngModel)]="settings.profileVisibility">
-                <option value="private">{{ i18n.t('private') }}</option>
-                <option value="members">{{ i18n.t('membersOnly') }}</option>
-              </select>
+              <app-custom-dropdown [value]="settings.profileVisibility" (valueChange)="setProfileVisibility($event)" [options]="privacyOptions" [ariaLabel]="i18n.t('profilePrivacy')" />
             </label>
           </div>
 
@@ -189,11 +183,7 @@
           <div class="settings-form-grid mt-5">
             <label class="settings-field">
               <span>{{ i18n.t('assistantTone') }}</span>
-              <select name="chatbotTone" [(ngModel)]="settings.chatbotTone">
-                <option value="friendly">{{ i18n.t('friendly') }}</option>
-                <option value="direct">{{ i18n.t('direct') }}</option>
-                <option value="luxury">{{ i18n.t('luxuryAdvisor') }}</option>
-              </select>
+              <app-custom-dropdown [value]="settings.chatbotTone" (valueChange)="setChatbotTone($event)" [options]="toneOptions" [ariaLabel]="i18n.t('assistantTone')" />
             </label>
           </div>
 

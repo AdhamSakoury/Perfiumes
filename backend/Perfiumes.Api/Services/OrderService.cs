@@ -134,6 +134,25 @@ IF COL_LENGTH(N'[Orders]', N'PaymentStatus') IS NULL
         var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
         var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
+        var subtotal = Math.Round(request.Subtotal, 2);
+        var promoCode = NormalizePromoCode(request.PromoCode);
+        var discount = 0m;
+
+        if (promoCode is not null)
+        {
+            var promo = await db.PromoCodes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Code == promoCode && item.IsActive && item.ExpiresAt > now);
+
+            if (promo is null)
+            {
+                throw new InvalidOperationException("Invalid or expired promo code.");
+            }
+
+            discount = Math.Round(subtotal * promo.Discount, 2);
+        }
+
+        var total = Math.Max(0, Math.Round(subtotal - discount, 2));
 
         if (paymentMethod == "wallet")
         {
@@ -151,7 +170,7 @@ IF COL_LENGTH(N'[Orders]', N'PaymentStatus') IS NULL
                 throw new InvalidOperationException("Wallet was not found for this customer.");
             }
 
-            var amount = Math.Round(request.Total, 2);
+            var amount = total;
             if (amount <= 0 || wallet.Balance < amount)
             {
                 throw new InvalidOperationException("Insufficient wallet balance.");
@@ -178,9 +197,9 @@ IF COL_LENGTH(N'[Orders]', N'PaymentStatus') IS NULL
             UserEmail = normalizedEmail,
             Status = "Processing",
             Date = now,
-            Subtotal = request.Subtotal,
-            Discount = request.Discount,
-            Total = request.Total,
+            Subtotal = subtotal,
+            Discount = discount,
+            Total = total,
             PaymentMethod = paymentMethod,
             PaymentStatus = paymentStatus,
             ShippingName = request.ShippingAddress.Name,
@@ -189,7 +208,7 @@ IF COL_LENGTH(N'[Orders]', N'PaymentStatus') IS NULL
             ShippingState = request.ShippingAddress.State,
             ShippingZip = request.ShippingAddress.Zip,
             ShippingCountry = request.ShippingAddress.Country,
-            PromoCode = request.PromoCode,
+            PromoCode = promoCode,
             Items = request.Items.Select(item => new OrderItemEntity
             {
                 Id = $"item_{Guid.NewGuid():N}",
@@ -267,6 +286,13 @@ IF COL_LENGTH(N'[Orders]', N'PaymentStatus') IS NULL
         return paymentMethod?.Trim().Equals("wallet", StringComparison.OrdinalIgnoreCase) == true
             ? "wallet"
             : "cashOnDelivery";
+    }
+
+    private static string? NormalizePromoCode(string? promoCode)
+    {
+        return string.IsNullOrWhiteSpace(promoCode)
+            ? null
+            : promoCode.Trim().ToUpperInvariant();
     }
 
     private static OrderDto ToDto(OrderEntity order)

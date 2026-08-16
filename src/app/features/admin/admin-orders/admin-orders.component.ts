@@ -7,12 +7,13 @@ import { Order, OrderStatus } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { catchError, finalize, Observable, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
   templateUrl: './admin-orders.component.html',
   styleUrl: './admin-orders.component.css'
 })
@@ -49,6 +50,22 @@ export class AdminOrdersComponent implements OnDestroy {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
+  }
+
+  get statusOptions(): CustomDropdownOption[] {
+    return this.statuses.map((status) => ({
+      value: status,
+      label: status === 'OutForDelivery' ? 'Out for delivery' : status,
+      icon: status === 'Delivered'
+        ? 'fa-circle-check'
+        : status === 'Cancelled'
+          ? 'fa-circle-xmark'
+          : 'fa-truck-fast'
+    }));
+  }
+
+  setDraftStatus(orderId: string, status: string): void {
+    this.draftStatus[orderId] = this.statuses.includes(status as OrderStatus) ? status as OrderStatus : 'Processing';
   }
 
   ngOnDestroy(): void {

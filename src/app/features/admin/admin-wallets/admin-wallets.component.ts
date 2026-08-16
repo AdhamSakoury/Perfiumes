@@ -7,12 +7,13 @@ import { AdminWallet } from '@core/models/store.models';
 import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { Observable, catchError, finalize, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-wallets',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent],
   templateUrl: './admin-wallets.component.html',
   styleUrl: './admin-wallets.component.css'
 })
@@ -53,6 +54,17 @@ export class AdminWalletsComponent {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
+  }
+
+  get walletTypeOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'credit', label: 'Credit', icon: 'fa-arrow-up' },
+      { value: 'debit', label: 'Debit', icon: 'fa-arrow-down' }
+    ];
+  }
+
+  setWalletDraftType(walletId: string, type: string): void {
+    this.walletDraft[walletId].type = type === 'debit' ? 'debit' : 'credit';
   }
 
   load(): void {
