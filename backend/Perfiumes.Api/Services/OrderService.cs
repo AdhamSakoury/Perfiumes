@@ -155,12 +155,12 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
         var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
-<<<<<<< HEAD
         var paymentProvider = NormalizePaymentProvider(paymentMethod, request.PaymentProvider);
         var paymentReference = paymentMethod is "wallet" or "card" ? $"PAY-{Guid.NewGuid():N}"[..20].ToUpperInvariant() : string.Empty;
         var shippingFee = CalculateShippingFee(request.ShippingAddress.City);
         var estimatedDelivery = CalculateEstimatedDelivery(request.ShippingAddress.City, now);
         var courierName = SelectCourier(request.ShippingAddress.City);
+        var promoCode = NormalizePromoCode(request.PromoCode);
 
         var requestedQuantities = request.Items
             .GroupBy(item => item.Id)
@@ -184,29 +184,8 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         }
 
         var subtotal = request.Items.Sum(item => Math.Round(products[item.Id].Price * item.Quantity, 2));
-        var discount = await CalculateDiscountAsync(request.PromoCode, subtotal);
+        var discount = await CalculateDiscountAsync(promoCode, subtotal);
         var total = Math.Round(subtotal - discount + shippingFee, 2);
-=======
-        var subtotal = Math.Round(request.Subtotal, 2);
-        var promoCode = NormalizePromoCode(request.PromoCode);
-        var discount = 0m;
-
-        if (promoCode is not null)
-        {
-            var promo = await db.PromoCodes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.Code == promoCode && item.IsActive && item.ExpiresAt > now);
-
-            if (promo is null)
-            {
-                throw new InvalidOperationException("Invalid or expired promo code.");
-            }
-
-            discount = Math.Round(subtotal * promo.Discount, 2);
-        }
-
-        var total = Math.Max(0, Math.Round(subtotal - discount, 2));
->>>>>>> 67a49997241224711419fad6b0469c31141d23b9
 
         if (paymentMethod == "wallet")
         {
@@ -253,10 +232,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
             Date = now,
             Subtotal = subtotal,
             Discount = discount,
-<<<<<<< HEAD
             ShippingFee = shippingFee,
-=======
->>>>>>> 67a49997241224711419fad6b0469c31141d23b9
             Total = total,
             PaymentMethod = paymentMethod,
             PaymentStatus = paymentStatus,
@@ -447,7 +423,12 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Code == normalized && item.IsActive && item.ExpiresAt > DateTimeOffset.UtcNow);
 
-        return promo is null ? 0 : Math.Round(subtotal * promo.Discount, 2);
+        if (promo is null)
+        {
+            throw new InvalidOperationException("Invalid or expired promo code.");
+        }
+
+        return Math.Round(subtotal * promo.Discount, 2);
     }
 
     private async Task RestoreStockAsync(OrderEntity order)
