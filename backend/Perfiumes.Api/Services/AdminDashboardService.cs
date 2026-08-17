@@ -61,6 +61,10 @@ END
             .Where(order => order.Status != "Cancelled")
             .SumAsync(order => (decimal?)order.Total) ?? 0;
         var walletBalance = await db.UserWallets.SumAsync(wallet => (decimal?)wallet.Balance) ?? 0;
+        var completedSalesOrders = await db.Orders.CountAsync(order => order.Status != "Cancelled");
+        var averageOrderValue = completedSalesOrders == 0 ? 0 : Math.Round(revenue / completedSalesOrders, 2);
+        var pendingOrders = await db.Orders.CountAsync(order => order.Status == "Processing" || order.Status == "Packed");
+        var lowStockProducts = await db.Products.CountAsync(product => product.StockQuantity <= 5);
 
         var recentOrders = await db.Orders
             .AsNoTracking()
@@ -79,6 +83,9 @@ END
             openSupport,
             revenue,
             walletBalance,
+            averageOrderValue,
+            pendingOrders,
+            lowStockProducts,
             recentOrders,
             wallets.Take(8).ToList());
     }

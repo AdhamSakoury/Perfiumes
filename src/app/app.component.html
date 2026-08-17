@@ -1,12 +1,14 @@
-<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen flex flex-col" [class.admin-sidebar-mode]="showAdminSidebar()">
-      <app-navbar />
+<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen flex flex-col" [class.admin-sidebar-mode]="showAdminSidebar()" [class.auth-fullscreen-mode]="authFullscreen()">
+      @if (showGlobalChrome()) {
+        <app-navbar />
+      }
       @if (showAdminSidebar()) {
         <app-admin-sidebar />
       }
-      <main class="flex-1">
+      <main class="flex-1" [class.auth-fullscreen-main]="authFullscreen()">
         <router-outlet />
       </main>
-      @if (!showAdminSidebar()) {
+      @if (showGlobalChrome() && !showAdminSidebar()) {
         <app-footer />
         <app-chatbot-widget />
       }

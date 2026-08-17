@@ -116,6 +116,13 @@ export class OrdersPageComponent {
     return labels[status] || status;
   }
 
+  paymentLabel(order: Order): string {
+    if (order.paymentMethod === 'wallet') return 'Wallet paid';
+    if (order.paymentMethod === 'card') return 'Card paid';
+    if (order.paymentMethod === 'instapay') return order.paymentStatus === 'paid' ? 'InstaPay paid' : 'InstaPay pending';
+    return 'Cash on delivery';
+  }
+
   private loadOrders(userEmail: string, showBusy: boolean): void {
     this.loading.set(showBusy);
     this.orderService.getForUser(userEmail).subscribe({

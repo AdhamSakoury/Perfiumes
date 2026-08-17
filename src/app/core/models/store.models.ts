@@ -74,6 +74,7 @@ export interface OrderItem {
 
 export interface ShippingAddress {
   name: string;
+  phone?: string;
   street: string;
   city: string;
   state: string;
@@ -99,9 +100,15 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  shippingFee?: number;
   total: number;
   paymentMethod?: 'cashOnDelivery' | 'wallet' | string;
   paymentStatus?: 'pending' | 'paid' | string;
+  paymentProvider?: string;
+  paymentReference?: string;
+  courierName?: string;
+  trackingNumber?: string;
+  estimatedDelivery?: string;
   shippingAddress: ShippingAddress;
   promoCode: string | null;
   trackingEvents?: OrderTrackingEvent[];
@@ -213,6 +220,9 @@ export interface AdminDashboardSummary {
   openSupportMessages: number;
   revenue: number;
   walletBalance: number;
+  averageOrderValue: number;
+  pendingOrders: number;
+  lowStockProducts: number;
   recentOrders: AdminDashboardOrder[];
   wallets: AdminWallet[];
 }

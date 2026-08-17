@@ -15,6 +15,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
     public DbSet<UserWalletEntity> UserWallets => Set<UserWalletEntity>();
     public DbSet<WalletTransactionEntity> WalletTransactions => Set<WalletTransactionEntity>();
     public DbSet<PromoCodeEntity> PromoCodes => Set<PromoCodeEntity>();
+    public DbSet<NewsletterSubscriberEntity> NewsletterSubscribers => Set<NewsletterSubscriberEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,10 +83,16 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(order => order.Status).HasMaxLength(32);
             entity.Property(order => order.Subtotal).HasPrecision(18, 2);
             entity.Property(order => order.Discount).HasPrecision(18, 2);
+            entity.Property(order => order.ShippingFee).HasPrecision(18, 2);
             entity.Property(order => order.Total).HasPrecision(18, 2);
             entity.Property(order => order.PaymentMethod).HasMaxLength(32);
             entity.Property(order => order.PaymentStatus).HasMaxLength(32);
+            entity.Property(order => order.PaymentProvider).HasMaxLength(80);
+            entity.Property(order => order.PaymentReference).HasMaxLength(120);
+            entity.Property(order => order.CourierName).HasMaxLength(120);
+            entity.Property(order => order.TrackingNumber).HasMaxLength(120);
             entity.Property(order => order.ShippingName).HasMaxLength(160);
+            entity.Property(order => order.ShippingPhone).HasMaxLength(64);
             entity.Property(order => order.ShippingStreet).HasMaxLength(500);
             entity.Property(order => order.ShippingCity).HasMaxLength(120);
             entity.Property(order => order.ShippingState).HasMaxLength(120);
@@ -181,6 +188,15 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(promo => promo.Code).HasMaxLength(40);
             entity.Property(promo => promo.Discount).HasPrecision(5, 4);
             entity.Property(promo => promo.CreatedByEmail).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<NewsletterSubscriberEntity>(entity =>
+        {
+            entity.ToTable("NewsletterSubscribers");
+            entity.HasKey(subscriber => subscriber.Id);
+            entity.HasIndex(subscriber => subscriber.Email).IsUnique();
+            entity.Property(subscriber => subscriber.Id).HasMaxLength(64);
+            entity.Property(subscriber => subscriber.Email).HasMaxLength(256);
         });
     }
 }

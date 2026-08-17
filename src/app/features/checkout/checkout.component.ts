@@ -7,6 +7,7 @@ import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
 import { OrderService } from '@core/services/order.service';
+import { PaymentService } from '@core/services/payment.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
@@ -21,14 +22,20 @@ import { catchError, switchMap, throwError } from 'rxjs';
 })
 export class CheckoutPageComponent {
   form = { name: '', email: '', phone: '', address: '', city: '', postal: '' };
-  paymentMethod: 'cashOnDelivery' | 'wallet' = 'cashOnDelivery';
+  paymentMethod: 'cashOnDelivery' | 'wallet' | 'card' | 'instapay' = 'cashOnDelivery';
   error = '';
   processing = false;
+  readonly deliveryRegions = [
+    { label: 'Cairo / Giza', fee: 75, eta: '2 business days' },
+    { label: 'Alexandria', fee: 95, eta: '3-4 business days' },
+    { label: 'Other governorates', fee: 120, eta: '4-5 business days' }
+  ];
 
   constructor(
     readonly cart: CartService,
     readonly auth: AuthService,
     private readonly orders: OrderService,
+    private readonly payments: PaymentService,
     private readonly toast: ToastService,
     private readonly router: Router,
     private readonly i18n: LocalizationService
@@ -53,6 +60,8 @@ export class CheckoutPageComponent {
     if (!user) return;
 
     this.processing = true;
+    const shippingFee = this.shippingFee();
+    const payableTotal = this.payableTotal();
 
     const order: Omit<Order, 'id' | 'date' | 'status' | 'trackingEvents'> & { userEmail: string } = {
       userEmail: user.email,
@@ -65,11 +74,18 @@ export class CheckoutPageComponent {
       })),
       subtotal: this.cart.subtotal(),
       discount: this.cart.discount(),
-      total: this.cart.total(),
+      shippingFee,
+      total: payableTotal,
       paymentMethod: this.paymentMethod,
       paymentStatus: this.paymentMethod === 'wallet' ? 'paid' : 'pending',
+      paymentProvider: this.paymentProviderLabel(),
+      paymentReference: '',
+      courierName: '',
+      trackingNumber: '',
+      estimatedDelivery: '',
       shippingAddress: {
         name: this.form.name,
+        phone: this.form.phone,
         street: this.form.address,
         city: this.form.city,
         state: '',
@@ -89,6 +105,24 @@ export class CheckoutPageComponent {
     orderRequest.subscribe({
       next: (createdOrder) => {
         this.auth.updateCurrentUser({ ...user, orders: [createdOrder, ...(user.orders || [])] });
+        if (this.paymentMethod === 'card') {
+          this.payments.createPaymobCheckout(createdOrder.id).subscribe({
+            next: (checkout) => {
+              this.cart.clear();
+              this.cart.clearPromo();
+              this.processing = false;
+              window.location.href = checkout.checkoutUrl;
+            },
+            error: (error: unknown) => {
+              this.processing = false;
+              this.error = error instanceof HttpErrorResponse
+                ? error.error?.message || 'Could not start Paymob checkout.'
+                : 'Could not start Paymob checkout.';
+            }
+          });
+          return;
+        }
+
         this.cart.clear();
         this.cart.clearPromo();
         this.processing = false;
@@ -102,6 +136,34 @@ export class CheckoutPageComponent {
           : 'Could not place your order. Please try again.';
       }
     });
+  }
+
+  shippingFee(): number {
+    const city = this.form.city.trim().toLowerCase();
+    if (city.includes('cairo') || city.includes('giza') || city.includes('القاهرة') || city.includes('الجيزة')) return 75;
+    if (city.includes('alex') || city.includes('alexandria') || city.includes('اسكندرية') || city.includes('الإسكندرية')) return 95;
+    return 120;
+  }
+
+  deliveryEta(): string {
+    const city = this.form.city.trim().toLowerCase();
+    if (city.includes('cairo') || city.includes('giza') || city.includes('القاهرة') || city.includes('الجيزة')) return '2 business days';
+    if (city.includes('alex') || city.includes('alexandria') || city.includes('اسكندرية') || city.includes('الإسكندرية')) return '3-4 business days';
+    return '4-5 business days';
+  }
+
+  payableTotal(): number {
+    return this.cart.total() + this.shippingFee();
+  }
+
+  paymentProviderLabel(): string {
+    const labels: Record<string, string> = {
+      cashOnDelivery: 'Cash on delivery',
+      wallet: 'Gnouby wallet',
+      card: 'Paymob',
+      instapay: 'InstaPay manual confirmation'
+    };
+    return labels[this.paymentMethod];
   }
 
   private retryWalletOrderAfterAuthError(

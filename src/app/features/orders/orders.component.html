@@ -41,7 +41,7 @@
                     <span>{{ 'orderNumber' | t:{ id: order.id } }}</span>
                     <span class="order-status status-{{ order.status.toLowerCase() }}">{{ statusLabel(order.status) }}</span>
                     <span class="order-status" [class.status-delivered]="order.paymentStatus === 'paid'" [class.status-pending]="order.paymentStatus !== 'paid'">
-                      {{ order.paymentMethod === 'wallet' ? 'Wallet paid' : 'Cash on delivery' }}
+                      {{ paymentLabel(order) }}
                     </span>
                   </div>
                   <h3>{{ order.items[0].name }}</h3>
@@ -61,7 +61,7 @@
             </div>
             <div class="tracking-mini-labels">
               <span>{{ trackingTitle(order.status) }}</span>
-              <span>{{ order.trackingEvents?.[order.trackingEvents.length - 1]?.description || 'Your order is being updated.' }}</span>
+              <span>{{ order.trackingNumber ? ('Tracking ' + order.trackingNumber + ' via ' + order.courierName) : (order.trackingEvents?.[order.trackingEvents.length - 1]?.description || 'Your order is being updated.') }}</span>
             </div>
           </button>
         }
@@ -90,6 +90,9 @@
           <span>Order details</span>
           <h2>{{ 'orderNumber' | t:{ id: order.id } }}</h2>
           <p>{{ order.date | date:'fullDate' }}</p>
+          @if (order.estimatedDelivery) {
+            <p>Estimated delivery: {{ order.estimatedDelivery | date:'mediumDate' }}</p>
+          }
         </div>
         <button type="button" (click)="selectedOrder.set(null)" class="orders-modal-close" aria-label="Close order details"><i class="fas fa-times"></i></button>
       </div>
@@ -106,6 +109,13 @@
         }
       </div>
       <div class="tracking-panel">
+        @if (order.trackingNumber || order.courierName || order.paymentReference) {
+          <div class="rounded-xl border border-nubian-gold/20 p-4 mb-5 text-sm">
+            @if (order.courierName) { <p><strong>Courier:</strong> {{ order.courierName }}</p> }
+            @if (order.trackingNumber) { <p><strong>Tracking number:</strong> {{ order.trackingNumber }}</p> }
+            @if (order.paymentReference) { <p><strong>Payment reference:</strong> {{ order.paymentReference }}</p> }
+          </div>
+        }
         <div class="tracking-steps">
           <span class="tracking-line-fill" [style.height.%]="trackingPercent(order)"></span>
           @for (step of trackingSteps; track step; let index = $index) {
@@ -134,6 +144,7 @@
           @if (order.discount > 0) {
             <div class="discount-row"><span>{{ 'discount' | t }}</span><strong>-{{ order.discount | currency }}</strong></div>
           }
+          <div><span>Shipping</span><strong>{{ (order.shippingFee || 0) | currency:'EGP':'symbol-narrow' }}</strong></div>
           <div class="total-row"><span>{{ 'total' | t }}</span><strong>{{ order.total | currency }}</strong></div>
         </div>
         <button type="button" (click)="reorder(order)" class="orders-reorder-btn">{{ 'reorder' | t }}</button>

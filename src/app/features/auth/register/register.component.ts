@@ -24,8 +24,12 @@ export class RegisterPageComponent {
   loading = false;
   errors: Record<string, string | undefined> = {};
 
-  constructor(private readonly auth: AuthService, private readonly router: Router, private readonly i18n: LocalizationService) {
+  constructor(private readonly auth: AuthService, private readonly router: Router, readonly i18n: LocalizationService) {
     if (this.auth.currentUser()) void this.router.navigateByUrl('/account');
+  }
+
+  toggleLanguage(): void {
+    this.i18n.setLanguage(this.i18n.language() === 'ar' ? 'en' : 'ar');
   }
 
   updateStrength(): void {

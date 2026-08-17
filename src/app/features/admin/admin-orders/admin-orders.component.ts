@@ -26,6 +26,9 @@ export class AdminOrdersComponent implements OnDestroy {
   loading = false;
   updatingId: string | null = null;
   draftStatus: Record<string, OrderStatus> = {};
+  statusNotes: Record<string, string> = {};
+  query = '';
+  statusFilter: 'all' | OrderStatus = 'all';
   loadError = '';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly refreshOnFocus = (): void => this.load(true);
@@ -52,6 +55,26 @@ export class AdminOrdersComponent implements OnDestroy {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
+  }
+
+  get displayedOrders(): Order[] {
+    const query = this.query.trim().toLowerCase();
+    return this.orders.filter((order) => {
+      const matchesStatus = this.statusFilter === 'all' || order.status === this.statusFilter;
+      const matchesQuery = !query
+        || order.id.toLowerCase().includes(query)
+        || order.userEmail?.toLowerCase().includes(query)
+        || order.shippingAddress.name.toLowerCase().includes(query)
+        || order.shippingAddress.city.toLowerCase().includes(query)
+        || order.items.some((item) => item.name.toLowerCase().includes(query));
+      return matchesStatus && matchesQuery;
+    });
+  }
+
+  get totalRevenueVisible(): number {
+    return this.displayedOrders
+      .filter((order) => order.status !== 'Cancelled')
+      .reduce((sum, order) => sum + order.total, 0);
   }
 
   ngOnDestroy(): void {
@@ -87,11 +110,12 @@ export class AdminOrdersComponent implements OnDestroy {
     if (!status || status === order.status || this.updatingId) return;
 
     this.updatingId = order.id;
-    this.adminRequest((token) => this.ordersApi.updateStatus(order.id, status, token)).subscribe({
+    this.adminRequest((token) => this.ordersApi.updateStatus(order.id, status, token, this.statusNotes[order.id] || '')).subscribe({
       next: (updated) => {
         this.orders = this.orders.map((item) => (item.id === updated.id ? updated : item));
         AdminOrdersComponent.cachedOrders = this.orders;
         this.draftStatus[updated.id] = updated.status;
+        this.statusNotes[updated.id] = '';
         this.updatingId = null;
       },
       error: () => {
@@ -108,7 +132,25 @@ export class AdminOrdersComponent implements OnDestroy {
   }
 
   paymentMethodLabel(method: string | undefined): string {
-    return method === 'wallet' ? this.i18n.t('wallet') : this.i18n.t('cash');
+    if (method === 'wallet') return this.i18n.t('wallet');
+    if (method === 'card') return 'Card';
+    if (method === 'instapay') return 'InstaPay';
+    return this.i18n.t('cash');
+  }
+
+  printPackingSlip(order: Order): void {
+    const lines = order.items.map((item) => `${item.name} x${item.quantity}`).join('\n');
+    const summary = [
+      `Order: ${order.id}`,
+      `Customer: ${order.shippingAddress.name} <${order.userEmail}>`,
+      `Phone/address: ${order.shippingAddress.street}, ${order.shippingAddress.city}`,
+      `Courier: ${order.courierName || 'Not assigned'}`,
+      `Tracking: ${order.trackingNumber || 'Not assigned'}`,
+      `Payment: ${this.paymentMethodLabel(order.paymentMethod)} / ${order.paymentStatus || 'pending'}`,
+      `Items:\n${lines}`,
+      `Total: ${order.total}`
+    ].join('\n\n');
+    window.alert(summary);
   }
 
   private applyOrders(orders: Order[]): void {
@@ -117,7 +159,11 @@ export class AdminOrdersComponent implements OnDestroy {
     this.loadError = '';
     this.loading = false;
     this.draftStatus = {};
-    for (const order of orders) this.draftStatus[order.id] = order.status;
+    this.statusNotes = {};
+    for (const order of orders) {
+      this.draftStatus[order.id] = order.status;
+      this.statusNotes[order.id] = '';
+    }
   }
 
   private adminRequest<T>(request: (token: string) => Observable<T>): Observable<T> {

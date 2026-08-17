@@ -55,6 +55,9 @@ export class AdminDashboardComponent {
     return [
       { label: this.i18n.t('metricRevenue'), value: `$${summary.revenue.toFixed(2)}`, icon: 'fa-chart-line', tone: 'gold' },
       { label: this.i18n.t('metricOrders'), value: summary.totalOrders, icon: 'fa-bag-shopping', tone: 'teal' },
+      { label: 'Average order', value: `$${summary.averageOrderValue.toFixed(2)}`, icon: 'fa-receipt', tone: 'earth' },
+      { label: 'Pending ops', value: summary.pendingOrders, icon: 'fa-box-open', tone: 'red' },
+      { label: 'Low stock', value: summary.lowStockProducts, icon: 'fa-triangle-exclamation', tone: 'sand' },
       { label: this.i18n.t('metricCustomers'), value: summary.totalCustomers, icon: 'fa-users', tone: 'earth' },
       { label: this.i18n.t('metricWalletBalance'), value: `${summary.walletBalance.toFixed(2)} EGP`, icon: 'fa-wallet', tone: 'green' },
       { label: this.i18n.t('metricProducts'), value: summary.totalProducts, icon: 'fa-boxes-stacked', tone: 'sand' },
@@ -227,6 +230,9 @@ export class AdminDashboardComponent {
       openSupportMessages: 4,
       revenue: 1772.5,
       walletBalance: 2025,
+      averageOrderValue: 253.21,
+      pendingOrders: 3,
+      lowStockProducts: 0,
       recentOrders: [
         { id: 'ORD-DEMO-1001', userEmail: 'mariam@test.local', status: 'Processing', total: 121.5, date: new Date().toISOString() },
         { id: 'ORD-DEMO-1002', userEmail: 'laila@test.local', status: 'Packed', total: 190, date: new Date().toISOString() },

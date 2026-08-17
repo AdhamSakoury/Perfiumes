@@ -1,0 +1,79 @@
+.policies-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 1.25rem;
+}
+
+.policies-nav,
+.policies-content {
+  border: 1px solid rgb(201 151 59 / 0.22);
+  background: rgb(255 255 255 / 0.9);
+  border-radius: 1rem;
+  box-shadow: 0 16px 45px rgb(42 27 18 / 0.08);
+}
+
+.policies-nav {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+  padding: 1rem;
+}
+
+.policies-nav a {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  color: #5f3b26;
+  font-weight: 700;
+}
+
+.policies-nav a.active,
+.policies-nav a:hover {
+  background: #c9973b;
+  color: #1f140d;
+}
+
+.policies-content {
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.policies-content > p:first-child {
+  color: #c9973b;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.policies-content h1 {
+  color: #5f3b26;
+  font-family: Cinzel, serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.policies-content p {
+  color: #6f513e;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  margin-bottom: 1rem;
+}
+
+:host-context(.dark) .policies-nav,
+:host-context(.dark) .policies-content {
+  background: rgb(45 31 24 / 0.92);
+}
+
+:host-context(.dark) .policies-nav a,
+:host-context(.dark) .policies-content h1 {
+  color: #e8c98b;
+}
+
+:host-context(.dark) .policies-content p {
+  color: #dfc9a5;
+}
+
+@media (max-width: 760px) {
+  .policies-layout {
+    grid-template-columns: 1fr;
+  }
+}

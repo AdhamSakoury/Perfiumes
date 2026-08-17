@@ -25,12 +25,16 @@ export class LoginPageComponent {
     private readonly auth: AuthService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-    private readonly i18n: LocalizationService
+    readonly i18n: LocalizationService
   ) {
     const user = this.auth.currentUser();
     if (user) {
       void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || (user.role === 'admin' ? '/admin' : '/account'));
     }
+  }
+
+  toggleLanguage(): void {
+    this.i18n.setLanguage(this.i18n.language() === 'ar' ? 'en' : 'ar');
   }
 
   submit(): void {

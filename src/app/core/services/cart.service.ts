@@ -43,9 +43,21 @@ export class CartService {
       return false;
     }
 
+    const perfume = this.perfumes.findById(perfumeId);
+    if (!perfume || (perfume.stockQuantity ?? 0) <= 0) {
+      this.toast.show('This perfume is currently out of stock.', 'error');
+      return false;
+    }
+
     const items = [...this.items()];
     const existing = items.find((item) => item.perfumeId === perfumeId);
-    if (existing) existing.quantity += quantity;
+    const nextQuantity = (existing?.quantity || 0) + quantity;
+    if (nextQuantity > (perfume.stockQuantity ?? nextQuantity)) {
+      this.toast.show(`Only ${perfume.stockQuantity} item(s) available.`, 'error');
+      return false;
+    }
+
+    if (existing) existing.quantity = nextQuantity;
     else items.push({ perfumeId, quantity });
     this.save(items);
     this.toast.show(this.i18n.t('addedToCart'), 'success');

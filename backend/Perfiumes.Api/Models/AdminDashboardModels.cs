@@ -8,6 +8,9 @@ public sealed record AdminDashboardSummaryDto(
     int OpenSupportMessages,
     decimal Revenue,
     decimal WalletBalance,
+    decimal AverageOrderValue,
+    int PendingOrders,
+    int LowStockProducts,
     IReadOnlyList<AdminDashboardOrderDto> RecentOrders,
     IReadOnlyList<AdminWalletDto> Wallets);
 

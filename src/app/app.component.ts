@@ -18,6 +18,10 @@ import { Subscription, filter } from 'rxjs';
 })
 export class AppComponent implements OnInit, OnDestroy {
   readonly currentUrl = signal('');
+  readonly authFullscreen = computed(() => {
+    const url = this.currentUrl().split('?')[0].split('#')[0];
+    return url === '/login' || url === '/register';
+  });
   readonly showAdminSidebar = computed(() => {
     const user = this.auth.currentUser();
     if (user?.role !== 'admin') return false;
@@ -25,6 +29,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const url = this.currentUrl().split('?')[0].split('#')[0];
     return url !== '/' && url !== '/perfumes' && !url.startsWith('/perfumes/');
   });
+  readonly showGlobalChrome = computed(() => !this.authFullscreen());
   private routeSubscription?: Subscription;
 
   constructor(

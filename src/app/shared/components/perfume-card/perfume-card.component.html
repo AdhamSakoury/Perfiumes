@@ -28,6 +28,9 @@
       <div class="p-4">
         <p class="text-sm text-nubian-gold font-semibold mb-1">{{ perfume.brand }}</p>
         <h3 class="text-lg font-bold text-nubian-dark dark:text-nubian-sand mb-2 font-cinzel">{{ perfume.name }}</h3>
+        <p class="text-xs mb-2" [class.text-green-600]="(perfume.stockQuantity || 0) > 5" [class.text-nubian-terracotta]="(perfume.stockQuantity || 0) <= 5">
+          {{ (perfume.stockQuantity || 0) > 0 ? ((perfume.stockQuantity || 0) + ' in stock') : 'Out of stock' }}
+        </p>
         <div class="flex items-center mb-3">
           <app-star-rating [rating]="perfume.rating" />
           <span class="ml-2 text-sm text-nubian-earth dark:text-nubian-sand">({{ perfume.rating }})</span>
@@ -37,7 +40,8 @@
           <button
             type="button"
             (click)="addToCart()"
-            class="px-3 py-2 bg-nubian-brown text-white rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+            [disabled]="(perfume.stockQuantity || 0) <= 0"
+            class="px-3 py-2 bg-nubian-brown text-white rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             <i class="fas fa-cart-plus mr-1"></i> {{ 'add' | t }}
           </button>
         </div>

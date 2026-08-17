@@ -25,6 +25,22 @@
             </div>
             @if (error) { <p class="text-nubian-terracotta">{{ error }}</p> }
 
+            <div class="rounded-xl border border-nubian-gold/20 bg-nubian-sand/20 dark:bg-nubian-surface2 p-4">
+              <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">Delivery estimate</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                @for (region of deliveryRegions; track region.label) {
+                  <div class="rounded-lg bg-white/70 dark:bg-nubian-surface border border-nubian-gold/10 p-3">
+                    <strong>{{ region.label }}</strong>
+                    <p>{{ region.fee | currency:'EGP':'symbol-narrow' }}</p>
+                    <small>{{ region.eta }}</small>
+                  </div>
+                }
+              </div>
+              <p class="mt-3 text-sm text-nubian-earth dark:text-nubian-sand">
+                Selected city estimate: {{ shippingFee() | currency:'EGP':'symbol-narrow' }} - {{ deliveryEta() }}
+              </p>
+            </div>
+
             <div>
               <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">{{ 'paymentMethod' | t }}</h3>
               <div class="grid gap-3">
@@ -44,6 +60,37 @@
                     <small>Use your available wallet balance instantly.</small>
                   </span>
                 </label>
+                <label class="checkout-payment-option" [class.active]="paymentMethod === 'card'">
+                  <input type="radio" name="payment" value="card" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <span class="payment-icon"><i class="fas fa-credit-card"></i></span>
+                  <span>
+                    <strong>Card payment</strong>
+                    <small>Gateway-ready flow; this build records a simulated paid reference.</small>
+                  </span>
+                </label>
+                <label class="checkout-payment-option" [class.active]="paymentMethod === 'instapay'">
+                  <input type="radio" name="payment" value="instapay" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <span class="payment-icon"><i class="fas fa-building-columns"></i></span>
+                  <span>
+                    <strong>InstaPay transfer</strong>
+                    <small>Order is held pending manual confirmation by admin.</small>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <div class="rounded-lg border border-green-500/20 bg-green-50 dark:bg-green-950/20 p-3">
+                <strong>Authenticity promise</strong>
+                <p>Clear sourcing and product details before dispatch.</p>
+              </div>
+              <div class="rounded-lg border border-blue-500/20 bg-blue-50 dark:bg-blue-950/20 p-3">
+                <strong>Easy support</strong>
+                <p>Message support from your account after ordering.</p>
+              </div>
+              <div class="rounded-lg border border-amber-500/20 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <strong>Return window</strong>
+                <p>Returns reviewed for unopened products within 14 days.</p>
               </div>
             </div>
 
@@ -72,7 +119,8 @@
               @if (cart.promo()) {
                 <div class="flex justify-between text-green-600"><span>{{ cart.promo()!.code }}</span><strong>-{{ cart.discount() | currency }}</strong></div>
               }
-              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ cart.total() | currency }}</strong></div>
+              <div class="flex justify-between"><span>Shipping</span><strong>{{ shippingFee() | currency:'EGP':'symbol-narrow' }}</strong></div>
+              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ payableTotal() | currency:'EGP':'symbol-narrow' }}</strong></div>
             </div>
           </aside>
         </div>

@@ -1,0 +1,17 @@
+<section class="page-shell policies-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  <div class="policies-layout">
+    <aside class="policies-nav">
+      @for (link of links; track link.key) {
+        <a [routerLink]="['/policies', link.key]" [class.active]="key() === link.key">{{ link.title }}</a>
+      }
+    </aside>
+
+    <article class="policies-content">
+      <p>Customer Service</p>
+      <h1>{{ policy().title }}</h1>
+      @for (paragraph of policy().body; track paragraph) {
+        <p>{{ paragraph }}</p>
+      }
+    </article>
+  </div>
+</section>

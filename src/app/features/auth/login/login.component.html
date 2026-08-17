@@ -1,7 +1,21 @@
-<section class="auth-page-shell page-shell page-enter">
+<section class="auth-page-shell page-enter">
       <div class="auth-card bg-white dark:bg-nubian-surface shadow-2xl border border-nubian-gold/20">
-        <aside class="auth-visual" aria-hidden="true">
-          <img src="/images/auth/auth-visual.png" alt="">
+        <aside class="auth-visual">
+          <img src="/images/auth/auth-visual-clean.png" alt="" aria-hidden="true">
+          <div class="auth-topbar">
+            <img src="/images/logo-dark.png" alt="Gnouby Perfumes">
+            <button type="button" (click)="toggleLanguage()" [attr.aria-label]="i18n.isRtl() ? i18n.t('switchToEnglish') : i18n.t('switchToArabic')">
+              <i class="fas fa-language"></i>
+              <span>{{ i18n.language() === 'ar' ? 'EN' : 'AR' }}</span>
+            </button>
+          </div>
+          <div class="auth-brand-overlay">
+            <div>
+              <span>Gnouby Perfumes</span>
+              <strong>Where every scent begins a story.</strong>
+              <p>Premium notes, warm heritage, and a fragrance journey made for you.</p>
+            </div>
+          </div>
         </aside>
 
         <div class="auth-content">

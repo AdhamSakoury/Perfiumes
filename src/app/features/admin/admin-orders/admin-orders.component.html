@@ -14,11 +14,28 @@
       <div>
         <p>{{ 'adminDashboard' | t }}</p>
         <h1>{{ 'orders' | t }}</h1>
+        <span>{{ displayedOrders.length }} shown - {{ totalRevenueVisible | currency:'EGP':'symbol-narrow' }} visible revenue</span>
       </div>
       <button type="button" (click)="load()" [disabled]="loading">
         <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
         <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
       </button>
+    </div>
+
+    <div class="status-controls mb-5">
+      <label>
+        <span>Search</span>
+        <input [(ngModel)]="query" name="admin-order-search" placeholder="Order, customer, city, perfume">
+      </label>
+      <label>
+        <span>Status</span>
+        <select [(ngModel)]="statusFilter" name="admin-order-filter">
+          <option value="all">All</option>
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ statusLabel(status) }}</option>
+          }
+        </select>
+      </label>
     </div>
 
     @if (loading && !orders.length) {
@@ -34,7 +51,7 @@
       </div>
     } @else {
       <div class="orders-list">
-        @for (order of orders; track order.id) {
+        @for (order of displayedOrders; track order.id) {
           <article class="order-card">
             <div class="order-card-main">
               <div class="order-title">
@@ -57,6 +74,18 @@
               }
             </div>
 
+            <div class="order-items">
+              <span>{{ order.shippingAddress.city }} - Shipping {{ (order.shippingFee || 0) | currency:'EGP':'symbol-narrow' }}</span>
+              <span>{{ order.courierName || 'Courier pending' }}</span>
+              <span>{{ order.trackingNumber || 'No tracking number yet' }}</span>
+              @if (order.estimatedDelivery) {
+                <span>ETA {{ order.estimatedDelivery | date:'mediumDate' }}</span>
+              }
+              @if (order.paymentReference) {
+                <span>Payment ref {{ order.paymentReference }}</span>
+              }
+            </div>
+
             <div class="status-controls">
               <label>
                 <span>{{ 'status' | t }}</span>
@@ -66,9 +95,17 @@
                   }
                 </select>
               </label>
+              <label>
+                <span>Customer note</span>
+                <input [(ngModel)]="statusNotes[order.id]" name="note-{{ order.id }}" placeholder="Optional tracking note">
+              </label>
               <button type="button" (click)="updateStatus(order)" [disabled]="updatingId === order.id || draftStatus[order.id] === order.status">
                 <i class="fas fa-rotate" [class.is-spinning]="updatingId === order.id"></i>
                 <span>{{ updatingId === order.id ? ('saving' | t) : ('updateStatus' | t) }}</span>
+              </button>
+              <button type="button" (click)="printPackingSlip(order)">
+                <i class="fas fa-print"></i>
+                <span>Slip</span>
               </button>
             </div>
           </article>

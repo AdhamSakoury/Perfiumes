@@ -7,6 +7,7 @@ using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using Perfiumes.Api.Services;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +48,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
+builder.Services.Configure<PaymobOptions>(builder.Configuration.GetSection("Paymob"));
 builder.Services.AddDbContext<PerfiumesDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ProductRepository>();
@@ -59,7 +61,9 @@ builder.Services.AddScoped<SupportMessageService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<PromoCodeService>();
+builder.Services.AddScoped<NewsletterService>();
 builder.Services.AddHttpClient<GoogleAuthService>();
+builder.Services.AddHttpClient<PaymobService>();
 
 var app = builder.Build();
 
@@ -73,6 +77,7 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<SupportMessageService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<PromoCodeService>().EnsureSchemaAsync();
+    await scope.ServiceProvider.GetRequiredService<NewsletterService>().EnsureSchemaAsync();
 }
 
 app.UseCors("Frontend");
@@ -117,7 +122,12 @@ app.MapGet("/", () => Results.Ok(new
         "GET /api/notifications",
         "POST /api/notifications/{id}/read",
         "POST /api/notifications/read-all",
-        "POST /api/notifications"
+        "POST /api/notifications",
+        "POST /api/newsletter/subscribe",
+        "GET /api/admin/newsletter/subscribers",
+        "POST /api/payments/paymob/checkout",
+        "POST /api/payments/paymob/webhook",
+        "POST /api/payments/status"
     }
 }));
 
@@ -374,6 +384,135 @@ app.MapPost("/api/promos/validate", async (
 {
     var promo = await promos.ValidateAsync(request.Code);
     return promo is null ? Results.NotFound(new { message = "Invalid or expired promo code." }) : Results.Ok(promo);
+});
+
+app.MapPost("/api/newsletter/subscribe", async (
+    NewsletterSubscribeRequest request,
+    NewsletterService newsletter) =>
+{
+    var subscriber = await newsletter.SubscribeAsync(request.Email);
+    return subscriber is null ? Results.BadRequest(new { message = "Valid email is required." }) : Results.Ok(subscriber);
+});
+
+app.MapPost("/api/payments/paymob/checkout", async (
+    PaymobCheckoutRequest request,
+    OrderService orders,
+    PaymobService paymob,
+    CancellationToken cancellationToken) =>
+{
+    var order = await orders.GetByIdAsync(request.OrderId);
+    if (order is null)
+    {
+        return Results.NotFound(new { message = "Order was not found." });
+    }
+
+    if (order.PaymentMethod != "card")
+    {
+        return Results.BadRequest(new { message = "This order is not configured for card payment." });
+    }
+
+    try
+    {
+        var checkout = await paymob.CreateCheckoutAsync(order, cancellationToken);
+        await orders.MarkPaymentStartedAsync(order.Id, "Paymob", checkout.ClientSecret);
+        return Results.Ok(checkout);
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
+});
+
+app.MapPost("/api/payments/status", async (
+    PaymentStatusUpdateRequest request,
+    OrderService orders) =>
+{
+    var order = await orders.UpdatePaymentStatusAsync(request.OrderId, request.Status, request.Reference);
+    return order is null ? Results.NotFound() : Results.Ok(order);
+});
+
+app.MapPost("/api/payments/paymob/webhook", async (
+    HttpRequest request,
+    OrderService orders) =>
+{
+    using var document = await JsonDocument.ParseAsync(request.Body);
+    var root = document.RootElement;
+    var orderId = TryReadString(root, "merchant_order_id")
+        ?? TryReadString(root, "special_reference")
+        ?? TryReadString(root, "order_id")
+        ?? TryReadString(root, "obj", "order", "merchant_order_id")
+        ?? TryReadString(root, "obj", "special_reference");
+    var success = TryReadBool(root, "success")
+        ?? TryReadBool(root, "is_success")
+        ?? TryReadBool(root, "obj", "success")
+        ?? false;
+    var transactionId = TryReadString(root, "id") ?? TryReadString(root, "obj", "id");
+
+    if (string.IsNullOrWhiteSpace(orderId))
+    {
+        return Results.BadRequest(new { message = "Order reference was not found in Paymob webhook." });
+    }
+
+    var order = await orders.UpdatePaymentStatusAsync(orderId, success ? "paid" : "failed", transactionId);
+    return order is null ? Results.NotFound() : Results.Ok(new { received = true });
+});
+
+static string? TryReadString(JsonElement root, params string[] path)
+{
+    if (!TryReadElement(root, out var element, path))
+    {
+        return null;
+    }
+
+    return element.ValueKind switch
+    {
+        JsonValueKind.String => element.GetString(),
+        JsonValueKind.Number => element.ToString(),
+        _ => null
+    };
+}
+
+static bool? TryReadBool(JsonElement root, params string[] path)
+{
+    if (!TryReadElement(root, out var element, path))
+    {
+        return null;
+    }
+
+    return element.ValueKind switch
+    {
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.String when bool.TryParse(element.GetString(), out var value) => value,
+        _ => null
+    };
+}
+
+static bool TryReadElement(JsonElement root, out JsonElement element, params string[] path)
+{
+    element = root;
+    foreach (var segment in path)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(segment, out element))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+app.MapGet("/api/admin/newsletter/subscribers", async (
+    NewsletterService newsletter,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await newsletter.GetAllAsync());
 });
 
 app.MapGet("/api/admin/promos", async (

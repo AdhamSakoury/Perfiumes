@@ -12,6 +12,9 @@
               <span class="text-nubian-earth dark:text-nubian-sand">{{ 'ratingOutOfFive' | t:{ rating: item.rating } }}</span>
             </div>
             <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-6">{{ item.price | currency }}</p>
+            <p class="mb-4 font-semibold" [class.text-green-600]="(item.stockQuantity || 0) > 5" [class.text-nubian-terracotta]="(item.stockQuantity || 0) <= 5">
+              {{ (item.stockQuantity || 0) > 0 ? ((item.stockQuantity || 0) + ' available now') : 'Out of stock' }}
+            </p>
             <p class="text-lg leading-relaxed text-nubian-earth dark:text-nubian-sand mb-6">{{ item.description }}</p>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -43,7 +46,7 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-4">
-              <button type="button" (click)="cart.add(item.id)" class="px-8 py-4 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+              <button type="button" (click)="cart.add(item.id)" [disabled]="(item.stockQuantity || 0) <= 0" class="px-8 py-4 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fas fa-shopping-cart mr-2"></i> {{ 'addToCart' | t }}
               </button>
               <button type="button" (click)="wishlist.add(item.id)" class="px-8 py-4 border-2 border-nubian-brown dark:border-nubian-gold text-nubian-brown dark:text-nubian-gold font-bold rounded-lg hover:bg-nubian-brown hover:text-white transition-all">

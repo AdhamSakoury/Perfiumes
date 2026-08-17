@@ -1,0 +1,18 @@
+<section class="page-shell payment-result-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-10">
+  <div class="payment-result-panel">
+    <i class="fas fa-credit-card"></i>
+    <p>Paymob Checkout</p>
+    <h1>Payment is being confirmed</h1>
+    <span>
+      @if (orderId) {
+        Order {{ orderId }} returned from Paymob. Final payment status is updated by the Paymob webhook.
+      } @else {
+        You returned from Paymob. Open your orders to review the latest status.
+      }
+    </span>
+    <div>
+      <a routerLink="/orders">View orders</a>
+      <a routerLink="/perfumes">Continue shopping</a>
+    </div>
+  </div>
+</section>

@@ -131,5 +131,23 @@ export const routes: Routes = [
     loadComponent: () => import('./features/orders/orders.component').then((module) => module.OrdersPageComponent),
     title: 'Orders | Gnouby'
   },
+  {
+    path: 'payment-result',
+    loadComponent: () => import('./features/payment-result/payment-result.component').then((module) => module.PaymentResultComponent),
+    title: 'Payment Result | Gnouby'
+  },
+  {
+    path: 'about',
+    redirectTo: 'policies/about'
+  },
+  {
+    path: 'faq',
+    redirectTo: 'policies/faq'
+  },
+  {
+    path: 'policies/:type',
+    loadComponent: () => import('./features/policies/policies.component').then((module) => module.PoliciesPageComponent),
+    title: 'Policies | Gnouby'
+  },
   { path: '**', redirectTo: '' }
 ];
