@@ -58,7 +58,6 @@ export class AdminOrdersComponent implements OnDestroy {
     return this.auth.currentUser()?.role === 'admin';
   }
 
-<<<<<<< HEAD
   get displayedOrders(): Order[] {
     const query = this.query.trim().toLowerCase();
     return this.orders.filter((order) => {
@@ -77,11 +76,12 @@ export class AdminOrdersComponent implements OnDestroy {
     return this.displayedOrders
       .filter((order) => order.status !== 'Cancelled')
       .reduce((sum, order) => sum + order.total, 0);
-=======
+  }
+
   get statusOptions(): CustomDropdownOption[] {
     return this.statuses.map((status) => ({
       value: status,
-      label: status === 'OutForDelivery' ? 'Out for delivery' : status,
+      label: this.statusLabel(status),
       icon: status === 'Delivered'
         ? 'fa-circle-check'
         : status === 'Cancelled'
@@ -92,7 +92,6 @@ export class AdminOrdersComponent implements OnDestroy {
 
   setDraftStatus(orderId: string, status: string): void {
     this.draftStatus[orderId] = this.statuses.includes(status as OrderStatus) ? status as OrderStatus : 'Processing';
->>>>>>> 67a49997241224711419fad6b0469c31141d23b9
   }
 
   ngOnDestroy(): void {
