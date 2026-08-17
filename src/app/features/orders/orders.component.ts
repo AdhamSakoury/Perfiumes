@@ -9,12 +9,13 @@ import { OrderService } from '@core/services/order.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-orders-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css'
 })
@@ -46,6 +47,15 @@ export class OrdersPageComponent {
         return result.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
     }
   });
+
+  get sortOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'newest', label: this.i18n.t('newest'), icon: 'fa-arrow-down-wide-short' },
+      { value: 'oldest', label: this.i18n.t('oldest'), icon: 'fa-arrow-up-wide-short' },
+      { value: 'highest', label: this.i18n.t('highestTotal'), icon: 'fa-arrow-trend-up' },
+      { value: 'lowest', label: this.i18n.t('lowestTotal'), icon: 'fa-arrow-trend-down' }
+    ];
+  }
 
   constructor(
     readonly auth: AuthService,

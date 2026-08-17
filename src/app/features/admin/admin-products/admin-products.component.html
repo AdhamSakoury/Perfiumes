@@ -57,11 +57,7 @@
 
           <label class="form-field">
             <span>{{ 'gender' | t }}</span>
-            <select name="gender" [(ngModel)]="form.gender">
-              <option value="Men">{{ 'men' | t }}</option>
-              <option value="Women">{{ 'women' | t }}</option>
-              <option value="Unisex">{{ 'unisex' | t }}</option>
-            </select>
+            <app-custom-dropdown [value]="form.gender" (valueChange)="form.gender = $event" [options]="genderOptions" [ariaLabel]="'gender' | t" />
           </label>
 
           <label class="form-field">

@@ -531,11 +531,11 @@ app.MapGet("/api/admin/promos", async (
 app.MapPost("/api/admin/promos", async (
     CreatePromoCodeRequest request,
     PromoCodeService promos,
-    UserService users,
     AdminAuthService auth,
-    NotificationService notifications,
+    IServiceScopeFactory serviceScopeFactory,
     HttpContext context,
-    IHubContext<NotificationHub> notificationHub) =>
+    IHubContext<NotificationHub> notificationHub,
+    ILoggerFactory loggerFactory) =>
 {
     var principal = auth.ValidateRequest(context);
     if (principal?.Role != "admin")
@@ -553,14 +553,27 @@ app.MapPost("/api/admin/promos", async (
         return Results.BadRequest(new { message = exception.Message });
     }
 
-    await PublishCustomersNotificationAsync(
-        users,
-        notifications,
-        notificationHub,
-        "New promo code",
-        $"Use {promo.Code} for {promo.DiscountPercent:0.##}% off before {promo.ExpiresAt:MMM d, yyyy h:mm tt}.",
-        "promo",
-        "/cart");
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            var scopedUsers = scope.ServiceProvider.GetRequiredService<UserService>();
+            var scopedNotifications = scope.ServiceProvider.GetRequiredService<NotificationService>();
+            await PublishCustomersNotificationAsync(
+                scopedUsers,
+                scopedNotifications,
+                notificationHub,
+                "New promo code",
+                $"Use {promo.Code} for {promo.DiscountPercent:0.##}% off before {promo.ExpiresAt:MMM d, yyyy h:mm tt}.",
+                "promo",
+                "/cart");
+        }
+        catch (Exception exception)
+        {
+            loggerFactory.CreateLogger("PromoNotifications").LogError(exception, "Could not publish promo notifications.");
+        }
+    });
 
     return Results.Created($"/api/admin/promos/{promo.Id}", promo);
 });

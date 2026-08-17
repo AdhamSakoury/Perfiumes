@@ -8,13 +8,14 @@ import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { catchError, finalize, Observable, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-orders.component.html',
   styleUrl: './admin-orders.component.css'
 })
@@ -57,6 +58,7 @@ export class AdminOrdersComponent implements OnDestroy {
     return this.auth.currentUser()?.role === 'admin';
   }
 
+<<<<<<< HEAD
   get displayedOrders(): Order[] {
     const query = this.query.trim().toLowerCase();
     return this.orders.filter((order) => {
@@ -75,6 +77,22 @@ export class AdminOrdersComponent implements OnDestroy {
     return this.displayedOrders
       .filter((order) => order.status !== 'Cancelled')
       .reduce((sum, order) => sum + order.total, 0);
+=======
+  get statusOptions(): CustomDropdownOption[] {
+    return this.statuses.map((status) => ({
+      value: status,
+      label: status === 'OutForDelivery' ? 'Out for delivery' : status,
+      icon: status === 'Delivered'
+        ? 'fa-circle-check'
+        : status === 'Cancelled'
+          ? 'fa-circle-xmark'
+          : 'fa-truck-fast'
+    }));
+  }
+
+  setDraftStatus(orderId: string, status: string): void {
+    this.draftStatus[orderId] = this.statuses.includes(status as OrderStatus) ? status as OrderStatus : 'Processing';
+>>>>>>> 67a49997241224711419fad6b0469c31141d23b9
   }
 
   ngOnDestroy(): void {

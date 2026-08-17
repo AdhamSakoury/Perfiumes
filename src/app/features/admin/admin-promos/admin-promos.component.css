@@ -69,7 +69,10 @@
   gap: 0.3rem;
 }
 
-.admin-promos-form label span {
+.admin-promos-form label span,
+.promo-expiry-head > div > span,
+.promo-expiry-trigger span,
+.promo-time-group > span {
   color: #5D4E37;
   font-size: 0.78rem;
   font-weight: 900;
@@ -85,10 +88,285 @@
   font-weight: 800;
   outline: 0;
   padding: 0.55rem 0.7rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.admin-promos-form input:hover,
+.admin-promos-form input:focus {
+  border-color: #F5A623;
+  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.12);
+}
+
+.promo-expiry-field {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  border-radius: 0.6rem;
+  background:
+    linear-gradient(135deg, rgba(245, 166, 35, 0.13), transparent 52%),
+    rgba(245, 240, 230, 0.44);
+  padding: 0.85rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.promo-expiry-field:hover {
+  border-color: rgba(245, 166, 35, 0.58);
+  box-shadow: 0 18px 36px -30px rgba(245, 166, 35, 0.78);
+  transform: translateY(-2px);
+}
+
+.promo-expiry-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.promo-expiry-icon {
+  width: 2.55rem;
+  height: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  background: #153f3f;
+  color: #fff;
+  box-shadow: 0 14px 26px -22px rgba(21, 63, 63, 0.85);
+}
+
+.promo-expiry-head strong {
+  display: block;
+  margin-top: 0.15rem;
+  color: #153f3f;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.promo-expiry-controls {
+  display: grid;
+  grid-template-columns: 1fr 0.85fr;
+  gap: 0.6rem;
+}
+
+.promo-expiry-trigger {
+  display: grid;
+  gap: 0.2rem;
+  min-height: 3.25rem;
+  border: 1px solid rgba(21, 63, 63, 0.12);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.55rem 0.65rem;
+  text-align: start;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.promo-expiry-trigger strong {
+  color: #153f3f;
+  font-size: 0.88rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.promo-expiry-trigger:hover {
+  border-color: rgba(245, 166, 35, 0.62);
+  background: #fff;
+  box-shadow: 0 14px 28px -24px rgba(245, 166, 35, 0.95);
+  transform: translateY(-1px);
+}
+
+.promo-picker-board {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.promo-calendar,
+.promo-time-picker {
+  border: 1px solid rgba(230, 213, 184, 0.72);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.65rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.promo-picker-title {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 2rem;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.promo-picker-title.compact {
+  grid-template-columns: auto minmax(0, 1fr);
+  color: #F5A623;
+}
+
+.promo-picker-title strong {
+  color: #153f3f;
+  font-size: 0.92rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.promo-picker-title.compact strong {
+  text-align: start;
+}
+
+.promo-picker-title button {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(21, 63, 63, 0.12);
+  border-radius: 0.45rem;
+  background: rgba(21, 63, 63, 0.07);
+  color: #153f3f;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.promo-picker-title button:hover {
+  border-color: #F5A623;
+  background: #F5A623;
+  color: #1A1510;
+  transform: translateY(-1px);
+}
+
+.promo-picker-title button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.promo-calendar-weekdays,
+.promo-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.promo-calendar-weekdays span {
+  min-height: 1.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b7355;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.promo-calendar-days button {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #153f3f;
+  font-size: 0.82rem;
+  font-weight: 900;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.promo-calendar-days button.outside {
+  color: rgba(93, 78, 55, 0.44);
+}
+
+.promo-calendar-days button.unavailable {
+  background: rgba(93, 78, 55, 0.05);
+  color: rgba(93, 78, 55, 0.28);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.promo-calendar-days button.today {
+  border-color: rgba(245, 166, 35, 0.54);
+  color: #C65D3B;
+}
+
+.promo-calendar-days button:hover:not(:disabled) {
+  border-color: rgba(245, 166, 35, 0.45);
+  background: rgba(245, 166, 35, 0.15);
+  color: #153f3f;
+  transform: translateY(-1px);
+}
+
+.promo-calendar-days button.active,
+.promo-time-group button.active,
+.promo-period-toggle button.active {
+  border-color: #153f3f;
+  background: #153f3f;
+  color: #fff;
+  box-shadow: 0 12px 24px -20px rgba(21, 63, 63, 0.95);
+}
+
+.promo-time-picker {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.promo-time-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.promo-time-group > div {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.32rem;
+}
+
+.promo-time-group button,
+.promo-period-toggle button {
+  min-height: 2rem;
+  border: 1px solid rgba(21, 63, 63, 0.12);
+  border-radius: 0.45rem;
+  background: rgba(245, 240, 230, 0.7);
+  color: #153f3f;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.promo-time-group button:hover,
+.promo-period-toggle button:hover {
+  border-color: rgba(245, 166, 35, 0.58);
+  background: rgba(245, 166, 35, 0.18);
+  transform: translateY(-1px);
+}
+
+.promo-period-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.promo-expiry-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.promo-expiry-actions button {
+  min-height: 2.15rem;
+  border: 1px solid rgba(21, 63, 63, 0.14);
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #153f3f;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.promo-expiry-actions button:hover {
+  border-color: #F5A623;
+  background: #F5A623;
+  color: #1A1510;
+  transform: translateY(-1px);
 }
 
 .admin-promos-topbar button,
-.admin-promos-form button,
+.admin-promos-form > button,
 .admin-promos-empty a {
   min-height: 2.45rem;
   display: inline-flex;
@@ -102,7 +380,7 @@
   padding: 0.55rem 0.85rem;
 }
 
-.admin-promos-form button:hover,
+.admin-promos-form > button:hover,
 .admin-promos-topbar button:hover {
   background: #F5A623;
   color: #1A1510;
@@ -110,12 +388,12 @@
 
 .admin-promos-topbar button span,
 .admin-promos-topbar button i,
-.admin-promos-form button span,
-.admin-promos-form button i {
+.admin-promos-form > button span,
+.admin-promos-form > button i {
   color: inherit;
 }
 
-.admin-promos-form button:disabled,
+.admin-promos-form > button:disabled,
 .admin-promos-topbar button:disabled {
   background: #8DA3A0;
   cursor: not-allowed;
@@ -191,17 +469,86 @@
   border-color: rgba(245, 166, 35, 0.32);
 }
 
+:host-context(.dark) .promo-expiry-field {
+  background:
+    linear-gradient(135deg, rgba(245, 166, 35, 0.16), transparent 52%),
+    rgba(29, 43, 43, 0.72);
+  border-color: rgba(245, 166, 35, 0.28);
+}
+
+:host-context(.dark) .promo-expiry-trigger,
+:host-context(.dark) .promo-calendar,
+:host-context(.dark) .promo-time-picker {
+  background: rgba(22, 34, 34, 0.72);
+  border-color: rgba(245, 166, 35, 0.22);
+}
+
+:host-context(.dark) .promo-expiry-trigger:hover {
+  background: rgba(29, 43, 43, 0.92);
+}
+
+:host-context(.dark) .promo-picker-title button,
+:host-context(.dark) .promo-time-group button,
+:host-context(.dark) .promo-period-toggle button {
+  background: rgba(245, 166, 35, 0.09);
+  color: #E6D5B8;
+  border-color: rgba(245, 166, 35, 0.2);
+}
+
+:host-context(.dark) .promo-picker-title button:hover,
+:host-context(.dark) .promo-time-group button:hover,
+:host-context(.dark) .promo-period-toggle button:hover {
+  background: #F5A623;
+  color: #1A1510;
+}
+
+:host-context(.dark) .promo-calendar-days button {
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .promo-calendar-days button.outside {
+  color: rgba(230, 213, 184, 0.38);
+}
+
+:host-context(.dark) .promo-calendar-days button.unavailable {
+  background: rgba(230, 213, 184, 0.04);
+  color: rgba(230, 213, 184, 0.24);
+}
+
+:host-context(.dark) .promo-calendar-days button:hover:not(:disabled) {
+  background: rgba(245, 166, 35, 0.16);
+  color: #F5F0E6;
+}
+
+:host-context(.dark) .promo-expiry-actions button {
+  background: rgba(22, 34, 34, 0.82);
+  color: #E6D5B8;
+  border-color: rgba(245, 166, 35, 0.2);
+}
+
+:host-context(.dark) .promo-expiry-actions button:hover {
+  background: #F5A623;
+  color: #1A1510;
+}
+
 :host-context(.dark) .admin-promos-topbar h2,
 :host-context(.dark) .admin-promos-form h3,
 :host-context(.dark) .admin-promos-panel-title h3,
 :host-context(.dark) .admin-promos-empty h1,
-:host-context(.dark) .admin-promos-list strong {
+:host-context(.dark) .admin-promos-list strong,
+:host-context(.dark) .promo-expiry-head strong,
+:host-context(.dark) .promo-expiry-trigger strong,
+:host-context(.dark) .promo-picker-title strong {
   color: #E6D5B8;
 }
 
 :host-context(.dark) .admin-promos-topbar span,
 :host-context(.dark) .admin-promos-panel-title span,
 :host-context(.dark) .admin-promos-form label span,
+:host-context(.dark) .promo-expiry-head > div > span,
+:host-context(.dark) .promo-expiry-trigger span,
+:host-context(.dark) .promo-time-group > span,
+:host-context(.dark) .promo-calendar-weekdays span,
 :host-context(.dark) .admin-promos-list small,
 :host-context(.dark) .admin-promos-list em {
   color: rgba(230, 213, 184, 0.75);
@@ -221,5 +568,14 @@
 
   .admin-promos-grid {
     grid-template-columns: 1fr;
+  }
+
+  .promo-expiry-controls,
+  .promo-expiry-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .promo-time-group > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

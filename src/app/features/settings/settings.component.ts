@@ -6,6 +6,7 @@ import { AppLanguage, LocalizationService } from '@core/services/localization.se
 import { StorageService } from '@core/services/storage.service';
 import { ThemeService } from '@core/services/theme.service';
 import { ToastService } from '@core/services/toast.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 
 interface UserSettings {
   emailNotifications: boolean;
@@ -32,7 +33,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, CustomDropdownComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.css'
 })
@@ -81,6 +82,28 @@ export class SettingsPageComponent {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
+  }
+
+  get languageOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'en', label: this.i18n.t('english'), icon: 'fa-language' },
+      { value: 'ar', label: this.i18n.t('arabic'), icon: 'fa-language' }
+    ];
+  }
+
+  get privacyOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'private', label: this.i18n.t('private'), icon: 'fa-lock' },
+      { value: 'members', label: this.i18n.t('membersOnly'), icon: 'fa-users' }
+    ];
+  }
+
+  get toneOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'friendly', label: this.i18n.t('friendly'), icon: 'fa-face-smile' },
+      { value: 'direct', label: this.i18n.t('direct'), icon: 'fa-bolt' },
+      { value: 'luxury', label: this.i18n.t('luxuryAdvisor'), icon: 'fa-gem' }
+    ];
   }
 
   selectSection(section: SettingsSection): void {
@@ -140,10 +163,19 @@ export class SettingsPageComponent {
     this.toast.show(this.i18n.t('preferencesSaved'));
   }
 
-  setLanguage(language: AppLanguage): void {
-    this.settings.language = language;
-    this.i18n.setLanguage(language);
+  setLanguage(language: string): void {
+    const nextLanguage: AppLanguage = language === 'ar' ? 'ar' : 'en';
+    this.settings.language = nextLanguage;
+    this.i18n.setLanguage(nextLanguage);
     this.storage.set(this.settingsKey(), this.settings);
+  }
+
+  setProfileVisibility(value: string): void {
+    this.settings.profileVisibility = value === 'members' ? 'members' : 'private';
+  }
+
+  setChatbotTone(value: string): void {
+    this.settings.chatbotTone = value === 'direct' || value === 'luxury' ? value : 'friendly';
   }
 
   setDarkMode(isDark: boolean): void {

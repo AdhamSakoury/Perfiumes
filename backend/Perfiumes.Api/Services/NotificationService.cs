@@ -68,36 +68,6 @@ public sealed class NotificationService
             return;
         }
 
-        var now = DateTimeOffset.UtcNow;
-        _notifications[userEmail] =
-        [
-            new AppNotification(
-                Guid.NewGuid().ToString("N"),
-                userEmail,
-                "Welcome to Gnouby",
-                "Your account is ready. Explore perfumes and save favorites.",
-                "system",
-                "/",
-                false,
-                now.AddMinutes(-8)),
-            new AppNotification(
-                Guid.NewGuid().ToString("N"),
-                userEmail,
-                "Wishlist synced",
-                "Your wishlist is saved for this account.",
-                "info",
-                "/wishlist",
-                false,
-                now.AddMinutes(-4)),
-            new AppNotification(
-                Guid.NewGuid().ToString("N"),
-                userEmail,
-                "New luxury picks",
-                "Fresh recommendations are available in the perfume collection.",
-                "promo",
-                "/perfumes",
-                true,
-                now.AddHours(-2))
-        ];
+        _notifications[userEmail] = [];
     }
 }

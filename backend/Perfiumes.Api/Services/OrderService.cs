@@ -155,6 +155,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
         var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
+<<<<<<< HEAD
         var paymentProvider = NormalizePaymentProvider(paymentMethod, request.PaymentProvider);
         var paymentReference = paymentMethod is "wallet" or "card" ? $"PAY-{Guid.NewGuid():N}"[..20].ToUpperInvariant() : string.Empty;
         var shippingFee = CalculateShippingFee(request.ShippingAddress.City);
@@ -185,6 +186,27 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         var subtotal = request.Items.Sum(item => Math.Round(products[item.Id].Price * item.Quantity, 2));
         var discount = await CalculateDiscountAsync(request.PromoCode, subtotal);
         var total = Math.Round(subtotal - discount + shippingFee, 2);
+=======
+        var subtotal = Math.Round(request.Subtotal, 2);
+        var promoCode = NormalizePromoCode(request.PromoCode);
+        var discount = 0m;
+
+        if (promoCode is not null)
+        {
+            var promo = await db.PromoCodes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Code == promoCode && item.IsActive && item.ExpiresAt > now);
+
+            if (promo is null)
+            {
+                throw new InvalidOperationException("Invalid or expired promo code.");
+            }
+
+            discount = Math.Round(subtotal * promo.Discount, 2);
+        }
+
+        var total = Math.Max(0, Math.Round(subtotal - discount, 2));
+>>>>>>> 67a49997241224711419fad6b0469c31141d23b9
 
         if (paymentMethod == "wallet")
         {
@@ -231,7 +253,10 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
             Date = now,
             Subtotal = subtotal,
             Discount = discount,
+<<<<<<< HEAD
             ShippingFee = shippingFee,
+=======
+>>>>>>> 67a49997241224711419fad6b0469c31141d23b9
             Total = total,
             PaymentMethod = paymentMethod,
             PaymentStatus = paymentStatus,
@@ -247,7 +272,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
             ShippingState = request.ShippingAddress.State,
             ShippingZip = request.ShippingAddress.Zip,
             ShippingCountry = request.ShippingAddress.Country,
-            PromoCode = request.PromoCode,
+            PromoCode = promoCode,
             Items = request.Items.Select(item => new OrderItemEntity
             {
                 Id = $"item_{Guid.NewGuid():N}",
@@ -469,6 +494,13 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         return normalized.Contains("cairo") || normalized.Contains("giza") || normalized.Contains("القاهرة") || normalized.Contains("الجيزة")
             ? "Gnouby Express"
             : "Gnouby Courier Network";
+    }
+
+    private static string? NormalizePromoCode(string? promoCode)
+    {
+        return string.IsNullOrWhiteSpace(promoCode)
+            ? null
+            : promoCode.Trim().ToUpperInvariant();
     }
 
     private static OrderDto ToDto(OrderEntity order)

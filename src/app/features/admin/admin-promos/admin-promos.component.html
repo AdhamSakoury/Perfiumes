@@ -37,10 +37,81 @@
             <span>{{ 'discountPercent' | t }}</span>
             <input type="number" min="1" max="95" name="discountPercent" [(ngModel)]="form.discountPercent">
           </label>
-          <label>
-            <span>{{ 'expiresAt' | t }}</span>
-            <input type="datetime-local" name="expiresAt" [(ngModel)]="form.expiresAt">
-          </label>
+          <div class="promo-expiry-field">
+            <div class="promo-expiry-head">
+              <span class="promo-expiry-icon"><i class="fas fa-calendar-day"></i></span>
+              <div>
+                <span>Expires at</span>
+                <strong>{{ form.expiresAt | date:'EEE, MMM d, y - h:mm a' }}</strong>
+              </div>
+            </div>
+            <div class="promo-expiry-controls">
+              <button type="button" class="promo-expiry-trigger">
+                <span>Date</span>
+                <strong>{{ expiryDateLabel }}</strong>
+              </button>
+              <button type="button" class="promo-expiry-trigger">
+                <span>Time</span>
+                <strong>{{ expiryTimeLabel }}</strong>
+              </button>
+            </div>
+            <div class="promo-picker-board">
+              <section class="promo-calendar">
+                <div class="promo-picker-title">
+                  <button type="button" (click)="moveCalendar(-1)" [disabled]="!canMoveToPreviousMonth" aria-label="Previous month">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <strong>{{ calendarTitle }}</strong>
+                  <button type="button" (click)="moveCalendar(1)" aria-label="Next month">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+                <div class="promo-calendar-weekdays">
+                  @for (day of weekdays; track day) {
+                    <span>{{ day }}</span>
+                  }
+                </div>
+                <div class="promo-calendar-days">
+                  @for (day of calendarDays; track day.key) {
+                    <button type="button" (click)="setExpiryDate(day.date)" [disabled]="day.disabled" [class.outside]="day.outside" [class.today]="day.today" [class.active]="day.selected" [class.unavailable]="day.disabled">
+                      {{ day.day }}
+                    </button>
+                  }
+                </div>
+              </section>
+              <section class="promo-time-picker">
+                <div class="promo-picker-title compact">
+                  <i class="fas fa-clock"></i>
+                  <strong>{{ expiryTimeLabel }}</strong>
+                </div>
+                <div class="promo-time-group">
+                  <span>Hour</span>
+                  <div>
+                    @for (hour of hourOptions; track hour) {
+                      <button type="button" (click)="setExpiryHour(hour)" [class.active]="selectedDisplayHour === hour">{{ pad(hour) }}</button>
+                    }
+                  </div>
+                </div>
+                <div class="promo-time-group">
+                  <span>Minute</span>
+                  <div>
+                    @for (minute of minuteOptions; track minute) {
+                      <button type="button" (click)="setExpiryMinute(minute)" [class.active]="selectedMinute === minute">{{ pad(minute) }}</button>
+                    }
+                  </div>
+                </div>
+                <div class="promo-period-toggle">
+                  <button type="button" (click)="setExpiryPeriod('AM')" [class.active]="selectedPeriod === 'AM'">AM</button>
+                  <button type="button" (click)="setExpiryPeriod('PM')" [class.active]="selectedPeriod === 'PM'">PM</button>
+                </div>
+              </section>
+            </div>
+            <div class="promo-expiry-actions">
+              <button type="button" (click)="shiftExpiry(1)">+1 day</button>
+              <button type="button" (click)="shiftExpiry(7)">+7 days</button>
+              <button type="button" (click)="shiftExpiry(30)">+30 days</button>
+            </div>
+          </div>
           <button type="submit" [disabled]="saving">
             <i class="fas" [class.fa-plus]="!saving" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
             <span>{{ saving ? ('creating' | t) : ('createPromo' | t) }}</span>

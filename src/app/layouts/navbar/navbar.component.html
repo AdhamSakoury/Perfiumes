@@ -60,7 +60,7 @@
 
             @if (auth.currentUser(); as user) {
               <div class="user-actions">
-                <div class="notification-wrapper">
+                <div #notificationWrapper class="notification-wrapper">
                   <button type="button" (click)="toggleNotifications()" class="notification-button" [attr.aria-label]="i18n.t('notifications')">
                     <i class="fas fa-bell"></i>
                     @if (notifications.unreadCount() > 0) {

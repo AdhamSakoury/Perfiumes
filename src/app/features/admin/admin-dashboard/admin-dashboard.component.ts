@@ -7,6 +7,7 @@ import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
+import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
@@ -14,7 +15,7 @@ import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css'
 })
@@ -46,6 +47,13 @@ export class AdminDashboardComponent {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
+  }
+
+  get walletTypeOptions(): CustomDropdownOption[] {
+    return [
+      { value: 'credit', label: 'Credit', icon: 'fa-arrow-up' },
+      { value: 'debit', label: 'Debit', icon: 'fa-arrow-down' }
+    ];
   }
 
   get cards(): { label: string; value: string | number; icon: string; tone: string }[] {
@@ -198,6 +206,10 @@ export class AdminDashboardComponent {
         this.toast.show(this.i18n.t('walletUpdateFailed'), 'error');
       }
     });
+  }
+
+  setWalletDraftType(walletId: string, type: string): void {
+    this.walletDraft[walletId].type = type === 'debit' ? 'debit' : 'credit';
   }
 
   private ensureWalletDraft(wallet: AdminWallet): void {
