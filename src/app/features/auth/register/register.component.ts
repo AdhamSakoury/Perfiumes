@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { ToastService } from '@core/services/toast.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { GoogleSignInButtonComponent } from '../google-sign-in-button/google-sign-in-button.component';
 
@@ -24,7 +25,12 @@ export class RegisterPageComponent {
   loading = false;
   errors: Record<string, string | undefined> = {};
 
-  constructor(private readonly auth: AuthService, private readonly router: Router, readonly i18n: LocalizationService) {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly router: Router,
+    private readonly toast: ToastService,
+    readonly i18n: LocalizationService
+  ) {
     if (this.auth.currentUser()) void this.router.navigateByUrl('/account');
   }
 
@@ -60,7 +66,8 @@ export class RegisterPageComponent {
           return;
         }
 
-        void this.router.navigateByUrl('/account');
+        this.toast.show(result.message || this.i18n.t('activationEmailSent'));
+        void this.router.navigate(['/login'], { queryParams: { status: 'registered' } });
       },
       error: (error) => {
         this.loading = false;

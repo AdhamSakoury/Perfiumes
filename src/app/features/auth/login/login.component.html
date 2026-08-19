@@ -42,10 +42,13 @@
             @if (errors.password) { <p class="text-sm mt-2 text-nubian-terracotta">{{ errors.password }}</p> }
           </div>
 
-          <label class="flex items-center gap-3">
-            <input type="checkbox" name="remember" [(ngModel)]="remember" class="custom-checkbox">
-            <span>{{ 'rememberMe' | t }}</span>
-          </label>
+          <div class="flex items-center justify-between gap-3">
+            <label class="flex items-center gap-3">
+              <input type="checkbox" name="remember" [(ngModel)]="remember" class="custom-checkbox">
+              <span>{{ 'rememberMe' | t }}</span>
+            </label>
+            <a routerLink="/forgot-password" class="text-sm font-semibold text-nubian-gold hover:text-nubian-brown transition-colors">{{ 'forgotPassword' | t }}</a>
+          </div>
 
           <button type="submit" class="auth-submit w-full bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all">
             <i class="fas fa-sign-in-alt mr-2"></i> {{ 'login' | t }}

@@ -20,7 +20,7 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly currentUrl = signal('');
   readonly authFullscreen = computed(() => {
     const url = this.currentUrl().split('?')[0].split('#')[0];
-    return url === '/login' || url === '/register';
+    return url === '/login' || url === '/register' || url === '/forgot-password' || url === '/reset-password';
   });
   readonly showAdminSidebar = computed(() => {
     const user = this.auth.currentUser();

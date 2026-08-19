@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { ToastService } from '@core/services/toast.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { GoogleSignInButtonComponent } from '../google-sign-in-button/google-sign-in-button.component';
 
@@ -25,12 +26,18 @@ export class LoginPageComponent {
     private readonly auth: AuthService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly toast: ToastService,
     readonly i18n: LocalizationService
   ) {
     const user = this.auth.currentUser();
     if (user) {
       void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || (user.role === 'admin' ? '/admin' : '/account'));
     }
+
+    const status = this.route.snapshot.queryParamMap.get('status');
+    if (status === 'registered') this.toast.show(this.i18n.t('activationEmailSent'));
+    if (status === 'activated') this.toast.show(this.i18n.t('accountActivated'));
+    if (status === 'activation-failed') this.toast.show(this.i18n.t('accountActivationFailed'), 'error');
   }
 
   toggleLanguage(): void {
@@ -55,9 +62,9 @@ export class LoginPageComponent {
         const fallback = result.user?.role === 'admin' ? '/admin' : '/account';
         void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || fallback);
       },
-      error: () => {
+      error: (error) => {
         this.loading = false;
-        this.errors.email = 'Invalid email or password';
+        this.errors.email = error?.error?.message || this.i18n.t('invalidEmailOrPassword');
       }
     });
   }

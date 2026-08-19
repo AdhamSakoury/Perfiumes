@@ -11,6 +11,11 @@ public sealed class AppUserEntity
     public string? ProfilePhoto { get; set; }
     public string Role { get; set; } = "customer";
     public string AuthProvider { get; set; } = "local";
+    public bool IsEmailConfirmed { get; set; } = true;
+    public string? EmailActivationTokenHash { get; set; }
+    public DateTimeOffset? EmailActivationTokenExpiresAt { get; set; }
+    public string? ResetPasswordTokenHash { get; set; }
+    public DateTimeOffset? ResetPasswordTokenExpiresAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

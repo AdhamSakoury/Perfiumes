@@ -29,6 +29,8 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(user => user.Email).HasMaxLength(256);
             entity.Property(user => user.Role).HasMaxLength(32);
             entity.Property(user => user.AuthProvider).HasMaxLength(32);
+            entity.Property(user => user.EmailActivationTokenHash).HasMaxLength(128);
+            entity.Property(user => user.ResetPasswordTokenHash).HasMaxLength(128);
             entity.Property(user => user.Phone).HasMaxLength(64);
             entity.Property(user => user.Address).HasMaxLength(500);
             entity.Property(user => user.ProfilePhoto).HasMaxLength(1000);

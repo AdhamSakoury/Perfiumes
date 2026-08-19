@@ -2,11 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Data.Entities;
 using Perfiumes.Api.Models;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Perfiumes.Api.Services;
 
-public sealed class UserService(PerfiumesDbContext db, PasswordService passwords, AdminAuthService tokens)
+public sealed class UserService(PerfiumesDbContext db, PasswordService passwords, AdminAuthService tokens, EmailService emails)
 {
+    private const int ActivationTokenLifetimeHours = 24;
+    private const int ResetTokenLifetimeMinutes = 30;
+
     private static readonly SeedUser[] SeedUsers =
     [
         new("test_admin", "Ganouby Admin", "admin@ganouby.local", "Admin123!", "admin", "+20 100 000 0001", "Ganouby HQ, Cairo"),
@@ -42,7 +47,27 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
         await db.SaveChangesAsync();
     }
 
-    public async Task<AuthLoginResponse?> RegisterAsync(RegisterRequest request)
+    public async Task EnsureSchemaAsync()
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+IF COL_LENGTH(N'[Users]', N'ResetPasswordTokenHash') IS NULL
+    ALTER TABLE [Users] ADD [ResetPasswordTokenHash] nvarchar(128) NULL;
+
+IF COL_LENGTH(N'[Users]', N'ResetPasswordTokenExpiresAt') IS NULL
+    ALTER TABLE [Users] ADD [ResetPasswordTokenExpiresAt] datetimeoffset NULL;
+
+IF COL_LENGTH(N'[Users]', N'IsEmailConfirmed') IS NULL
+    ALTER TABLE [Users] ADD [IsEmailConfirmed] bit NOT NULL CONSTRAINT [DF_Users_IsEmailConfirmed] DEFAULT 1;
+
+IF COL_LENGTH(N'[Users]', N'EmailActivationTokenHash') IS NULL
+    ALTER TABLE [Users] ADD [EmailActivationTokenHash] nvarchar(128) NULL;
+
+IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
+    ALTER TABLE [Users] ADD [EmailActivationTokenExpiresAt] datetimeoffset NULL;
+""");
+    }
+
+    public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request, HttpRequest httpRequest)
     {
         var email = request.Email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(user => user.Email == email))
@@ -51,6 +76,8 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
         }
 
         var now = DateTimeOffset.UtcNow;
+        var activationToken = CreateToken();
+        var activationExpiresAt = now.AddHours(ActivationTokenLifetimeHours);
         var user = new AppUserEntity
         {
             Id = $"user_{Guid.NewGuid():N}",
@@ -61,20 +88,120 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
             Address = request.Address?.Trim() ?? string.Empty,
             Role = "customer",
             AuthProvider = "local",
+            IsEmailConfirmed = false,
+            EmailActivationTokenHash = HashToken(activationToken),
+            EmailActivationTokenExpiresAt = activationExpiresAt,
             CreatedAt = now,
             UpdatedAt = now
         };
 
         db.Users.Add(user);
         await db.SaveChangesAsync();
-        return CreateLoginResponse(user);
+
+        var activationUrl = $"{BackendOrigin(httpRequest)}/api/auth/activate?token={Uri.EscapeDataString(activationToken)}";
+        await emails.SendActivationEmailAsync(user.Email, user.FullName, activationUrl);
+        return new RegisterResponse("Registration successful. Please check your email to activate your account.");
     }
 
     public async Task<AuthLoginResponse?> LoginAsync(string email, string password)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var user = await db.Users.FirstOrDefaultAsync(item => item.Email == normalizedEmail);
-        return user is not null && passwords.Verify(password, user.PasswordHash) ? CreateLoginResponse(user) : null;
+        if (user is null || !passwords.Verify(password, user.PasswordHash))
+        {
+            return null;
+        }
+
+        if (user.AuthProvider == "local" && !user.IsEmailConfirmed)
+        {
+            throw new UnauthorizedAccessException("Please activate your account from the email we sent you.");
+        }
+
+        return CreateLoginResponse(user);
+    }
+
+    public async Task<bool> ActivateEmailAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var tokenHash = HashToken(token);
+        var now = DateTimeOffset.UtcNow;
+        var user = await db.Users.FirstOrDefaultAsync(item =>
+            item.EmailActivationTokenHash == tokenHash
+            && item.EmailActivationTokenExpiresAt != null
+            && item.EmailActivationTokenExpiresAt > now);
+
+        if (user is null)
+        {
+            return false;
+        }
+
+        user.IsEmailConfirmed = true;
+        user.EmailActivationTokenHash = null;
+        user.EmailActivationTokenExpiresAt = null;
+        user.UpdatedAt = now;
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<ForgotPasswordResponse> PreparePasswordResetAsync(ForgotPasswordRequest request, HttpRequest httpRequest)
+    {
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var genericMessage = "If this email exists, password reset instructions are ready.";
+
+        if (string.IsNullOrWhiteSpace(normalizedEmail) || !normalizedEmail.Contains('@'))
+        {
+            return new ForgotPasswordResponse(genericMessage, null, null);
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(item => item.Email == normalizedEmail);
+        if (user is null || user.AuthProvider != "local")
+        {
+            return new ForgotPasswordResponse(genericMessage, null, null);
+        }
+
+        var token = CreateToken();
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(ResetTokenLifetimeMinutes);
+        user.ResetPasswordTokenHash = HashToken(token);
+        user.ResetPasswordTokenExpiresAt = expiresAt;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        var resetUrl = $"{FrontendOrigin(httpRequest)}/reset-password?token={Uri.EscapeDataString(token)}";
+        await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
+        return new ForgotPasswordResponse(genericMessage, emails.IsConfigured ? null : resetUrl, expiresAt);
+    }
+
+    public async Task<AuthLoginResponse?> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return null;
+        }
+
+        var tokenHash = HashToken(request.Token);
+        var now = DateTimeOffset.UtcNow;
+        var user = await db.Users.FirstOrDefaultAsync(item =>
+            item.ResetPasswordTokenHash == tokenHash
+            && item.ResetPasswordTokenExpiresAt != null
+            && item.ResetPasswordTokenExpiresAt > now);
+
+        if (user is null)
+        {
+            return null;
+        }
+
+        user.PasswordHash = passwords.Hash(request.NewPassword);
+        user.ResetPasswordTokenHash = null;
+        user.ResetPasswordTokenExpiresAt = null;
+        user.AuthProvider = "local";
+        user.IsEmailConfirmed = true;
+        user.UpdatedAt = now;
+        await db.SaveChangesAsync();
+        return CreateLoginResponse(user);
     }
 
     public async Task<AuthLoginResponse?> UpdateProfileAsync(string currentEmail, UpdateProfileRequest request)
@@ -131,6 +258,7 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
         user.ProfilePhoto = profilePhoto;
         user.Role = role;
         user.AuthProvider = "google";
+        user.IsEmailConfirmed = true;
         user.UpdatedAt = now;
         await db.SaveChangesAsync();
         return CreateLoginResponse(user);
@@ -181,6 +309,9 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
         user.Address = seedUser.Address;
         user.Role = seedUser.Role;
         user.AuthProvider = "local";
+        user.IsEmailConfirmed = true;
+        user.EmailActivationTokenHash = null;
+        user.EmailActivationTokenExpiresAt = null;
         user.UpdatedAt = now;
     }
 
@@ -201,6 +332,30 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
                 user.Address,
                 user.CreatedAt,
                 user.UpdatedAt));
+    }
+
+    private static string CreateToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private static string HashToken(string token)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(hash);
+    }
+
+    private static string FrontendOrigin(HttpRequest httpRequest)
+    {
+        return httpRequest.Headers.Origin.FirstOrDefault() ?? $"{httpRequest.Scheme}://{httpRequest.Host}";
+    }
+
+    private static string BackendOrigin(HttpRequest httpRequest)
+    {
+        return $"{httpRequest.Scheme}://{httpRequest.Host}";
     }
 
     private sealed record SeedUser(

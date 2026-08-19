@@ -32,6 +32,16 @@ interface AdminLoginResponse {
   expiresAt: string;
 }
 
+interface RegisterResponse {
+  message: string;
+}
+
+interface ForgotPasswordResponse {
+  message: string;
+  resetUrl: string | null;
+  expiresAt: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   readonly currentUser = signal<User | null>(null);
@@ -56,11 +66,8 @@ export class AuthService {
   }
 
   register(fullName: string, email: string, password: string, phone = '', address = ''): Observable<AuthResult> {
-    return this.http.post<GoogleLoginResponse>(`${environment.apiBaseUrl}/api/auth/register`, { fullName, email, password, phone, address }).pipe(
-      map((response) => this.responseToAuthResult(response, password)),
-      tap((result) => {
-        if (result.user && result.accessToken) this.setCurrentUser(result.user, true, result.accessToken);
-      })
+    return this.http.post<RegisterResponse>(`${environment.apiBaseUrl}/api/auth/register`, { fullName, email, password, phone, address }).pipe(
+      map((response) => ({ success: true, message: response.message }))
     );
   }
 
@@ -69,6 +76,19 @@ export class AuthService {
       map((response) => this.responseToAuthResult(response, password)),
       tap((result) => {
         if (result.user && result.accessToken) this.setCurrentUser(result.user, remember, result.accessToken);
+      })
+    );
+  }
+
+  forgotPassword(email: string): Observable<ForgotPasswordResponse> {
+    return this.http.post<ForgotPasswordResponse>(`${environment.apiBaseUrl}/api/auth/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<AuthResult> {
+    return this.http.post<GoogleLoginResponse>(`${environment.apiBaseUrl}/api/auth/reset-password`, { token, newPassword }).pipe(
+      map((response) => this.responseToAuthResult(response, newPassword)),
+      tap((result) => {
+        if (result.user && result.accessToken) this.setCurrentUser(result.user, true, result.accessToken);
       })
     );
   }

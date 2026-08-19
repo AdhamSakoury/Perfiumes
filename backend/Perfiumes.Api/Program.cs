@@ -55,6 +55,7 @@ builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<ChatbotService>();
 builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<SupportMessageService>();
@@ -73,6 +74,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.EnsureCreatedAsync();
     await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<ProductRepository>().EnsureSeedAsync();
+    await scope.ServiceProvider.GetRequiredService<UserService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);
     await scope.ServiceProvider.GetRequiredService<SupportMessageService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
@@ -94,7 +96,10 @@ app.MapGet("/", () => Results.Ok(new
     {
         "POST /api/admin/login",
         "POST /api/auth/register",
+        "GET /api/auth/activate",
         "POST /api/auth/login",
+        "POST /api/auth/forgot-password",
+        "POST /api/auth/reset-password",
         "PUT /api/auth/profile",
         "POST /api/auth/google",
         "GET /api/products",
@@ -190,7 +195,10 @@ app.MapPost("/api/admin/login", async (AdminLoginRequest request, UserService us
         : Results.Ok(new AdminLoginResponse(result.AccessToken, "Bearer", result.ExpiresAt));
 });
 
-app.MapPost("/api/auth/register", async (RegisterRequest request, UserService users) =>
+app.MapPost("/api/auth/register", async (
+    RegisterRequest request,
+    UserService users,
+    HttpContext context) =>
 {
     if (string.IsNullOrWhiteSpace(request.FullName)
         || string.IsNullOrWhiteSpace(request.Email)
@@ -199,14 +207,53 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, UserService us
         return Results.BadRequest(new { message = "Full name, email and password are required." });
     }
 
-    var result = await users.RegisterAsync(request);
+    var result = await users.RegisterAsync(request, context.Request);
     return result is null ? Results.Conflict(new { message = "Email already registered" }) : Results.Ok(result);
 });
 
 app.MapPost("/api/auth/login", async (LoginRequest request, UserService users) =>
 {
-    var result = await users.LoginAsync(request.Email, request.Password);
-    return result is null ? Results.Unauthorized() : Results.Ok(result);
+    try
+    {
+        var result = await users.LoginAsync(request.Email, request.Password);
+        return result is null ? Results.Unauthorized() : Results.Ok(result);
+    }
+    catch (UnauthorizedAccessException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
+});
+
+app.MapGet("/api/auth/activate", async (
+    string token,
+    UserService users,
+    IConfiguration configuration,
+    HttpContext context) =>
+{
+    var activated = await users.ActivateEmailAsync(token);
+    var frontendOrigin = configuration["Email:FrontendBaseUrl"] ?? "http://127.0.0.1:4200";
+    var status = activated ? "activated" : "activation-failed";
+    return Results.Redirect($"{frontendOrigin}/login?status={status}");
+});
+
+app.MapPost("/api/auth/forgot-password", async (
+    ForgotPasswordRequest request,
+    UserService users,
+    HttpContext context) =>
+{
+    var result = await users.PreparePasswordResetAsync(request, context.Request);
+    return Results.Ok(result);
+});
+
+app.MapPost("/api/auth/reset-password", async (ResetPasswordRequest request, UserService users) =>
+{
+    if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+    {
+        return Results.BadRequest(new { message = "Password must be at least 8 characters." });
+    }
+
+    var result = await users.ResetPasswordAsync(request);
+    return result is null ? Results.BadRequest(new { message = "Password reset link is invalid or expired." }) : Results.Ok(result);
 });
 
 app.MapPut("/api/auth/profile", async (
