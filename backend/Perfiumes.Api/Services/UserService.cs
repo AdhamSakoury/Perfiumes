@@ -70,14 +70,42 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
     public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request, HttpRequest httpRequest)
     {
         var email = request.Email.Trim().ToLowerInvariant();
-        if (await db.Users.AnyAsync(user => user.Email == email))
+        var existingUser = await db.Users.FirstOrDefaultAsync(user => user.Email == email);
+
+        if (existingUser is not null)
         {
-            return null;
+            // If user exists but hasn't activated, regenerate token and resend email
+            if (existingUser.AuthProvider == "local" && !existingUser.IsEmailConfirmed)
+            {
+                var now = DateTimeOffset.UtcNow;
+                var newToken = CreateToken();
+                existingUser.FullName = request.FullName.Trim();
+                existingUser.PasswordHash = passwords.Hash(request.Password);
+                existingUser.Phone = request.Phone?.Trim() ?? string.Empty;
+                existingUser.Address = request.Address?.Trim() ?? string.Empty;
+                existingUser.EmailActivationTokenHash = HashToken(newToken);
+                existingUser.EmailActivationTokenExpiresAt = now.AddHours(ActivationTokenLifetimeHours);
+                existingUser.UpdatedAt = now;
+                await db.SaveChangesAsync();
+
+                var reactivationUrl = $"{BackendOrigin(httpRequest)}/api/auth/activate?token={Uri.EscapeDataString(newToken)}";
+                try
+                {
+                    await emails.SendActivationEmailAsync(existingUser.Email, existingUser.FullName, reactivationUrl);
+                }
+                catch (Exception ex)
+                {
+                    System.Console.WriteLine($"[EMAIL ERROR] Failed to resend activation email to {existingUser.Email}: {ex}");
+                }
+                return new RegisterResponse("Registration successful. Please check your email to activate your account.");
+            }
+
+            return null; // Already registered and activated
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var utcNow = DateTimeOffset.UtcNow;
         var activationToken = CreateToken();
-        var activationExpiresAt = now.AddHours(ActivationTokenLifetimeHours);
+        var activationExpiresAt = utcNow.AddHours(ActivationTokenLifetimeHours);
         var user = new AppUserEntity
         {
             Id = $"user_{Guid.NewGuid():N}",
@@ -91,15 +119,22 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
             IsEmailConfirmed = false,
             EmailActivationTokenHash = HashToken(activationToken),
             EmailActivationTokenExpiresAt = activationExpiresAt,
-            CreatedAt = now,
-            UpdatedAt = now
+            CreatedAt = utcNow,
+            UpdatedAt = utcNow
         };
 
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
         var activationUrl = $"{BackendOrigin(httpRequest)}/api/auth/activate?token={Uri.EscapeDataString(activationToken)}";
-        await emails.SendActivationEmailAsync(user.Email, user.FullName, activationUrl);
+        try
+        {
+            await emails.SendActivationEmailAsync(user.Email, user.FullName, activationUrl);
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"[EMAIL ERROR] Failed to send activation email to {user.Email}: {ex}");
+        }
         return new RegisterResponse("Registration successful. Please check your email to activate your account.");
     }
 
@@ -171,7 +206,14 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         await db.SaveChangesAsync();
 
         var resetUrl = $"{FrontendOrigin(httpRequest)}/reset-password?token={Uri.EscapeDataString(token)}";
-        await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
+        try
+        {
+            await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"[EMAIL ERROR] Failed to send password reset email to {user.Email}: {ex}");
+        }
         return new ForgotPasswordResponse(genericMessage, emails.IsConfigured ? null : resetUrl, expiresAt);
     }
 

@@ -1,5 +1,7 @@
 using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 
 namespace Perfiumes.Api.Services;
 
@@ -13,10 +15,17 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
             toEmail,
             "Activate your Gnouby account",
             $"""
-            <p>Hi {WebUtility.HtmlEncode(fullName)},</p>
-            <p>Welcome to Gnouby Perfumes. Please activate your account using the link below:</p>
-            <p><a href="{WebUtility.HtmlEncode(activationUrl)}">Activate account</a></p>
-            <p>This link expires in 24 hours.</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+                <h2 style="color: #333;">Welcome to Gnouby Perfumes!</h2>
+                <p>Hi <strong>{WebUtility.HtmlEncode(fullName)}</strong>,</p>
+                <p>Thank you for registering with Gnouby Perfumes. Please confirm your email address to activate your account:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{WebUtility.HtmlEncode(activationUrl)}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Activate Account</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:<br/><a href="{WebUtility.HtmlEncode(activationUrl)}">{WebUtility.HtmlEncode(activationUrl)}</a></p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="color: #999; font-size: 12px;">This activation link will expire in 24 hours.</p>
+            </div>
             """);
     }
 
@@ -26,10 +35,17 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
             toEmail,
             "Reset your Gnouby password",
             $"""
-            <p>Hi {WebUtility.HtmlEncode(fullName)},</p>
-            <p>Use the link below to choose a new password:</p>
-            <p><a href="{WebUtility.HtmlEncode(resetUrl)}">Reset password</a></p>
-            <p>This link expires in 30 minutes. If you did not request it, you can ignore this email.</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+                <h2 style="color: #333;">Password Reset Request</h2>
+                <p>Hi <strong>{WebUtility.HtmlEncode(fullName)}</strong>,</p>
+                <p>We received a request to reset your password. Use the button below to choose a new password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{WebUtility.HtmlEncode(resetUrl)}" style="background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:<br/><a href="{WebUtility.HtmlEncode(resetUrl)}">{WebUtility.HtmlEncode(resetUrl)}</a></p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="color: #999; font-size: 12px;">This link expires in 30 minutes. If you did not request a password reset, you can safely ignore this email.</p>
+            </div>
             """);
     }
 
@@ -39,7 +55,7 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
         var from = configuration["Email:FromAddress"] ?? "no-reply@gnouby.local";
         var fromName = configuration["Email:FromName"] ?? "Gnouby Perfumes";
 
-        if (!IsConfigured)
+        if (!IsConfigured || string.IsNullOrWhiteSpace(host))
         {
             logger.LogInformation(
                 "Email SMTP is not configured. Prepared email to {ToEmail}. Subject: {Subject}. Body: {Body}",
@@ -49,28 +65,51 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
             return;
         }
 
-        using var message = new MailMessage
-        {
-            From = new MailAddress(from, fromName),
-            Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
-        };
-        message.To.Add(toEmail);
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(fromName, from));
+        message.To.Add(MailboxAddress.Parse(toEmail));
+        message.Subject = subject;
 
-        using var client = new SmtpClient(host)
+        var bodyBuilder = new BodyBuilder
         {
-            Port = int.TryParse(configuration["Email:SmtpPort"], out var port) ? port : 587,
-            EnableSsl = bool.TryParse(configuration["Email:EnableSsl"], out var enableSsl) ? enableSsl : true
+            HtmlBody = htmlBody
         };
+        message.Body = bodyBuilder.ToMessageBody();
 
-        var username = configuration["Email:Username"];
-        var password = configuration["Email:Password"];
-        if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+        using var client = new SmtpClient();
+        try
         {
-            client.Credentials = new NetworkCredential(username, password);
+            var port = int.TryParse(configuration["Email:SmtpPort"], out var p) ? p : 587;
+            var enableSsl = bool.TryParse(configuration["Email:EnableSsl"], out var ssl) ? ssl : true;
+
+            SecureSocketOptions socketOptions = port switch
+            {
+                465 => SecureSocketOptions.SslOnConnect,
+                587 => SecureSocketOptions.StartTlsWhenAvailable,
+                _ => enableSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None
+            };
+
+            logger.LogInformation("Connecting to SMTP {Host}:{Port} using {Options}...", host, port, socketOptions);
+            await client.ConnectAsync(host, port, socketOptions);
+
+            var username = configuration["Email:Username"]?.Trim();
+            var password = configuration["Email:Password"]?.Replace(" ", "").Trim();
+
+            if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+            {
+                logger.LogInformation("Authenticating SMTP as {Username}...", username);
+                await client.AuthenticateAsync(username, password);
+            }
+
+            logger.LogInformation("Sending email to {ToEmail}...", toEmail);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+            logger.LogInformation("Email sent successfully to {ToEmail}", toEmail);
         }
-
-        await client.SendMailAsync(message);
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send email to {ToEmail}: {Message}", toEmail, ex.Message);
+            throw;
+        }
     }
 }
