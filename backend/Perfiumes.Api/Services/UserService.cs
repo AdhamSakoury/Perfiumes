@@ -96,6 +96,7 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
                 catch (Exception ex)
                 {
                     System.Console.WriteLine($"[EMAIL ERROR] Failed to resend activation email to {existingUser.Email}: {ex}");
+                    throw new InvalidOperationException($"Account created/updated, but failed to send activation email: {ex.Message}", ex);
                 }
                 return new RegisterResponse("Registration successful. Please check your email to activate your account.");
             }
@@ -134,6 +135,7 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         catch (Exception ex)
         {
             System.Console.WriteLine($"[EMAIL ERROR] Failed to send activation email to {user.Email}: {ex}");
+            throw new InvalidOperationException($"Registration failed to send activation email: {ex.Message}", ex);
         }
         return new RegisterResponse("Registration successful. Please check your email to activate your account.");
     }

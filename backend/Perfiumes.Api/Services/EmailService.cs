@@ -51,9 +51,9 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
 
     private async Task SendAsync(string toEmail, string subject, string htmlBody)
     {
-        var host = configuration["Email:SmtpHost"];
-        var from = configuration["Email:FromAddress"] ?? "no-reply@gnouby.local";
-        var fromName = configuration["Email:FromName"] ?? "Gnouby Perfumes";
+        var host = configuration["Email:SmtpHost"]?.Trim();
+        var from = configuration["Email:FromAddress"]?.Trim() ?? "no-reply@gnouby.local";
+        var fromName = configuration["Email:FromName"]?.Trim() ?? "Gnouby Perfumes";
 
         if (!IsConfigured || string.IsNullOrWhiteSpace(host))
         {
@@ -85,7 +85,7 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
             SecureSocketOptions socketOptions = port switch
             {
                 465 => SecureSocketOptions.SslOnConnect,
-                587 => SecureSocketOptions.StartTlsWhenAvailable,
+                587 => SecureSocketOptions.StartTls,
                 _ => enableSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None
             };
 
@@ -97,6 +97,7 @@ public sealed class EmailService(IConfiguration configuration, ILogger<EmailServ
 
             if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
             {
+                client.AuthenticationMechanisms.Remove("XOAUTH2");
                 logger.LogInformation("Authenticating SMTP as {Username}...", username);
                 await client.AuthenticateAsync(username, password);
             }

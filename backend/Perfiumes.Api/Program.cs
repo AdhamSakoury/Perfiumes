@@ -236,6 +236,23 @@ app.MapGet("/api/auth/activate", async (
     return Results.Redirect($"{frontendOrigin}/login?status={status}");
 });
 
+app.MapGet("/api/auth/test-email", async (string? to, EmailService emails) =>
+{
+    var target = string.IsNullOrWhiteSpace(to) ? "Ganoubyperfumes@gmail.com" : to;
+    try
+    {
+        await emails.SendActivationEmailAsync(target, "Test User", "http://127.0.0.1:4200/login");
+        return Results.Ok(new { success = true, message = $"Email sent successfully to {target}" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            title: "Failed to send email",
+            detail: ex.ToString(),
+            statusCode: 500);
+    }
+});
+
 app.MapPost("/api/auth/forgot-password", async (
     ForgotPasswordRequest request,
     UserService users,
