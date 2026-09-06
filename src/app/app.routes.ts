@@ -62,6 +62,11 @@ export const routes: Routes = [
     title: 'Resend Confirmation | Gnouby'
   },
   {
+    path: 'activate',
+    loadComponent: () => import('./features/auth/activate-account/activate-account.component').then((module) => module.ActivateAccountComponent),
+    title: 'Activate Account | Gnouby'
+  },
+  {
     path: 'google-callback',
     loadComponent: () => import('./features/auth/google-callback/google-callback.component').then((module) => module.GoogleCallbackComponent),
     title: 'Google Callback | Gnouby'

@@ -134,6 +134,8 @@ export interface User {
 export interface AuthResult {
   success: boolean;
   message?: string;
+  emailSent?: boolean;
+  devActivationUrl?: string;
   user?: User;
   accessToken?: string;
 }

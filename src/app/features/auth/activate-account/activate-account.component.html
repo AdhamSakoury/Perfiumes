@@ -1,0 +1,77 @@
+<section class="page-shell page-enter min-h-[70vh] flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-lg bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl p-8 border border-nubian-gold/30 text-center space-y-6">
+    
+    @if (loading) {
+      <!-- Loading State -->
+      <div class="flex flex-col items-center justify-center space-y-4 py-6">
+        <div class="relative w-16 h-16 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-nubian-gold/20 animate-ping"></div>
+          <div class="w-14 h-14 rounded-full border-4 border-t-nubian-gold border-r-nubian-brown border-b-transparent border-l-transparent animate-spin"></div>
+        </div>
+        <h1 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel tracking-wide">
+          {{ 'activatingAccount' | t }}
+        </h1>
+        <p class="text-sm text-nubian-earth dark:text-nubian-sand animate-pulse">
+          {{ i18n.language() === 'ar' ? 'جاري التحقق من رمز التفعيل وتأكيد حسابك...' : 'Verifying your activation token...' }}
+        </p>
+      </div>
+    } @else if (success) {
+      <!-- Success State -->
+      <div class="flex flex-col items-center justify-center space-y-4 py-2">
+        <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/10">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-cinzel tracking-wide">
+          {{ 'accountActivated' | t }}
+        </h1>
+
+        <p class="text-nubian-earth dark:text-nubian-sand text-sm leading-relaxed">
+          {{ message }}
+        </p>
+
+        <div class="w-full bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 border border-amber-200/50 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300">
+          {{ i18n.language() === 'ar' ? ('سيتم تحويلك لصفحة تسجيل الدخول خلال ' + countdown + ' ثوانٍ...') : ('Redirecting to login in ' + countdown + ' seconds...') }}
+        </div>
+
+        <a routerLink="/login" [queryParams]="{ status: 'activated' }" class="w-full py-3 px-6 bg-nubian-brown hover:bg-nubian-gold text-white hover:text-nubian-dark font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+          <span>{{ 'goToLogin' | t }}</span>
+          <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </a>
+      </div>
+    } @else {
+      <!-- Error / Invalid Token State -->
+      <div class="flex flex-col items-center justify-center space-y-4 py-2">
+        <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/60 border border-red-500/40 flex items-center justify-center text-red-600 dark:text-red-400 shadow-lg shadow-red-500/10">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="2" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 7.5v5.5" />
+            <circle cx="12" cy="16.5" r="1.25" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-red-600 dark:text-red-400 font-cinzel tracking-wide">
+          {{ 'accountActivationFailed' | t }}
+        </h1>
+
+        <p class="text-nubian-earth dark:text-nubian-sand text-sm leading-relaxed">
+          {{ message }}
+        </p>
+
+        <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <a routerLink="/login" class="py-3 px-4 bg-nubian-brown text-white font-bold rounded-xl hover:bg-nubian-gold hover:text-nubian-dark transition-all text-sm">
+            {{ 'goToLogin' | t }}
+          </a>
+          <a routerLink="/resend-confirmation" class="py-3 px-4 border border-nubian-gold text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold/10 font-bold rounded-xl transition-all text-sm">
+            {{ 'resendConfirmation' | t }}
+          </a>
+        </div>
+      </div>
+    }
+
+  </div>
+</section>

@@ -23,6 +23,7 @@ export class RegisterPageComponent {
   showPassword = false;
   strength = 0;
   loading = false;
+  devActivationUrl = '';
   errors: Record<string, string | undefined> = {};
 
   constructor(
@@ -66,8 +67,20 @@ export class RegisterPageComponent {
           return;
         }
 
-        this.toast.show(result.message || this.i18n.t('activationEmailSent'));
-        void this.router.navigate(['/login'], { queryParams: { status: 'registered' } });
+        if (result.emailSent) {
+          this.toast.show(this.i18n.t('activationEmailSent'));
+          void this.router.navigate(['/login'], { queryParams: { status: 'registered' } });
+          return;
+        }
+
+        if (result.devActivationUrl) {
+          this.devActivationUrl = result.devActivationUrl;
+          this.toast.show(result.message || this.i18n.t('activationDevFallback'));
+          return;
+        }
+
+        this.errors['email'] = result.message || this.i18n.t('activationEmailFailed');
+        this.toast.show(this.errors['email'], 'error');
       },
       error: (error) => {
         this.loading = false;

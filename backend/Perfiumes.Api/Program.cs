@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Hubs;
@@ -49,6 +50,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
 builder.Services.Configure<PaymobOptions>(builder.Configuration.GetSection("Paymob"));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddDbContext<PerfiumesDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ProductRepository>();
@@ -67,6 +69,28 @@ builder.Services.AddHttpClient<GoogleAuthService>();
 builder.Services.AddHttpClient<PaymobService>();
 
 var app = builder.Build();
+
+var emailOptions = app.Services.GetRequiredService<IOptions<EmailOptions>>().Value;
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+var emailConfigured =
+    !string.IsNullOrWhiteSpace(emailOptions.SmtpHost)
+    && !string.IsNullOrWhiteSpace(emailOptions.Username)
+    && !string.IsNullOrWhiteSpace(emailOptions.Password);
+if (emailConfigured)
+{
+    startupLogger.LogInformation(
+        "Email SMTP configured for {Username} via {Host}:{Port}. AutoConfirmEmail={AutoConfirm}.",
+        emailOptions.Username,
+        emailOptions.SmtpHost,
+        emailOptions.SmtpPort > 0 ? emailOptions.SmtpPort : 587,
+        emailOptions.AutoConfirmEmail);
+}
+else
+{
+    startupLogger.LogWarning(
+        "Email SMTP is not configured. Set Email:Password via user secrets or environment variables. DevFallbackLinks={DevFallback}.",
+        emailOptions.DevFallbackLinks);
+}
 
 using (var scope = app.Services.CreateScope())
 {
@@ -96,6 +120,7 @@ app.MapGet("/", () => Results.Ok(new
     {
         "POST /api/admin/login",
         "POST /api/auth/register",
+        "POST /api/auth/resend-confirmation",
         "GET /api/auth/activate",
         "POST /api/auth/login",
         "POST /api/auth/forgot-password",
@@ -195,10 +220,7 @@ app.MapPost("/api/admin/login", async (AdminLoginRequest request, UserService us
         : Results.Ok(new AdminLoginResponse(result.AccessToken, "Bearer", result.ExpiresAt));
 });
 
-app.MapPost("/api/auth/register", async (
-    RegisterRequest request,
-    UserService users,
-    HttpContext context) =>
+app.MapPost("/api/auth/register", async (RegisterRequest request, UserService users) =>
 {
     if (string.IsNullOrWhiteSpace(request.FullName)
         || string.IsNullOrWhiteSpace(request.Email)
@@ -207,8 +229,18 @@ app.MapPost("/api/auth/register", async (
         return Results.BadRequest(new { message = "Full name, email and password are required." });
     }
 
-    var result = await users.RegisterAsync(request, context.Request);
+    var result = await users.RegisterAsync(request);
     return result is null ? Results.Conflict(new { message = "Email already registered" }) : Results.Ok(result);
+});
+
+app.MapPost("/api/auth/resend-confirmation", async (ResendActivationRequest request, UserService users) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Email))
+    {
+        return Results.BadRequest(new { message = "Email is required." });
+    }
+
+    return Results.Ok(await users.ResendActivationEmailAsync(request));
 });
 
 app.MapPost("/api/auth/login", async (LoginRequest request, UserService users) =>
@@ -227,30 +259,61 @@ app.MapPost("/api/auth/login", async (LoginRequest request, UserService users) =
 app.MapGet("/api/auth/activate", async (
     string token,
     UserService users,
-    IConfiguration configuration,
-    HttpContext context) =>
+    IOptions<EmailOptions> emailOptions) =>
 {
     var activated = await users.ActivateEmailAsync(token);
-    var frontendOrigin = configuration["Email:FrontendBaseUrl"] ?? "http://127.0.0.1:4200";
+    var frontendOrigin = emailOptions.Value.FrontendBaseUrl.TrimEnd('/');
     var status = activated ? "activated" : "activation-failed";
     return Results.Redirect($"{frontendOrigin}/login?status={status}");
 });
 
-app.MapGet("/api/auth/test-email", async (string? to, EmailService emails) =>
+app.MapPost("/api/auth/activate", async (ActivateEmailRequest request, UserService users) =>
 {
-    var target = string.IsNullOrWhiteSpace(to) ? "Ganoubyperfumes@gmail.com" : to;
-    try
+    if (string.IsNullOrWhiteSpace(request.Token))
     {
-        await emails.SendActivationEmailAsync(target, "Test User", "http://127.0.0.1:4200/login");
-        return Results.Ok(new { success = true, message = $"Email sent successfully to {target}" });
+        return Results.BadRequest(new ActivateEmailResponse(false, "Activation token is required."));
     }
-    catch (Exception ex)
+
+    var activated = await users.ActivateEmailAsync(request.Token);
+    return Results.Ok(new ActivateEmailResponse(
+        activated,
+        activated ? "Your account is activated. You can login now." : "Activation link is invalid or expired."));
+});
+
+app.MapGet("/api/auth/email-status", (IOptions<EmailOptions> emailOptions, EmailService emails, IHostEnvironment env) =>
+{
+    var options = emailOptions.Value;
+    var normalizedPassword = options.Password?.Replace(" ", string.Empty).Trim() ?? string.Empty;
+    return Results.Ok(new
     {
-        return Results.Problem(
+        configured = emails.IsConfigured,
+        passwordConfigured = !string.IsNullOrWhiteSpace(options.Password),
+        passwordLength = normalizedPassword.Length,
+        environment = env.EnvironmentName,
+        userSecretsExpected = env.IsDevelopment(),
+        smtpHost = string.IsNullOrWhiteSpace(options.SmtpHost) ? null : options.SmtpHost,
+        fromAddress = options.FromAddress,
+        username = options.Username,
+        autoConfirmEmail = options.AutoConfirmEmail,
+        devFallbackLinks = options.DevFallbackLinks
+    });
+});
+
+app.MapGet("/api/auth/test-email", async (string? to, EmailService emails, IHostEnvironment env) =>
+{
+    if (!env.IsDevelopment())
+    {
+        return Results.NotFound();
+    }
+
+    var target = string.IsNullOrWhiteSpace(to) ? "test@example.com" : to;
+    var sent = await emails.SendActivationEmailAsync(target, "Test User", "http://127.0.0.1:4200/activate?token=test");
+    return sent
+        ? Results.Ok(new { success = true, message = $"Email sent successfully to {target}" })
+        : Results.Problem(
             title: "Failed to send email",
-            detail: ex.ToString(),
+            detail: "SMTP is not configured or authentication failed. Set Email:Username and Email:Password via user secrets.",
             statusCode: 500);
-    }
 });
 
 app.MapPost("/api/auth/forgot-password", async (

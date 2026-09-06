@@ -2,11 +2,15 @@ namespace Perfiumes.Api.Models;
 
 public sealed record RegisterRequest(string FullName, string Email, string Password, string? Phone, string? Address);
 
-public sealed record RegisterResponse(string Message);
+public sealed record RegisterResponse(string Message, bool EmailSent = false, string? DevActivationUrl = null);
+
+public sealed record ActivateEmailRequest(string Token);
+
+public sealed record ActivateEmailResponse(bool Success, string Message);
+
+public sealed record ResendActivationRequest(string Email);
 
 public sealed record LoginRequest(string Email, string Password);
-
-public sealed record ActivateEmailResponse(string Message);
 
 public sealed record ForgotPasswordRequest(string Email);
 

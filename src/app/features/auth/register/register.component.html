@@ -82,6 +82,13 @@
           {{ 'alreadyRegistered' | t }}
           <a routerLink="/login" class="text-nubian-gold font-semibold">{{ 'login' | t }}</a>
         </p>
+
+        @if (devActivationUrl) {
+          <div class="mt-4 p-4 rounded-lg border border-nubian-gold/30 bg-nubian-gold/5 text-sm">
+            <p class="font-semibold text-nubian-brown dark:text-nubian-gold mb-2">{{ 'activationDevFallbackTitle' | t }}</p>
+            <a [href]="devActivationUrl" class="break-all text-nubian-gold underline">{{ devActivationUrl }}</a>
+          </div>
+        }
         </div>
       </div>
     </section>

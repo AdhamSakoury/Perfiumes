@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Data.Entities;
 using Perfiumes.Api.Models;
@@ -7,10 +8,18 @@ using System.Text;
 
 namespace Perfiumes.Api.Services;
 
-public sealed class UserService(PerfiumesDbContext db, PasswordService passwords, AdminAuthService tokens, EmailService emails)
+public sealed class UserService(
+    PerfiumesDbContext db,
+    PasswordService passwords,
+    AdminAuthService tokens,
+    EmailService emails,
+    IOptions<EmailOptions> emailOptions,
+    IHostEnvironment environment)
 {
     private const int ActivationTokenLifetimeHours = 24;
     private const int ResetTokenLifetimeMinutes = 30;
+
+    private readonly EmailOptions _emailOptions = emailOptions.Value;
 
     private static readonly SeedUser[] SeedUsers =
     [
@@ -23,7 +32,7 @@ public sealed class UserService(PerfiumesDbContext db, PasswordService passwords
         new("test_customer_6", "Salma Ibrahim", "salma@test.local", "Test123!", "customer", "+20 100 000 0007", "New Cairo, Cairo"),
         new("test_customer_7", "Khaled Samir", "khaled@test.local", "Test123!", "customer", "+20 100 000 0008", "6th of October, Giza"),
         new("test_customer_8", "Farida Mostafa", "farida@test.local", "Test123!", "customer", "+20 100 000 0009", "Dokki, Giza"),
-        new("test_customer_9", "Ahmed Nabil", "ahmed@test.local", "Test123!", "customer", "+20 100 000 0010", "Mansoura"),
+        new("test_customer_9", "Ahmed Nabil", "ahmed@test.local", "Test123!", "customer", "+20 100 000 00010", "Mansoura"),
         new("test_customer_10", "Laila Fathy", "laila@test.local", "Test123!", "customer", "+20 100 000 0011", "Alexandria"),
         new("test_customer_11", "Hana Mahmoud", "hana@test.local", "Test123!", "customer", "+20 100 000 0012", "Aswan"),
         new("test_customer_12", "Karim Adel", "karim@test.local", "Test123!", "customer", "+20 100 000 0013", "Luxor"),
@@ -67,14 +76,14 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
 """);
     }
 
-    public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request, HttpRequest httpRequest)
+    public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
     {
         var email = request.Email.Trim().ToLowerInvariant();
+        var autoConfirm = _emailOptions.AutoConfirmEmail;
         var existingUser = await db.Users.FirstOrDefaultAsync(user => user.Email == email);
 
         if (existingUser is not null)
         {
-            // If user exists but hasn't activated, regenerate token and resend email
             if (existingUser.AuthProvider == "local" && !existingUser.IsEmailConfirmed)
             {
                 var now = DateTimeOffset.UtcNow;
@@ -85,28 +94,18 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
                 existingUser.Address = request.Address?.Trim() ?? string.Empty;
                 existingUser.EmailActivationTokenHash = HashToken(newToken);
                 existingUser.EmailActivationTokenExpiresAt = now.AddHours(ActivationTokenLifetimeHours);
+                existingUser.IsEmailConfirmed = autoConfirm;
                 existingUser.UpdatedAt = now;
                 await db.SaveChangesAsync();
 
-                var reactivationUrl = $"{BackendOrigin(httpRequest)}/api/auth/activate?token={Uri.EscapeDataString(newToken)}";
-                try
-                {
-                    await emails.SendActivationEmailAsync(existingUser.Email, existingUser.FullName, reactivationUrl);
-                }
-                catch (Exception ex)
-                {
-                    System.Console.WriteLine($"[EMAIL ERROR] Failed to resend activation email to {existingUser.Email}: {ex}");
-                    throw new InvalidOperationException($"Account created/updated, but failed to send activation email: {ex.Message}", ex);
-                }
-                return new RegisterResponse("Registration successful. Please check your email to activate your account.");
+                return await SendActivationAsync(existingUser.Email, existingUser.FullName, newToken, autoConfirm, "Account updated.");
             }
 
-            return null; // Already registered and activated
+            return null;
         }
 
         var utcNow = DateTimeOffset.UtcNow;
         var activationToken = CreateToken();
-        var activationExpiresAt = utcNow.AddHours(ActivationTokenLifetimeHours);
         var user = new AppUserEntity
         {
             Id = $"user_{Guid.NewGuid():N}",
@@ -117,9 +116,9 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
             Address = request.Address?.Trim() ?? string.Empty,
             Role = "customer",
             AuthProvider = "local",
-            IsEmailConfirmed = false,
+            IsEmailConfirmed = autoConfirm,
             EmailActivationTokenHash = HashToken(activationToken),
-            EmailActivationTokenExpiresAt = activationExpiresAt,
+            EmailActivationTokenExpiresAt = utcNow.AddHours(ActivationTokenLifetimeHours),
             CreatedAt = utcNow,
             UpdatedAt = utcNow
         };
@@ -127,17 +126,33 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        var activationUrl = $"{BackendOrigin(httpRequest)}/api/auth/activate?token={Uri.EscapeDataString(activationToken)}";
-        try
+        return await SendActivationAsync(user.Email, user.FullName, activationToken, autoConfirm, "Account created.");
+    }
+
+    public async Task<RegisterResponse> ResendActivationEmailAsync(ResendActivationRequest request)
+    {
+        var genericMessage = "If this email needs activation, an activation email has been sent.";
+        var email = request.Email.Trim().ToLowerInvariant().Replace("\\@", "@");
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
         {
-            await emails.SendActivationEmailAsync(user.Email, user.FullName, activationUrl);
+            return new RegisterResponse(genericMessage);
         }
-        catch (Exception ex)
+
+        var user = await db.Users.FirstOrDefaultAsync(item => item.Email == email);
+        if (user is null || user.AuthProvider != "local" || user.IsEmailConfirmed)
         {
-            System.Console.WriteLine($"[EMAIL ERROR] Failed to send activation email to {user.Email}: {ex}");
-            throw new InvalidOperationException($"Registration failed to send activation email: {ex.Message}", ex);
+            return new RegisterResponse(genericMessage);
         }
-        return new RegisterResponse("Registration successful. Please check your email to activate your account.");
+
+        var now = DateTimeOffset.UtcNow;
+        var activationToken = CreateToken();
+        user.EmailActivationTokenHash = HashToken(activationToken);
+        user.EmailActivationTokenExpiresAt = now.AddHours(ActivationTokenLifetimeHours);
+        user.UpdatedAt = now;
+        await db.SaveChangesAsync();
+
+        var result = await SendActivationAsync(user.Email, user.FullName, activationToken, false, "Activation email sent.");
+        return new RegisterResponse(genericMessage, result.EmailSent, result.DevActivationUrl);
     }
 
     public async Task<AuthLoginResponse?> LoginAsync(string email, string password)
@@ -208,15 +223,9 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         await db.SaveChangesAsync();
 
         var resetUrl = $"{FrontendOrigin(httpRequest)}/reset-password?token={Uri.EscapeDataString(token)}";
-        try
-        {
-            await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
-        }
-        catch (Exception ex)
-        {
-            System.Console.WriteLine($"[EMAIL ERROR] Failed to send password reset email to {user.Email}: {ex}");
-        }
-        return new ForgotPasswordResponse(genericMessage, emails.IsConfigured ? null : resetUrl, expiresAt);
+        var emailSent = await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
+        var devResetUrl = !emailSent && environment.IsDevelopment() && _emailOptions.DevFallbackLinks ? resetUrl : null;
+        return new ForgotPasswordResponse(genericMessage, devResetUrl, expiresAt);
     }
 
     public async Task<AuthLoginResponse?> ResetPasswordAsync(ResetPasswordRequest request)
@@ -326,6 +335,51 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
             .ToListAsync();
     }
 
+    private async Task<RegisterResponse> SendActivationAsync(
+        string email,
+        string fullName,
+        string activationToken,
+        bool autoConfirm,
+        string prefix)
+    {
+        var activationUrl = BuildActivationUrl(activationToken);
+        LogActivationLink(email, activationUrl);
+
+        if (autoConfirm)
+        {
+            return new RegisterResponse($"{prefix} Your account is activated and ready to use.", true);
+        }
+
+        var emailSent = await emails.SendActivationEmailAsync(email, fullName, activationUrl);
+        if (emailSent)
+        {
+            return new RegisterResponse("Activation email sent. Please check your inbox to activate your account.", true);
+        }
+
+        var devActivationUrl = environment.IsDevelopment() && _emailOptions.DevFallbackLinks ? activationUrl : null;
+        var message = devActivationUrl is not null
+            ? "Account created. SMTP is not configured — use the activation link shown below or in the server console."
+            : "Account created, but the activation email could not be sent. Please contact support or try resending confirmation.";
+
+        return new RegisterResponse(message, false, devActivationUrl);
+    }
+
+    private string BuildActivationUrl(string activationToken)
+    {
+        var frontendBase = _emailOptions.FrontendBaseUrl.TrimEnd('/');
+        return $"{frontendBase}/activate?token={Uri.EscapeDataString(activationToken)}";
+    }
+
+    private static void LogActivationLink(string email, string activationUrl)
+    {
+        Console.WriteLine();
+        Console.WriteLine("=======================================================");
+        Console.WriteLine($"[EMAIL ACTIVATION LINK FOR {email}]:");
+        Console.WriteLine(activationUrl);
+        Console.WriteLine("=======================================================");
+        Console.WriteLine();
+    }
+
     private async Task SeedUserAsync(SeedUser seedUser)
     {
         var normalizedEmail = seedUser.Email.Trim().ToLowerInvariant();
@@ -394,12 +448,7 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
 
     private static string FrontendOrigin(HttpRequest httpRequest)
     {
-        return httpRequest.Headers.Origin.FirstOrDefault() ?? $"{httpRequest.Scheme}://{httpRequest.Host}";
-    }
-
-    private static string BackendOrigin(HttpRequest httpRequest)
-    {
-        return $"{httpRequest.Scheme}://{httpRequest.Host}";
+        return httpRequest.Headers.Origin.FirstOrDefault() ?? "http://127.0.0.1:4200";
     }
 
     private sealed record SeedUser(

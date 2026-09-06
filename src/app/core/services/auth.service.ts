@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthResult, User } from '@core/models/store.models';
 import { StorageService } from './storage.service';
-import { catchError, map, Observable, of, tap } from 'rxjs';
+import { catchError, map, Observable, of, tap, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 const AUTH_KEY = 'gnouby_auth';
@@ -33,6 +33,13 @@ interface AdminLoginResponse {
 }
 
 interface RegisterResponse {
+  message: string;
+  emailSent: boolean;
+  devActivationUrl?: string | null;
+}
+
+interface ActivateAccountResponse {
+  success: boolean;
   message: string;
 }
 
@@ -67,7 +74,28 @@ export class AuthService {
 
   register(fullName: string, email: string, password: string, phone = '', address = ''): Observable<AuthResult> {
     return this.http.post<RegisterResponse>(`${environment.apiBaseUrl}/api/auth/register`, { fullName, email, password, phone, address }).pipe(
-      map((response) => ({ success: true, message: response.message }))
+      map((response) => ({
+        success: true,
+        message: response.message,
+        emailSent: response.emailSent,
+        devActivationUrl: response.devActivationUrl || undefined
+      }))
+    );
+  }
+
+  resendConfirmation(email: string): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(`${environment.apiBaseUrl}/api/auth/resend-confirmation`, { email });
+  }
+
+  activateAccount(token: string): Observable<ActivateAccountResponse> {
+    return this.http.post<ActivateAccountResponse>(`${environment.apiBaseUrl}/api/auth/activate`, { token }).pipe(
+      timeout(8000),
+      catchError((err) =>
+        of({
+          success: false,
+          message: err?.error?.message || ''
+        })
+      )
     );
   }
 
