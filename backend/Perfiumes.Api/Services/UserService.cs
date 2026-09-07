@@ -17,7 +17,6 @@ public sealed class UserService(
     IHostEnvironment environment)
 {
     private const int ActivationTokenLifetimeHours = 24;
-    private const int ResetTokenLifetimeMinutes = 30;
 
     private readonly EmailOptions _emailOptions = emailOptions.Value;
 
@@ -199,7 +198,7 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         return true;
     }
 
-    public async Task<ForgotPasswordResponse> PreparePasswordResetAsync(ForgotPasswordRequest request, HttpRequest httpRequest)
+    public async Task<ForgotPasswordResponse> PreparePasswordResetAsync(ForgotPasswordRequest request)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var genericMessage = "If this email exists, password reset instructions are ready.";
@@ -216,14 +215,15 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         }
 
         var token = CreateToken();
-        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(ResetTokenLifetimeMinutes);
+        var resetTokenLifetimeMinutes = Math.Clamp(_emailOptions.PasswordResetTokenLifetimeMinutes, 5, 120);
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(resetTokenLifetimeMinutes);
         user.ResetPasswordTokenHash = HashToken(token);
         user.ResetPasswordTokenExpiresAt = expiresAt;
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
 
-        var resetUrl = $"{FrontendOrigin(httpRequest)}/reset-password?token={Uri.EscapeDataString(token)}";
-        var emailSent = await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
+        var resetUrl = $"{_emailOptions.FrontendBaseUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}";
+        var emailSent = await emails.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl, resetTokenLifetimeMinutes);
         var devResetUrl = !emailSent && environment.IsDevelopment() && _emailOptions.DevFallbackLinks ? resetUrl : null;
         return new ForgotPasswordResponse(genericMessage, devResetUrl, expiresAt);
     }
@@ -444,11 +444,6 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
     {
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToBase64String(hash);
-    }
-
-    private static string FrontendOrigin(HttpRequest httpRequest)
-    {
-        return httpRequest.Headers.Origin.FirstOrDefault() ?? "http://127.0.0.1:4200";
     }
 
     private sealed record SeedUser(

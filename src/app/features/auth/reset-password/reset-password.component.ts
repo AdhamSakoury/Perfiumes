@@ -38,8 +38,13 @@ export class ResetPasswordComponent {
       return;
     }
 
-    if (this.password.length < 8 || this.password !== this.confirmPassword) {
-      this.error = this.i18n.t('resetPasswordValidation');
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/.test(this.password)) {
+      this.error = this.i18n.t('passwordComplexityError');
+      return;
+    }
+
+    if (this.password !== this.confirmPassword) {
+      this.error = this.i18n.t('passwordsMismatch');
       return;
     }
 

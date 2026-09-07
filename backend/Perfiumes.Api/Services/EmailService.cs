@@ -24,12 +24,12 @@ public sealed class EmailService(IOptions<EmailOptions> options, ILogger<EmailSe
             BuildActivationHtml(fullName, activationUrl));
     }
 
-    public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string fullName, string resetUrl)
+    public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string fullName, string resetUrl, int expiresInMinutes)
     {
         return await SendAsync(
             toEmail,
             "Reset your Gnouby password",
-            BuildPasswordResetHtml(fullName, resetUrl));
+            BuildPasswordResetHtml(fullName, resetUrl, expiresInMinutes));
     }
 
     private async Task<bool> SendAsync(string toEmail, string subject, string htmlBody)
@@ -174,7 +174,7 @@ public sealed class EmailService(IOptions<EmailOptions> options, ILogger<EmailSe
             """;
     }
 
-    private static string BuildPasswordResetHtml(string fullName, string resetUrl)
+    private static string BuildPasswordResetHtml(string fullName, string resetUrl, int expiresInMinutes)
     {
         return $"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
@@ -186,7 +186,7 @@ public sealed class EmailService(IOptions<EmailOptions> options, ILogger<EmailSe
                 </div>
                 <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:<br/><a href="{WebUtility.HtmlEncode(resetUrl)}">{WebUtility.HtmlEncode(resetUrl)}</a></p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p style="color: #999; font-size: 12px;">This link expires in 30 minutes. If you did not request a password reset, you can safely ignore this email.</p>
+                <p style="color: #999; font-size: 12px;">This link expires in {expiresInMinutes} minutes. If you did not request a password reset, you can safely ignore this email.</p>
             </div>
             """;
     }

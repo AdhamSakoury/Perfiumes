@@ -220,13 +220,18 @@ app.MapPost("/api/admin/login", async (AdminLoginRequest request, UserService us
         : Results.Ok(new AdminLoginResponse(result.AccessToken, "Bearer", result.ExpiresAt));
 });
 
-app.MapPost("/api/auth/register", async (RegisterRequest request, UserService users) =>
+app.MapPost("/api/auth/register", async (RegisterRequest request, UserService users, PasswordService passwords) =>
 {
     if (string.IsNullOrWhiteSpace(request.FullName)
         || string.IsNullOrWhiteSpace(request.Email)
         || string.IsNullOrWhiteSpace(request.Password))
     {
         return Results.BadRequest(new { message = "Full name, email and password are required." });
+    }
+
+    if (!passwords.MeetsComplexityRequirements(request.Password))
+    {
+        return Results.BadRequest(new { message = "Password must contain at least 8 characters, uppercase, lowercase, number, and special character." });
     }
 
     var result = await users.RegisterAsync(request);
@@ -318,18 +323,17 @@ app.MapGet("/api/auth/test-email", async (string? to, EmailService emails, IHost
 
 app.MapPost("/api/auth/forgot-password", async (
     ForgotPasswordRequest request,
-    UserService users,
-    HttpContext context) =>
+    UserService users) =>
 {
-    var result = await users.PreparePasswordResetAsync(request, context.Request);
+    var result = await users.PreparePasswordResetAsync(request);
     return Results.Ok(result);
 });
 
-app.MapPost("/api/auth/reset-password", async (ResetPasswordRequest request, UserService users) =>
+app.MapPost("/api/auth/reset-password", async (ResetPasswordRequest request, UserService users, PasswordService passwords) =>
 {
-    if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+    if (!passwords.MeetsComplexityRequirements(request.NewPassword))
     {
-        return Results.BadRequest(new { message = "Password must be at least 8 characters." });
+        return Results.BadRequest(new { message = "Password must contain at least 8 characters, uppercase, lowercase, number, and special character." });
     }
 
     var result = await users.ResetPasswordAsync(request);

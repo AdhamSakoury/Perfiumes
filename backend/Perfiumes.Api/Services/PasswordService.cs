@@ -28,4 +28,13 @@ public sealed class PasswordService
         var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length);
         return CryptographicOperations.FixedTimeEquals(actual, expected);
     }
+
+    public bool MeetsComplexityRequirements(string? password)
+    {
+        return password is { Length: >= 8 }
+            && password.Any(char.IsLower)
+            && password.Any(char.IsUpper)
+            && password.Any(char.IsDigit)
+            && password.Any(character => !char.IsLetterOrDigit(character));
+    }
 }

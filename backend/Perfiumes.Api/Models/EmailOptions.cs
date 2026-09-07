@@ -20,6 +20,8 @@ public sealed class EmailOptions
 
     public string Password { get; set; } = string.Empty;
 
+    public int PasswordResetTokenLifetimeMinutes { get; set; } = 30;
+
     /// <summary>
     /// When true, new accounts are activated immediately without email verification.
     /// </summary>
