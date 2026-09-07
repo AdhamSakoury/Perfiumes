@@ -3,6 +3,7 @@ namespace Perfiumes.Api.Data.Entities;
 public sealed class OrderEntity
 {
     public string Id { get; set; } = string.Empty;
+    public string? ClientRequestId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
     public string Status { get; set; } = "Processing";
     public DateTimeOffset Date { get; set; }

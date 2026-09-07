@@ -36,6 +36,7 @@ public sealed record CreateOrderRequest(
     string? PaymentMethod,
     string? PaymentProvider,
     ShippingAddressDto ShippingAddress,
-    string? PromoCode);
+    string? PromoCode,
+    string? ClientRequestId);
 
 public sealed record UpdateOrderStatusRequest(string Status, string? Note);

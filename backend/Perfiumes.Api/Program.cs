@@ -7,6 +7,9 @@ using Perfiumes.Api.Data;
 using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using Perfiumes.Api.Services;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
@@ -45,6 +48,32 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
+
+        // A token can remain valid for a few hours. Check the account's current
+        // state as well, so blocking a user takes effect immediately instead of
+        // waiting for that token to expire.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var email = context.Principal?.FindFirstValue(ClaimTypes.Email)
+                    ?? context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Email)
+                    ?? context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    context.Fail("Invalid account token.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<PerfiumesDbContext>();
+                var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(item => item.Email == email.ToLower());
+                if (user is null || user.IsBlocked)
+                {
+                    context.Fail("This account is blocked.");
+                }
+            }
+        };
     });
 builder.Services.AddAuthorization();
 
@@ -68,7 +97,8 @@ builder.Services.AddScoped<NewsletterService>();
 builder.Services.AddHttpClient<GoogleAuthService>();
 builder.Services.AddHttpClient<PaymobService>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(20);
+    // Do not leave checkout waiting indefinitely when the payment gateway is slow.
+    client.Timeout = TimeSpan.FromSeconds(8);
 })
 .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 {
@@ -431,6 +461,7 @@ app.MapPost("/api/orders", async (
     OrderService orders,
     UserService users,
     AdminAuthService auth,
+    PaymobService paymob,
     NotificationService notifications,
     HttpContext context,
     IHubContext<NotificationHub> notificationHub) =>
@@ -440,17 +471,26 @@ app.MapPost("/api/orders", async (
         return Results.BadRequest(new { message = "User email and order items are required." });
     }
 
-    var walletPayment = request.PaymentMethod?.Trim().Equals("wallet", StringComparison.OrdinalIgnoreCase) == true;
-    var principal = walletPayment ? auth.ValidateRequest(context) : null;
-    if (walletPayment && principal is null)
+    if (request.PaymentMethod?.Trim().Equals("card", StringComparison.OrdinalIgnoreCase) == true && !paymob.IsConfigured)
+    {
+        return Results.Problem(paymob.ConfigurationError, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
     {
         return Results.Unauthorized();
+    }
+
+    if (!principal.Email.Equals(request.UserEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Forbid();
     }
 
     OrderDto order;
     try
     {
-        order = await orders.CreateAsync(request, principal?.Email);
+        order = await orders.CreateAsync(request, principal.Email);
     }
     catch (UnauthorizedAccessException exception)
     {
@@ -559,12 +599,25 @@ app.MapPost("/api/newsletter/subscribe", async (
     return subscriber is null ? Results.BadRequest(new { message = "Valid email is required." }) : Results.Ok(subscriber);
 });
 
+app.MapGet("/api/payments/paymob/availability", (PaymobService paymob) =>
+    Results.Ok(new PaymentGatewayAvailability(paymob.IsConfigured, paymob.ConfigurationError)));
+
+app.MapGet("/api/payments/paymob/diagnostics", async (PaymobService paymob, CancellationToken cancellationToken) =>
+    Results.Ok(await paymob.CheckConnectionAsync(cancellationToken)));
+
 app.MapPost("/api/payments/paymob/checkout", async (
     PaymobCheckoutRequest request,
     OrderService orders,
     PaymobService paymob,
+    AdminAuthService auth,
+    HttpContext context,
     CancellationToken cancellationToken) =>
 {
+    if (!paymob.IsConfigured)
+    {
+        return Results.Problem(paymob.ConfigurationError, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
     var order = await orders.GetByIdAsync(request.OrderId);
     if (order is null)
     {
@@ -576,32 +629,62 @@ app.MapPost("/api/payments/paymob/checkout", async (
         return Results.BadRequest(new { message = "This order is not configured for card payment." });
     }
 
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!principal.Email.Equals(order.UserEmail, StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Forbid();
+    }
+
     try
     {
         var checkout = await paymob.CreateCheckoutAsync(order, cancellationToken);
-        await orders.MarkPaymentStartedAsync(order.Id, "Paymob", checkout.ClientSecret);
         return Results.Ok(checkout);
+    }
+
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+    {
+        return Results.Problem(
+            "The payment gateway is taking too long. Please try again in a moment.",
+            statusCode: StatusCodes.Status504GatewayTimeout);
+    }
+    catch (HttpRequestException exception)
+    {
+        app.Logger.LogWarning(exception, "Paymob could not be reached for order {OrderId}", order.Id);
+        return Results.Problem(
+            "Could not reach Paymob checkout. Please try again in a moment.",
+            statusCode: StatusCodes.Status502BadGateway);
     }
     catch (InvalidOperationException exception)
     {
+        app.Logger.LogWarning("Paymob checkout could not be created for order {OrderId}: {Message}", order.Id, exception.Message);
+        await orders.UpdatePaymentStatusAsync(order.Id, "failed");
         return Results.BadRequest(new { message = exception.Message });
     }
 });
 
-app.MapPost("/api/payments/status", async (
-    PaymentStatusUpdateRequest request,
-    OrderService orders) =>
-{
-    var order = await orders.UpdatePaymentStatusAsync(request.OrderId, request.Status, request.Reference);
-    return order is null ? Results.NotFound() : Results.Ok(order);
-});
-
 app.MapPost("/api/payments/paymob/webhook", async (
     HttpRequest request,
-    OrderService orders) =>
+    OrderService orders,
+    IOptions<PaymobOptions> paymobOptions) =>
 {
+    var hmacSecret = paymobOptions.Value.HmacSecret;
+    if (string.IsNullOrWhiteSpace(hmacSecret))
+    {
+        return Results.Problem("Paymob webhook HMAC is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
     using var document = await JsonDocument.ParseAsync(request.Body);
     var root = document.RootElement;
+    var receivedHmac = request.Query["hmac"].ToString();
+    if (!VerifyPaymobWebhookHmac(root, receivedHmac, hmacSecret))
+    {
+        return Results.Unauthorized();
+    }
     var orderId = TryReadString(root, "merchant_order_id")
         ?? TryReadString(root, "special_reference")
         ?? TryReadString(root, "order_id")
@@ -616,6 +699,17 @@ app.MapPost("/api/payments/paymob/webhook", async (
     if (string.IsNullOrWhiteSpace(orderId))
     {
         return Results.BadRequest(new { message = "Order reference was not found in Paymob webhook." });
+    }
+
+    var existingOrder = await orders.GetByIdAsync(orderId);
+    if (existingOrder is null)
+    {
+        return Results.NotFound();
+    }
+
+    if (existingOrder.PaymentMethod != "card" || existingOrder.PaymentProvider != "Paymob")
+    {
+        return Results.BadRequest(new { message = "This callback does not match a Paymob card order." });
     }
 
     var order = await orders.UpdatePaymentStatusAsync(orderId, success ? "paid" : "failed", transactionId);
@@ -635,6 +729,37 @@ static string? TryReadString(JsonElement root, params string[] path)
         JsonValueKind.Number => element.ToString(),
         _ => null
     };
+}
+
+static bool VerifyPaymobWebhookHmac(JsonElement root, string receivedHmac, string hmacSecret)
+{
+    if (string.IsNullOrWhiteSpace(receivedHmac))
+    {
+        return false;
+    }
+
+    var fields = new[]
+    {
+        new[] { "obj", "amount_cents" }, new[] { "obj", "created_at" }, new[] { "obj", "currency" },
+        new[] { "obj", "error_occured" }, new[] { "obj", "has_parent_transaction" }, new[] { "obj", "id" },
+        new[] { "obj", "integration_id" }, new[] { "obj", "is_3d_secure" }, new[] { "obj", "is_auth" },
+        new[] { "obj", "is_capture" }, new[] { "obj", "is_refunded" }, new[] { "obj", "is_standalone_payment" },
+        new[] { "obj", "is_voided" }, new[] { "obj", "order", "id" }, new[] { "obj", "owner" },
+        new[] { "obj", "pending" }, new[] { "obj", "source_data", "pan" }, new[] { "obj", "source_data", "sub_type" },
+        new[] { "obj", "source_data", "type" }, new[] { "obj", "success" }
+    };
+
+    var payload = string.Concat(fields.Select(path => TryReadElement(root, out var element, path) ? element.ToString() : string.Empty));
+    try
+    {
+        var expectedBytes = HMACSHA512.HashData(Encoding.UTF8.GetBytes(hmacSecret), Encoding.UTF8.GetBytes(payload));
+        var receivedBytes = Convert.FromHexString(receivedHmac);
+        return receivedBytes.Length == expectedBytes.Length && CryptographicOperations.FixedTimeEquals(receivedBytes, expectedBytes);
+    }
+    catch (FormatException)
+    {
+        return false;
+    }
 }
 
 static bool? TryReadBool(JsonElement root, params string[] path)
@@ -873,7 +998,7 @@ app.MapPost("/api/admin/users/{id}/toggle-block", async (
     HttpContext context) =>
 {
     var principal = auth.ValidateRequest(context);
-    if (principal is null || !principal.IsAdmin)
+    if (principal?.Role != "admin")
     {
         return Results.Unauthorized();
     }

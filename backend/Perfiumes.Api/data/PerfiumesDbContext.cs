@@ -81,6 +81,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.HasIndex(order => order.Date);
             entity.HasIndex(order => new { order.Status, order.Date });
             entity.Property(order => order.Id).HasMaxLength(64);
+            entity.Property(order => order.ClientRequestId).HasMaxLength(80);
             entity.Property(order => order.UserEmail).HasMaxLength(256);
             entity.Property(order => order.Status).HasMaxLength(32);
             entity.Property(order => order.Subtotal).HasPrecision(18, 2);

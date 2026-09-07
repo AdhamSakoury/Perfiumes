@@ -11,7 +11,7 @@ import { PaymentService } from '@core/services/payment.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, map, switchMap, throwError, TimeoutError } from 'rxjs';
 
 @Component({
   selector: 'app-checkout-page',
@@ -26,6 +26,10 @@ export class CheckoutPageComponent {
   error = '';
   processing = false;
   processingStep: 'idle' | 'placing' | 'paymob' = 'idle';
+  cardGatewayReady: boolean | null = null;
+  paymentNotice = 'Your order will be confirmed immediately. You pay when it arrives.';
+  private processingWatchdog?: ReturnType<typeof setTimeout>;
+  private paymentAttemptId?: string;
   readonly deliveryRegions = [
     { label: 'Cairo / Giza', fee: 75, eta: '2 business days' },
     { label: 'Alexandria', fee: 95, eta: '3-4 business days' },
@@ -48,6 +52,24 @@ export class CheckoutPageComponent {
       this.form.phone = user.phone || '';
       this.form.address = user.address || '';
     }
+
+    this.payments.paymobAvailability().subscribe({
+      next: (status) => this.cardGatewayReady = status.configured,
+      error: () => this.cardGatewayReady = false
+    });
+  }
+
+  onPaymentMethodChange(): void {
+    this.error = '';
+    this.paymentNotice = this.paymentMethod === 'wallet'
+      ? 'Your wallet is charged immediately when you place the order.'
+      : this.paymentMethod === 'card'
+        ? this.cardGatewayReady === false
+          ? 'Card checkout is temporarily unavailable. Choose wallet or cash on delivery.'
+          : 'You will be redirected securely to Paymob after placing the order.'
+        : this.paymentMethod === 'instapay'
+          ? 'Your order is recorded, then confirmed after the bank transfer is reviewed.'
+          : 'Your order will be confirmed immediately. You pay when it arrives.';
   }
 
   placeOrder(): void {
@@ -60,8 +82,14 @@ export class CheckoutPageComponent {
     const user = this.auth.currentUser();
     if (!user) return;
 
+    if (this.paymentMethod === 'card' && this.cardGatewayReady === false) {
+      this.error = 'Card checkout is currently unavailable. Please use wallet or cash on delivery.';
+      return;
+    }
+
     this.processing = true;
     this.processingStep = 'placing';
+    this.startProcessingWatchdog();
     const shippingFee = this.shippingFee();
     const payableTotal = this.payableTotal();
 
@@ -94,32 +122,34 @@ export class CheckoutPageComponent {
         zip: this.form.postal,
         country: 'Egypt'
       },
-      promoCode: this.cart.promo()?.code || null
+      promoCode: this.cart.promo()?.code || null,
+      clientRequestId: this.paymentAttemptId ||= crypto.randomUUID()
     };
 
-    const orderRequest = this.paymentMethod === 'wallet'
-      ? this.auth.ensureAccessToken().pipe(
-        switchMap((token) => token ? this.orders.create(order, token) : throwError(() => new Error('No access token'))),
-        catchError((error) => this.retryWalletOrderAfterAuthError(error, order))
-      )
-      : this.orders.create(order);
+    const orderRequest = this.auth.ensureAccessToken().pipe(
+      switchMap((token) => token
+        ? this.orders.create(order, token).pipe(map((createdOrder) => ({ createdOrder, token })))
+        : throwError(() => new Error('No access token'))),
+      catchError((error) => this.retryOrderAfterAuthError(error, order))
+    );
 
     orderRequest.subscribe({
-      next: (createdOrder) => {
+      next: ({ createdOrder, token }) => {
         this.auth.updateCurrentUser({ ...user, orders: [createdOrder, ...(user.orders || [])] });
         if (this.paymentMethod === 'card') {
           this.processingStep = 'paymob';
-          this.payments.createPaymobCheckout(createdOrder.id).subscribe({
+          this.payments.createPaymobCheckout(createdOrder.id, token).subscribe({
             next: (checkout) => {
+              this.clearProcessingWatchdog();
               this.cart.clear();
               this.cart.clearPromo();
               window.location.href = checkout.checkoutUrl;
             },
             error: (error: unknown) => {
-              this.processing = false;
-              this.processingStep = 'idle';
+              this.stopProcessing();
+              this.paymentAttemptId = undefined;
               this.error = error instanceof HttpErrorResponse
-                ? error.error?.message || 'Could not start Paymob checkout.'
+                ? error.error?.message || error.error?.detail || 'Could not start Paymob checkout.'
                 : 'Could not start Paymob checkout.';
             }
           });
@@ -128,15 +158,17 @@ export class CheckoutPageComponent {
 
         this.cart.clear();
         this.cart.clearPromo();
-        this.processing = false;
-        this.processingStep = 'idle';
+        this.stopProcessing();
+        this.paymentAttemptId = undefined;
         this.toast.show(this.i18n.t('orderPlacedSuccess'));
         void this.router.navigateByUrl('/orders');
       },
       error: (error: unknown) => {
-        this.processing = false;
-        this.processingStep = 'idle';
-        this.error = error instanceof HttpErrorResponse
+        this.stopProcessing();
+        if (!(error instanceof TimeoutError)) this.paymentAttemptId = undefined;
+        this.error = error instanceof TimeoutError
+          ? 'The order request took too long. Please try again.'
+          : error instanceof HttpErrorResponse
           ? error.error?.message || 'Could not place your order. Please try again.'
           : 'Could not place your order. Please try again.';
       }
@@ -171,7 +203,7 @@ export class CheckoutPageComponent {
     return labels[this.paymentMethod];
   }
 
-  private retryWalletOrderAfterAuthError(
+  private retryOrderAfterAuthError(
     error: unknown,
     order: Omit<Order, 'id' | 'date' | 'status' | 'trackingEvents'> & { userEmail: string }
   ) {
@@ -180,8 +212,32 @@ export class CheckoutPageComponent {
     }
 
     return this.auth.ensureAccessToken(true).pipe(
-      switchMap((token) => token ? this.orders.create(order, token) : throwError(() => error))
+      switchMap((token) => token
+        ? this.orders.create(order, token).pipe(map((createdOrder) => ({ createdOrder, token })))
+        : throwError(() => error))
     );
+  }
+
+  private startProcessingWatchdog(): void {
+    this.clearProcessingWatchdog();
+    this.processingWatchdog = setTimeout(() => {
+      if (!this.processing) return;
+      this.stopProcessing();
+      this.error = 'The payment request is not responding. Please try again.';
+    }, 20_000);
+  }
+
+  private clearProcessingWatchdog(): void {
+    if (this.processingWatchdog) {
+      clearTimeout(this.processingWatchdog);
+      this.processingWatchdog = undefined;
+    }
+  }
+
+  private stopProcessing(): void {
+    this.clearProcessingWatchdog();
+    this.processing = false;
+    this.processingStep = 'idle';
   }
 }
 

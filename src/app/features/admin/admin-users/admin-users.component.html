@@ -59,7 +59,7 @@
             </label>
             <app-custom-dropdown
               [value]="statusFilter()"
-              (valueChange)="statusFilter.set($event)"
+              (valueChange)="setStatusFilter($event)"
               [options]="statusOptions"
               ariaLabel="Status filter"
               [compact]="true" />

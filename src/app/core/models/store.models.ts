@@ -94,6 +94,7 @@ export interface OrderTrackingEvent {
 
 export interface Order {
   id: string;
+  clientRequestId?: string | null;
   userEmail?: string;
   date: string;
   status: OrderStatus;

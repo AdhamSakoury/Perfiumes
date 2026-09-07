@@ -105,6 +105,12 @@ IF COL_LENGTH(N'[Orders]', N'EstimatedDelivery') IS NULL
 
 IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
     ALTER TABLE [Orders] ADD [ShippingPhone] nvarchar(64) NOT NULL CONSTRAINT [DF_Orders_ShippingPhone] DEFAULT N'';
+
+IF COL_LENGTH(N'[Orders]', N'ClientRequestId') IS NULL
+    ALTER TABLE [Orders] ADD [ClientRequestId] nvarchar(80) NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_ClientRequestId' AND object_id = OBJECT_ID(N'[Orders]'))
+    EXEC(N'CREATE UNIQUE INDEX [UX_Orders_UserEmail_ClientRequestId] ON [Orders]([UserEmail], [ClientRequestId]) WHERE [ClientRequestId] IS NOT NULL;');
 """);
     }
 
@@ -153,6 +159,26 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         var now = DateTimeOffset.UtcNow;
         var id = $"ORD-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():X}";
         var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
+        var clientRequestId = string.IsNullOrWhiteSpace(request.ClientRequestId) ? null : request.ClientRequestId.Trim();
+
+        if (clientRequestId?.Length > 80)
+        {
+            throw new InvalidOperationException("Invalid payment attempt identifier.");
+        }
+
+        if (clientRequestId is not null)
+        {
+            var existingOrder = await db.Orders
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(item => item.Items)
+                .Include(item => item.TrackingEvents)
+                .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail && item.ClientRequestId == clientRequestId);
+            if (existingOrder is not null)
+            {
+                return ToDto(existingOrder);
+            }
+        }
 
         var customer = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
         if (customer is not null && customer.IsBlocked)
@@ -202,8 +228,9 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
                 throw new UnauthorizedAccessException("Wallet payment requires the logged-in customer.");
             }
 
+            // Only the wallet balance is required here. Loading the full transaction
+            // history made every wallet checkout slower as that history grew.
             var wallet = await db.UserWallets
-                .Include(item => item.Transactions)
                 .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
             if (wallet is null)
             {
@@ -219,7 +246,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
             wallet.Balance -= amount;
             wallet.LifetimeDebit += amount;
             wallet.UpdatedAt = now;
-            wallet.Transactions.Add(new WalletTransactionEntity
+            db.WalletTransactions.Add(new WalletTransactionEntity
             {
                 Id = $"wtx_{Guid.NewGuid():N}",
                 WalletId = wallet.Id,
@@ -234,6 +261,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         var order = new OrderEntity
         {
             Id = id,
+            ClientRequestId = clientRequestId,
             UserEmail = normalizedEmail,
             Status = "Processing",
             Date = now,
@@ -304,6 +332,13 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         if (order is null)
         {
             return null;
+        }
+
+        // Payment gateways can redeliver callbacks. Once finalized, never
+        // change the result or restore stock again for the same order.
+        if (order.PaymentStatus is "paid" or "failed")
+        {
+            return ToDto(order);
         }
 
         var normalized = paymentStatus.Trim().Equals("paid", StringComparison.OrdinalIgnoreCase) ? "paid" : "failed";
@@ -401,6 +436,11 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
 
     private static string NormalizePaymentProvider(string paymentMethod, string? paymentProvider)
     {
+        if (paymentMethod == "card")
+        {
+            return "Paymob";
+        }
+
         if (!string.IsNullOrWhiteSpace(paymentProvider))
         {
             return paymentProvider.Trim();
@@ -408,7 +448,6 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
 
         return paymentMethod switch
         {
-            "card" => "Simulated card gateway",
             "instapay" => "InstaPay manual confirmation",
             "wallet" => "Gnouby wallet",
             _ => "Cash on delivery"

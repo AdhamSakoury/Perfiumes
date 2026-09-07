@@ -83,6 +83,12 @@ export class AdminUsersComponent {
     ];
   }
 
+  setStatusFilter(value: string): void {
+    if (value === 'all' || value === 'active' || value === 'blocked') {
+      this.statusFilter.set(value);
+    }
+  }
+
   load(): void {
     if (!this.isAdmin) {
       this.loadError = this.i18n.t('loginAgainAdmin');

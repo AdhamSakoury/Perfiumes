@@ -13,7 +13,7 @@
         </div>
       } @else {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <form (ngSubmit)="placeOrder()" class="lg:col-span-2 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 border border-nubian-gold/20 space-y-5">
+          <form (ngSubmit)="placeOrder()" novalidate class="lg:col-span-2 bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 border border-nubian-gold/20 space-y-5">
             <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold">{{ 'shippingDetails' | t }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label>{{ 'fullName' | t }}<input name="name" [(ngModel)]="form.name" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
@@ -45,31 +45,31 @@
               <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">{{ 'paymentMethod' | t }}</h3>
               <div class="grid gap-3">
                 <label class="checkout-payment-option" [class.active]="paymentMethod === 'cashOnDelivery'">
-                  <input type="radio" name="payment" value="cashOnDelivery" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <input type="radio" name="payment" value="cashOnDelivery" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-money-bill-wave"></i></span>
                   <span>
                     <strong>{{ 'cashOnDelivery' | t }}</strong>
-                    <small>Pay when your order arrives.</small>
+                    <small>Order is confirmed immediately; pay upon delivery.</small>
                   </span>
                 </label>
                 <label class="checkout-payment-option" [class.active]="paymentMethod === 'wallet'">
-                  <input type="radio" name="payment" value="wallet" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <input type="radio" name="payment" value="wallet" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-wallet"></i></span>
                   <span>
                     <strong>Pay with wallet</strong>
-                    <small>Use your available wallet balance instantly.</small>
+                    <small>Your wallet is charged immediately and securely.</small>
                   </span>
                 </label>
-                <label class="checkout-payment-option" [class.active]="paymentMethod === 'card'">
-                  <input type="radio" name="payment" value="card" [(ngModel)]="paymentMethod" class="custom-radio">
+                <label class="checkout-payment-option" [class.active]="paymentMethod === 'card'" [class.opacity-60]="cardGatewayReady === false">
+                  <input type="radio" name="payment" value="card" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-credit-card"></i></span>
                   <span>
                     <strong>Card payment</strong>
-                    <small>Gateway-ready flow; this build records a simulated paid reference.</small>
+                    <small>{{ cardGatewayReady === false ? 'Paymob is temporarily unavailable.' : 'Secure checkout with Paymob — you will be redirected after placing the order.' }}</small>
                   </span>
                 </label>
                 <label class="checkout-payment-option" [class.active]="paymentMethod === 'instapay'">
-                  <input type="radio" name="payment" value="instapay" [(ngModel)]="paymentMethod" class="custom-radio">
+                  <input type="radio" name="payment" value="instapay" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-building-columns"></i></span>
                   <span>
                     <strong>InstaPay transfer</strong>
@@ -77,6 +77,7 @@
                   </span>
                 </label>
               </div>
+              <p class="mt-3 text-sm text-nubian-earth dark:text-nubian-sand">{{ paymentNotice }}</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
