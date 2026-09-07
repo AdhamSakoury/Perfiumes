@@ -96,7 +96,7 @@
 
             <button type="submit" [disabled]="processing" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-70">
               <i class="fas mr-2" [class.fa-spinner]="processing" [class.fa-spin]="processing" [class.fa-check]="!processing"></i>
-              {{ processing ? ('processing' | t) : ('placeOrder' | t) }}
+              {{ processing ? (processingStep === 'paymob' ? ('redirectingToPaymob' | t) : ('processing' | t)) : ('placeOrder' | t) }}
             </button>
           </form>
 

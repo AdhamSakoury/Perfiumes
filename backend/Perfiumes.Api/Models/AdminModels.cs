@@ -22,3 +22,24 @@ public sealed record AuthLoginResponse(
     string TokenType,
     DateTimeOffset ExpiresAt,
     AuthUserResponse User);
+
+public sealed record AdminUserDto(
+    string Id,
+    string FullName,
+    string Email,
+    string? ProfilePhoto,
+    string Role,
+    string Phone,
+    string Address,
+    string AuthProvider,
+    bool IsEmailConfirmed,
+    bool IsBlocked,
+    string? BlockReason,
+    DateTimeOffset? BlockedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    int OrdersCount,
+    decimal WalletBalance);
+
+public sealed record ToggleUserBlockRequest(bool IsBlocked, string? Reason);
+

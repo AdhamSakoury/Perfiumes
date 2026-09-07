@@ -153,6 +153,13 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
         var now = DateTimeOffset.UtcNow;
         var id = $"ORD-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():X}";
         var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
+
+        var customer = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        if (customer is not null && customer.IsBlocked)
+        {
+            throw new UnauthorizedAccessException("Your account has been suspended. You cannot place orders.");
+        }
+
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
         var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
         var paymentProvider = NormalizePaymentProvider(paymentMethod, request.PaymentProvider);
@@ -275,10 +282,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
 
     public async Task<OrderDto?> MarkPaymentStartedAsync(string id, string provider, string reference)
     {
-        var order = await db.Orders
-            .Include(item => item.Items)
-            .Include(item => item.TrackingEvents)
-            .FirstOrDefaultAsync(item => item.Id == id);
+        var order = await db.Orders.FirstOrDefaultAsync(item => item.Id == id);
         if (order is null)
         {
             return null;
@@ -491,7 +495,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
             order.UserEmail,
             order.Date,
             order.Status,
-            order.Items.Select(item => new OrderItemDto(item.ProductId, item.Name, item.Price, item.Image, item.Quantity)).ToList(),
+            (order.Items ?? []).Select(item => new OrderItemDto(item.ProductId, item.Name, item.Price, item.Image, item.Quantity)).ToList(),
             order.Subtotal,
             order.Discount,
             order.ShippingFee,
@@ -512,7 +516,7 @@ IF COL_LENGTH(N'[Orders]', N'ShippingPhone') IS NULL
                 order.ShippingCountry,
                 order.ShippingPhone),
             order.PromoCode,
-            order.TrackingEvents
+            (order.TrackingEvents ?? [])
                 .OrderBy(item => item.CreatedAt)
                 .Select(item => new OrderTrackingEventDto(item.Id, item.Status, item.Title, item.Description, item.CreatedAt))
                 .ToList());

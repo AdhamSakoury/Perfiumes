@@ -132,6 +132,11 @@ export const routes: Routes = [
     title: 'Admin Promo Codes | Gnouby'
   },
   {
+    path: 'admin/users',
+    loadComponent: () => import('./features/admin/admin-users/admin-users.component').then((module) => module.AdminUsersComponent),
+    title: 'Admin Users | Gnouby'
+  },
+  {
     path: 'orders',
     loadComponent: () => import('./features/orders/orders.component').then((module) => module.OrdersPageComponent),
     title: 'Orders | Gnouby'

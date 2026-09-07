@@ -25,6 +25,7 @@ export class CheckoutPageComponent {
   paymentMethod: 'cashOnDelivery' | 'wallet' | 'card' | 'instapay' = 'cashOnDelivery';
   error = '';
   processing = false;
+  processingStep: 'idle' | 'placing' | 'paymob' = 'idle';
   readonly deliveryRegions = [
     { label: 'Cairo / Giza', fee: 75, eta: '2 business days' },
     { label: 'Alexandria', fee: 95, eta: '3-4 business days' },
@@ -60,6 +61,7 @@ export class CheckoutPageComponent {
     if (!user) return;
 
     this.processing = true;
+    this.processingStep = 'placing';
     const shippingFee = this.shippingFee();
     const payableTotal = this.payableTotal();
 
@@ -106,15 +108,16 @@ export class CheckoutPageComponent {
       next: (createdOrder) => {
         this.auth.updateCurrentUser({ ...user, orders: [createdOrder, ...(user.orders || [])] });
         if (this.paymentMethod === 'card') {
+          this.processingStep = 'paymob';
           this.payments.createPaymobCheckout(createdOrder.id).subscribe({
             next: (checkout) => {
               this.cart.clear();
               this.cart.clearPromo();
-              this.processing = false;
               window.location.href = checkout.checkoutUrl;
             },
             error: (error: unknown) => {
               this.processing = false;
+              this.processingStep = 'idle';
               this.error = error instanceof HttpErrorResponse
                 ? error.error?.message || 'Could not start Paymob checkout.'
                 : 'Could not start Paymob checkout.';
@@ -126,11 +129,13 @@ export class CheckoutPageComponent {
         this.cart.clear();
         this.cart.clearPromo();
         this.processing = false;
+        this.processingStep = 'idle';
         this.toast.show(this.i18n.t('orderPlacedSuccess'));
         void this.router.navigateByUrl('/orders');
       },
       error: (error: unknown) => {
         this.processing = false;
+        this.processingStep = 'idle';
         this.error = error instanceof HttpErrorResponse
           ? error.error?.message || 'Could not place your order. Please try again.'
           : 'Could not place your order. Please try again.';

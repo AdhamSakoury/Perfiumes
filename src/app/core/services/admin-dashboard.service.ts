@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { AdminDashboardSummary, AdminWallet } from '@core/models/store.models';
+import { AdminDashboardSummary, AdminUser, AdminWallet } from '@core/models/store.models';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -28,6 +28,20 @@ export class AdminDashboardService {
     return this.http.post<AdminWallet>(
       `${environment.apiBaseUrl}/api/admin/wallets/${walletId}/adjust`,
       { amount, type, reason, referenceId: null },
+      { headers: this.authHeaders(token) }
+    );
+  }
+
+  getUsers(token: string): Observable<AdminUser[]> {
+    return this.http.get<AdminUser[]>(`${environment.apiBaseUrl}/api/admin/users`, {
+      headers: this.authHeaders(token)
+    });
+  }
+
+  toggleBlockUser(userId: string, isBlocked: boolean, reason: string, token: string): Observable<AdminUser> {
+    return this.http.post<AdminUser>(
+      `${environment.apiBaseUrl}/api/admin/users/${userId}/toggle-block`,
+      { isBlocked, reason },
       { headers: this.authHeaders(token) }
     );
   }

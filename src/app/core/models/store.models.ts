@@ -229,3 +229,23 @@ export interface AdminDashboardSummary {
   wallets: AdminWallet[];
 }
 
+export interface AdminUser {
+  id: string;
+  fullName: string;
+  email: string;
+  profilePhoto: string | null;
+  role: 'admin' | 'customer' | string;
+  phone: string;
+  address: string;
+  authProvider: 'local' | 'google' | string;
+  isEmailConfirmed: boolean;
+  isBlocked: boolean;
+  blockReason: string | null;
+  blockedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  ordersCount: number;
+  walletBalance: number;
+}
+
+

@@ -66,7 +66,18 @@ builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<PromoCodeService>();
 builder.Services.AddScoped<NewsletterService>();
 builder.Services.AddHttpClient<GoogleAuthService>();
-builder.Services.AddHttpClient<PaymobService>();
+builder.Services.AddHttpClient<PaymobService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+    KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+    KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+    EnableMultipleHttp2Connections = true
+});
 
 var app = builder.Build();
 
@@ -139,6 +150,8 @@ app.MapGet("/", () => Results.Ok(new
         "GET /api/admin/dashboard",
         "GET /api/admin/wallets",
         "POST /api/admin/wallets/{id}/adjust",
+        "GET /api/admin/users",
+        "POST /api/admin/users/{id}/toggle-block",
         "POST /api/promos/validate",
         "GET /api/admin/promos",
         "POST /api/admin/promos",
@@ -191,10 +204,14 @@ async Task PublishAdminNotificationAsync(
     string type = "info",
     string? link = null)
 {
-    foreach (var adminEmail in await users.GetAdminEmailsAsync())
+    var adminEmails = await users.GetAdminEmailsAsync();
+    if (adminEmails.Count == 0)
     {
-        await PublishNotificationAsync(notifications, hub, adminEmail, title, message, type, link);
+        return;
     }
+
+    await Task.WhenAll(adminEmails.Select(adminEmail =>
+        PublishNotificationAsync(notifications, hub, adminEmail, title, message, type, link)));
 }
 
 async Task PublishCustomersNotificationAsync(
@@ -206,10 +223,14 @@ async Task PublishCustomersNotificationAsync(
     string type = "info",
     string? link = null)
 {
-    foreach (var customerEmail in await users.GetCustomerEmailsAsync())
+    var customerEmails = await users.GetCustomerEmailsAsync();
+    if (customerEmails.Count == 0)
     {
-        await PublishNotificationAsync(notifications, hub, customerEmail, title, message, type, link);
+        return;
     }
+
+    await Task.WhenAll(customerEmails.Select(customerEmail =>
+        PublishNotificationAsync(notifications, hub, customerEmail, title, message, type, link)));
 }
 
 app.MapPost("/api/admin/login", async (AdminLoginRequest request, UserService users) =>
@@ -440,24 +461,37 @@ app.MapPost("/api/orders", async (
         return Results.BadRequest(new { message = exception.Message });
     }
 
-    await PublishNotificationAsync(
-        notifications,
-        notificationHub,
-        order.UserEmail,
-        "Order placed",
-        order.PaymentMethod == "wallet"
-            ? $"Your order {order.Id} was paid from your wallet and is now processing."
-            : $"Your order {order.Id} was received and is now processing.",
-        "order",
-        "/orders");
-    await PublishAdminNotificationAsync(
-        users,
-        notifications,
-        notificationHub,
-        "New order",
-        $"{order.UserEmail} placed order {order.Id} for {order.Total:0.##} EGP via {order.PaymentMethod}.",
-        "order",
-        "/admin/orders");
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            await PublishNotificationAsync(
+                notifications,
+                notificationHub,
+                order.UserEmail,
+                "Order placed",
+                order.PaymentMethod == "wallet"
+                    ? $"Your order {order.Id} was paid from your wallet and is now processing."
+                    : $"Your order {order.Id} was received and is now processing.",
+                "order",
+                "/orders");
+
+            using var scope = app.Services.CreateScope();
+            var scopeUsers = scope.ServiceProvider.GetRequiredService<UserService>();
+            await PublishAdminNotificationAsync(
+                scopeUsers,
+                notifications,
+                notificationHub,
+                "New order",
+                $"{order.UserEmail} placed order {order.Id} for {order.Total:0.##} EGP via {order.PaymentMethod}.",
+                "order",
+                "/admin/orders");
+        }
+        catch
+        {
+            // Background notification task failure shouldn't crash or delay order flow
+        }
+    });
 
     return Results.Created($"/api/orders/{order.Id}", order);
 });
@@ -815,6 +849,44 @@ app.MapPost("/api/admin/wallets/{id}/adjust", async (
 
     var wallet = await dashboard.AdjustWalletAsync(id, request);
     return wallet is null ? Results.BadRequest(new { message = "Wallet not found or invalid amount." }) : Results.Ok(wallet);
+});
+
+app.MapGet("/api/admin/users", async (
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var list = await users.GetAdminUsersAsync();
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/admin/users/{id}/toggle-block", async (
+    string id,
+    ToggleUserBlockRequest request,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null || !principal.IsAdmin)
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var updated = await users.ToggleUserBlockAsync(id, request.IsBlocked, request.Reason, principal.Email);
+        return updated is null ? Results.NotFound(new { message = "User not found" }) : Results.Ok(updated);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 });
 
 app.MapPost("/api/products", async (

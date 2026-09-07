@@ -72,6 +72,15 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenHash') IS NULL
 
 IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
     ALTER TABLE [Users] ADD [EmailActivationTokenExpiresAt] datetimeoffset NULL;
+
+IF COL_LENGTH(N'[Users]', N'IsBlocked') IS NULL
+    ALTER TABLE [Users] ADD [IsBlocked] bit NOT NULL CONSTRAINT [DF_Users_IsBlocked] DEFAULT 0;
+
+IF COL_LENGTH(N'[Users]', N'BlockReason') IS NULL
+    ALTER TABLE [Users] ADD [BlockReason] nvarchar(500) NULL;
+
+IF COL_LENGTH(N'[Users]', N'BlockedAt') IS NULL
+    ALTER TABLE [Users] ADD [BlockedAt] datetimeoffset NULL;
 """);
     }
 
@@ -161,6 +170,14 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         if (user is null || !passwords.Verify(password, user.PasswordHash))
         {
             return null;
+        }
+
+        if (user.IsBlocked)
+        {
+            var reason = string.IsNullOrWhiteSpace(user.BlockReason)
+                ? "Your account has been suspended. Please contact support."
+                : $"Your account has been suspended: {user.BlockReason}";
+            throw new UnauthorizedAccessException(reason);
         }
 
         if (user.AuthProvider == "local" && !user.IsEmailConfirmed)
@@ -306,6 +323,13 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
             };
             db.Users.Add(user);
         }
+        else if (user.IsBlocked)
+        {
+            var reason = string.IsNullOrWhiteSpace(user.BlockReason)
+                ? "Your account has been suspended. Please contact support."
+                : $"Your account has been suspended: {user.BlockReason}";
+            throw new UnauthorizedAccessException(reason);
+        }
 
         user.FullName = fullName;
         user.ProfilePhoto = profilePhoto;
@@ -315,6 +339,96 @@ IF COL_LENGTH(N'[Users]', N'EmailActivationTokenExpiresAt') IS NULL
         user.UpdatedAt = now;
         await db.SaveChangesAsync();
         return CreateLoginResponse(user);
+    }
+
+    public async Task<IReadOnlyList<AdminUserDto>> GetAdminUsersAsync()
+    {
+        var users = await db.Users
+            .AsNoTracking()
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync();
+
+        var userEmails = users.Select(u => u.Email).ToList();
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var orderCounts = await db.Orders
+            .AsNoTracking()
+            .Where(o => userEmails.Contains(o.UserEmail))
+            .GroupBy(o => o.UserEmail)
+            .Select(g => new { Email = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Email, g => g.Count, StringComparer.OrdinalIgnoreCase);
+
+        var walletBalances = await db.UserWallets
+            .AsNoTracking()
+            .Where(w => userEmails.Contains(w.UserEmail) || userIds.Contains(w.UserId))
+            .ToListAsync();
+
+        var walletMap = walletBalances
+            .GroupBy(w => w.UserEmail, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Balance, StringComparer.OrdinalIgnoreCase);
+
+        return users.Select(u => new AdminUserDto(
+            u.Id,
+            u.FullName,
+            u.Email,
+            u.ProfilePhoto,
+            u.Role,
+            u.Phone,
+            u.Address,
+            u.AuthProvider,
+            u.IsEmailConfirmed,
+            u.IsBlocked,
+            u.BlockReason,
+            u.BlockedAt,
+            u.CreatedAt,
+            u.UpdatedAt,
+            orderCounts.TryGetValue(u.Email, out var count) ? count : 0,
+            walletMap.TryGetValue(u.Email, out var balance) ? balance : 0
+        )).ToList();
+    }
+
+    public async Task<AdminUserDto?> ToggleUserBlockAsync(string userId, bool isBlocked, string? reason, string adminEmail)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId || u.Email == userId.ToLowerInvariant());
+        if (user is null)
+        {
+            return null;
+        }
+
+        if (user.Role == "admin" && isBlocked)
+        {
+            throw new InvalidOperationException("Cannot block an administrator account.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        user.IsBlocked = isBlocked;
+        user.BlockReason = isBlocked ? (string.IsNullOrWhiteSpace(reason) ? "Blocked by admin" : reason.Trim()) : null;
+        user.BlockedAt = isBlocked ? now : null;
+        user.UpdatedAt = now;
+
+        await db.SaveChangesAsync();
+
+        var ordersCount = await db.Orders.CountAsync(o => o.UserEmail == user.Email);
+        var wallet = await db.UserWallets.FirstOrDefaultAsync(w => w.UserEmail == user.Email);
+
+        return new AdminUserDto(
+            user.Id,
+            user.FullName,
+            user.Email,
+            user.ProfilePhoto,
+            user.Role,
+            user.Phone,
+            user.Address,
+            user.AuthProvider,
+            user.IsEmailConfirmed,
+            user.IsBlocked,
+            user.BlockReason,
+            user.BlockedAt,
+            user.CreatedAt,
+            user.UpdatedAt,
+            ordersCount,
+            wallet?.Balance ?? 0
+        );
     }
 
     public async Task<IReadOnlyList<string>> GetAdminEmailsAsync()

@@ -1,0 +1,211 @@
+<section class="page-shell admin-users-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="admin-users-empty">
+      <h1>{{ 'adminLoginRequired' | t }}</h1>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="admin-users-empty">
+      <h1>{{ 'adminsOnly' | t }}</h1>
+      <a routerLink="/">{{ 'backHome' | t }}</a>
+    </div>
+  } @else {
+    <div class="admin-users-main">
+      <header class="admin-users-topbar">
+        <div>
+          <p>{{ 'adminUsers' | t }}</p>
+          <h2>{{ 'adminUsers' | t }}</h2>
+          <span>{{ 'adminUsersSubtitle' | t }}</span>
+        </div>
+        <button type="button" (click)="load()" [disabled]="loading">
+          <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
+          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
+        </button>
+      </header>
+
+      <div class="admin-users-metrics">
+        <article class="metric-total">
+          <span><i class="fas fa-users"></i></span>
+          <p>{{ 'totalUsers' | t }}</p>
+          <strong>{{ totalCount() }}</strong>
+        </article>
+        <article class="metric-active">
+          <span><i class="fas fa-check-circle"></i></span>
+          <p>{{ 'activeUsers' | t }}</p>
+          <strong>{{ activeCount() }}</strong>
+        </article>
+        <article class="metric-blocked">
+          <span><i class="fas fa-ban"></i></span>
+          <p>{{ 'blockedUsers' | t }}</p>
+          <strong>{{ blockedCount() }}</strong>
+        </article>
+        <article class="metric-customers">
+          <span><i class="fas fa-user-tag"></i></span>
+          <p>{{ 'customers' | t }}</p>
+          <strong>{{ users().filter(u => u.role === 'customer').length }}</strong>
+        </article>
+      </div>
+
+      <section class="admin-users-panel">
+        <div class="admin-users-panel-title">
+          <div>
+            <p>{{ 'customers' | t }}</p>
+            <h3>{{ 'adminUsers' | t }}</h3>
+          </div>
+          <div class="admin-users-filters">
+            <label>
+              <i class="fas fa-search"></i>
+              <input [ngModel]="query()" (ngModelChange)="query.set($event)" [placeholder]="'searchUsers' | t">
+            </label>
+            <app-custom-dropdown
+              [value]="statusFilter()"
+              (valueChange)="statusFilter.set($event)"
+              [options]="statusOptions"
+              ariaLabel="Status filter"
+              [compact]="true" />
+          </div>
+        </div>
+
+        @if (loading && !users().length) {
+          <div class="admin-users-empty inside">
+            <h1><i class="fas fa-spinner fa-spin"></i></h1>
+            <p>{{ 'loading' | t }}</p>
+          </div>
+        } @else if (loadError) {
+          <div class="admin-users-empty inside">
+            <h1>{{ 'walletsUnavailable' | t }}</h1>
+            <p>{{ loadError }}</p>
+            <button type="button" (click)="load()">{{ 'tryAgain' | t }}</button>
+          </div>
+        } @else {
+          <div class="admin-user-list">
+            @for (user of filteredUsers(); track user.id) {
+              <article class="admin-user-row" [class.is-blocked]="user.isBlocked">
+                <div class="admin-user-avatar-col">
+                  @if (user.profilePhoto) {
+                    <img [src]="user.profilePhoto" [alt]="user.fullName" class="admin-user-avatar-img">
+                  } @else {
+                    <span class="admin-user-avatar">{{ user.fullName.slice(0, 1).toUpperCase() }}</span>
+                  }
+                </div>
+
+                <div class="admin-user-info">
+                  <strong>{{ user.fullName }}</strong>
+                  <small>{{ user.email }}</small>
+                  @if (user.phone) {
+                    <em>{{ user.phone }}</em>
+                  }
+                  <div class="admin-user-badges">
+                    <span class="badge-role" [class.admin]="user.role === 'admin'">
+                      <i class="fas" [class.fa-shield-halved]="user.role === 'admin'" [class.fa-user]="user.role !== 'admin'"></i>
+                      {{ user.role }}
+                    </span>
+                    <span class="badge-auth">
+                      <i class="fab" [class.fa-google]="user.authProvider === 'google'" [class.fa-lock]="user.authProvider !== 'google'"></i>
+                      {{ user.authProvider }}
+                    </span>
+                    @if (user.isBlocked) {
+                      <span class="badge-blocked"><i class="fas fa-ban"></i> {{ 'status_blocked' | t }}</span>
+                    } @else {
+                      <span class="badge-active"><i class="fas fa-circle-check"></i> {{ 'status_active' | t }}</span>
+                    }
+                  </div>
+                  @if (user.isBlocked && user.blockReason) {
+                    <div class="admin-user-block-reason">
+                      <i class="fas fa-triangle-exclamation"></i>
+                      <span>{{ 'blockReasonLabel' | t }}: {{ user.blockReason }}</span>
+                    </div>
+                  }
+                </div>
+
+                <div class="admin-user-stats">
+                  <div>
+                    <i class="fas fa-box"></i>
+                    <span>{{ user.ordersCount }} {{ 'orders' | t }}</span>
+                  </div>
+                  <div>
+                    <i class="fas fa-wallet"></i>
+                    <span>{{ user.walletBalance | currency:'EGP':'symbol-narrow' }}</span>
+                  </div>
+                  <div class="admin-user-since">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>{{ user.createdAt | date:'mediumDate' }}</span>
+                  </div>
+                </div>
+
+                <div class="admin-user-actions">
+                  @if (user.role !== 'admin') {
+                    @if (user.isBlocked) {
+                      <button
+                        type="button"
+                        class="btn-unblock"
+                        (click)="unblockUser(user)"
+                        [disabled]="updatingUserId === user.id">
+                        @if (updatingUserId === user.id) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-lock-open"></i>
+                        }
+                        {{ 'unblockUser' | t }}
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="btn-block"
+                        (click)="openBlockModal(user)"
+                        [disabled]="updatingUserId === user.id">
+                        @if (updatingUserId === user.id) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-ban"></i>
+                        }
+                        {{ 'blockUser' | t }}
+                      </button>
+                    }
+                  } @else {
+                    <span class="admin-user-protected">
+                      <i class="fas fa-shield-halved"></i> Admin Protected
+                    </span>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <div class="admin-users-empty inside">
+                <h1>{{ 'noUsersFound' | t }}</h1>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
+</section>
+
+<!-- Block Confirmation Modal -->
+@if (selectedUserForBlock) {
+  <div class="admin-users-modal-backdrop" (click)="closeBlockModal()">
+    <div class="admin-users-modal" (click)="$event.stopPropagation()">
+      <div class="admin-users-modal-header">
+        <i class="fas fa-ban text-red-500"></i>
+        <h3>{{ 'blockUser' | t }}</h3>
+      </div>
+      <p class="admin-users-modal-msg">
+        {{ ('confirmBlockUser' | t).replace('{name}', selectedUserForBlock.fullName) }}
+      </p>
+      <div class="admin-users-modal-field">
+        <label>{{ 'blockReason' | t }}</label>
+        <textarea
+          [(ngModel)]="blockReason"
+          rows="3"
+          [placeholder]="'enterBlockReason' | t">
+        </textarea>
+      </div>
+      <div class="admin-users-modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeBlockModal()">{{ 'cancel' | t }}</button>
+        <button type="button" class="btn-confirm-block" (click)="confirmBlock()">
+          <i class="fas fa-ban"></i> {{ 'blockUser' | t }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
