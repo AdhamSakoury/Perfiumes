@@ -82,7 +82,7 @@ export interface ShippingAddress {
   country: string;
 }
 
-export type OrderStatus = 'Pending' | 'Processing' | 'Packed' | 'Shipped' | 'OutForDelivery' | 'Delivered' | 'Cancelled';
+export type OrderStatus = 'Pending' | 'Processing' | 'OnHold' | 'Packed' | 'ReadyForPickup' | 'Shipped' | 'OutForDelivery' | 'Delivered' | 'Cancelled';
 
 export interface OrderTrackingEvent {
   id: string;
@@ -107,6 +107,8 @@ export interface Order {
   paymentStatus?: 'pending' | 'paid' | string;
   paymentProvider?: string;
   paymentReference?: string;
+  deliveryUserId?: string | null;
+  deliveryName?: string | null;
   courierName?: string;
   trackingNumber?: string;
   estimatedDelivery?: string;
@@ -129,7 +131,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   authProvider?: 'local' | 'google';
-  role?: 'customer' | 'admin';
+  role?: 'customer' | 'admin' | 'delivery';
 }
 
 export interface AuthResult {
@@ -205,6 +207,13 @@ export interface WalletTransaction {
   createdAt: string;
 }
 
+export interface AdminWalletTransaction extends WalletTransaction {
+  walletId: string;
+  userName: string;
+  userEmail: string;
+  currency: string;
+}
+
 export interface UserWallet {
   id: string;
   balance: number;
@@ -235,7 +244,7 @@ export interface AdminUser {
   fullName: string;
   email: string;
   profilePhoto: string | null;
-  role: 'admin' | 'customer' | string;
+  role: 'admin' | 'customer' | 'delivery' | string;
   phone: string;
   address: string;
   authProvider: 'local' | 'google' | string;

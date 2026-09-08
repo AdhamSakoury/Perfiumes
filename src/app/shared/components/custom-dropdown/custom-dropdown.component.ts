@@ -1,4 +1,4 @@
-import { booleanAttribute, Component, ElementRef, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { booleanAttribute, Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, Output } from '@angular/core';
 
 export interface CustomDropdownOption {
   value: string;
@@ -24,6 +24,7 @@ export class CustomDropdownComponent {
   @Output() valueChange = new EventEmitter<string>();
 
   open = false;
+  openUpward = false;
 
   constructor(private readonly host: ElementRef<HTMLElement>) {}
 
@@ -31,9 +32,15 @@ export class CustomDropdownComponent {
     return this.options.find((option) => option.value === this.value);
   }
 
+  @HostBinding('class.is-open')
+  get isOpen(): boolean {
+    return this.open;
+  }
+
   toggle(): void {
     if (this.disabled) return;
     this.open = !this.open;
+    if (this.open) this.setPlacement();
   }
 
   select(value: string): void {
@@ -57,5 +64,12 @@ export class CustomDropdownComponent {
   @HostListener('keydown.escape')
   onEscape(): void {
     this.close();
+  }
+
+  private setPlacement(): void {
+    const bounds = this.host.nativeElement.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - bounds.bottom;
+    const spaceAbove = bounds.top;
+    this.openUpward = spaceBelow < 260 && spaceAbove > spaceBelow;
   }
 }

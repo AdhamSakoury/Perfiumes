@@ -3,25 +3,26 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AdminWallet } from '@core/models/store.models';
+import { AdminWallet, AdminWalletTransaction } from '@core/models/store.models';
 import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
-import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { Observable, catchError, finalize, switchMap, throwError, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-admin-wallets',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
+  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './admin-wallets.component.html',
   styleUrl: './admin-wallets.component.css'
 })
 export class AdminWalletsComponent {
   readonly wallets = signal<AdminWallet[]>([]);
+  readonly customerTransactions = signal<AdminWalletTransaction[]>([]);
   readonly query = signal('');
+  readonly transactionQuery = signal('');
   readonly filteredWallets = computed(() => {
     const query = this.query().trim().toLowerCase();
     if (!query) return this.wallets();
@@ -34,6 +35,17 @@ export class AdminWalletsComponent {
   readonly totalBalance = computed(() => this.wallets().reduce((sum, wallet) => sum + wallet.balance, 0));
   readonly totalCredit = computed(() => this.wallets().reduce((sum, wallet) => sum + wallet.lifetimeCredit, 0));
   readonly totalDebit = computed(() => this.wallets().reduce((sum, wallet) => sum + wallet.lifetimeDebit, 0));
+  readonly filteredCustomerTransactions = computed(() => {
+    const query = this.transactionQuery().trim().toLowerCase();
+    if (!query) return this.customerTransactions();
+
+    return this.customerTransactions().filter((transaction) => {
+      return transaction.userName.toLowerCase().includes(query)
+        || transaction.userEmail.toLowerCase().includes(query)
+        || transaction.reason.toLowerCase().includes(query)
+        || (transaction.referenceId || '').toLowerCase().includes(query);
+    });
+  });
 
   walletDraft: Record<string, { amount: number; type: 'credit' | 'debit'; reason: string }> = {};
   loading = false;
@@ -59,29 +71,22 @@ export class AdminWalletsComponent {
     return this.auth.currentUser()?.role === 'admin';
   }
 
-  get walletTypeOptions(): CustomDropdownOption[] {
-    return [
-      { value: 'credit', label: 'Credit', icon: 'fa-arrow-up' },
-      { value: 'debit', label: 'Debit', icon: 'fa-arrow-down' }
-    ];
-  }
-
-  setWalletDraftType(walletId: string, type: string): void {
-    this.walletDraft[walletId].type = type === 'debit' ? 'debit' : 'credit';
-  }
-
   load(): void {
     if (!this.isAdmin || this.loading) return;
 
     this.loading = true;
     this.loadError = '';
     this.adminRequest((token) => this.dashboard.getWallets(token)).pipe(
+      switchMap((wallets) => {
+        this.applyWallets(wallets);
+        return this.adminRequest((token) => this.dashboard.getCustomerWalletTransactions(token));
+      }),
       timeout(10000),
       finalize(() => {
         this.loading = false;
       })
     ).subscribe({
-      next: (wallets) => this.applyWallets(wallets),
+      next: (transactions) => this.customerTransactions.set(transactions),
       error: () => {
         this.loadError = this.i18n.t('walletsLoadFailed');
       }

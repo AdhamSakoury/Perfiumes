@@ -31,7 +31,7 @@ export class LoginPageComponent {
   ) {
     const user = this.auth.currentUser();
     if (user) {
-      void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || (user.role === 'admin' ? '/admin' : '/account'));
+      void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || this.defaultRouteForRole(user.role));
     }
 
     const status = this.route.snapshot.queryParamMap.get('status');
@@ -59,7 +59,7 @@ export class LoginPageComponent {
           return;
         }
 
-        const fallback = result.user?.role === 'admin' ? '/admin' : '/account';
+        const fallback = this.defaultRouteForRole(result.user?.role);
         void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('redirect') || fallback);
       },
       error: (error) => {
@@ -67,6 +67,12 @@ export class LoginPageComponent {
         this.errors.email = error?.error?.message || this.i18n.t('invalidEmailOrPassword');
       }
     });
+  }
+
+  private defaultRouteForRole(role: string | undefined): string {
+    if (role === 'admin') return '/admin';
+    if (role === 'delivery') return '/delivery';
+    return '/account';
   }
 }
 

@@ -15,6 +15,8 @@ public sealed class OrderEntity
     public string PaymentStatus { get; set; } = "pending";
     public string PaymentProvider { get; set; } = string.Empty;
     public string PaymentReference { get; set; } = string.Empty;
+    public string? DeliveryUserId { get; set; }
+    public string? DeliveryName { get; set; }
     public string CourierName { get; set; } = string.Empty;
     public string TrackingNumber { get; set; } = string.Empty;
     public DateTimeOffset? EstimatedDelivery { get; set; }

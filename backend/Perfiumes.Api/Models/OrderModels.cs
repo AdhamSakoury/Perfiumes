@@ -20,6 +20,8 @@ public sealed record OrderDto(
     string PaymentStatus,
     string PaymentProvider,
     string PaymentReference,
+    string? DeliveryUserId,
+    string? DeliveryName,
     string CourierName,
     string TrackingNumber,
     DateTimeOffset? EstimatedDelivery,
@@ -40,3 +42,5 @@ public sealed record CreateOrderRequest(
     string? ClientRequestId);
 
 public sealed record UpdateOrderStatusRequest(string Status, string? Note);
+
+public sealed record AssignDeliveryRequest(string DeliveryUserId);

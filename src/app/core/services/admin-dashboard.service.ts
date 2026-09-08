@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { AdminDashboardSummary, AdminUser, AdminWallet } from '@core/models/store.models';
+import { AdminDashboardSummary, AdminUser, AdminWallet, AdminWalletTransaction } from '@core/models/store.models';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -44,6 +44,27 @@ export class AdminDashboardService {
       { isBlocked, reason },
       { headers: this.authHeaders(token) }
     );
+  }
+
+  getCustomerWalletTransactions(token: string): Observable<AdminWalletTransaction[]> {
+    return this.http.get<AdminWalletTransaction[]>(`${environment.apiBaseUrl}/api/admin/wallet-transactions/customer`, {
+      headers: this.authHeaders(token)
+    });
+  }
+
+  createDelivery(
+    details: { fullName: string; email: string; password: string; phone: string; address: string },
+    token: string
+  ): Observable<AdminUser> {
+    return this.http.post<AdminUser>(`${environment.apiBaseUrl}/api/admin/deliveries`, details, {
+      headers: this.authHeaders(token)
+    });
+  }
+
+  deleteUser(userId: string, token: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiBaseUrl}/api/admin/users/${userId}`, {
+      headers: this.authHeaders(token)
+    });
   }
 
   private authHeaders(token: string): HttpHeaders {

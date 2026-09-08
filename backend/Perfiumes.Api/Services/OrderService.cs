@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Data.Entities;
 using Perfiumes.Api.Models;
+using System.Data;
 
 namespace Perfiumes.Api.Services;
 
@@ -11,7 +12,9 @@ public sealed class OrderService(PerfiumesDbContext db)
         new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
         {
             ["Processing"] = ("Order confirmed", "We received your order and started preparing it."),
+            ["OnHold"] = ("On hold", "Your order needs a quick review before preparation continues."),
             ["Packed"] = ("Packed", "Your perfumes are packed and ready for courier pickup."),
+            ["ReadyForPickup"] = ("Ready for pickup", "Your order is ready for the delivery partner to collect."),
             ["Shipped"] = ("Shipped", "Your order left our store and is on its way."),
             ["OutForDelivery"] = ("Out for delivery", "The courier is heading to your address."),
             ["Delivered"] = ("Delivered", "Your order has arrived. Enjoy your fragrance."),
@@ -94,6 +97,15 @@ IF COL_LENGTH(N'[Orders]', N'PaymentProvider') IS NULL
 IF COL_LENGTH(N'[Orders]', N'PaymentReference') IS NULL
     ALTER TABLE [Orders] ADD [PaymentReference] nvarchar(120) NOT NULL CONSTRAINT [DF_Orders_PaymentReference] DEFAULT N'';
 
+IF COL_LENGTH(N'[Orders]', N'DeliveryUserId') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryUserId] nvarchar(64) NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryName') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryName] nvarchar(160) NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_DeliveryUserId_Date' AND object_id = OBJECT_ID(N'[Orders]'))
+    CREATE INDEX [IX_Orders_DeliveryUserId_Date] ON [Orders] ([DeliveryUserId], [Date]);
+
 IF COL_LENGTH(N'[Orders]', N'CourierName') IS NULL
     ALTER TABLE [Orders] ADD [CourierName] nvarchar(120) NOT NULL CONSTRAINT [DF_Orders_CourierName] DEFAULT N'';
 
@@ -136,6 +148,28 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
             .AsSplitQuery()
             .Include(order => order.Items)
             .Include(order => order.TrackingEvents)
+            .OrderByDescending(order => order.Date)
+            .ToListAsync();
+
+        return orders.Select(ToDto).ToList();
+    }
+
+    public async Task<IReadOnlyList<OrderDto>> GetForDeliveryAsync(string deliveryEmail)
+    {
+        var deliveryUser = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == deliveryEmail.Trim().ToLowerInvariant() && user.Role == "delivery");
+        if (deliveryUser is null)
+        {
+            return [];
+        }
+
+        var orders = await db.Orders
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(order => order.Items)
+            .Include(order => order.TrackingEvents)
+            .Where(order => order.DeliveryUserId == deliveryUser.Id)
             .OrderByDescending(order => order.Date)
             .ToListAsync();
 
@@ -252,6 +286,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
                 WalletId = wallet.Id,
                 Amount = amount,
                 Type = "debit",
+                ActorRole = "customer",
                 Reason = $"Payment for order {id}",
                 ReferenceId = id,
                 CreatedAt = now
@@ -383,6 +418,143 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
         if (normalizedStatus == "Cancelled" && previousStatus != "Cancelled")
         {
             await RestoreStockAsync(order);
+        }
+
+        order.TrackingEvents.Add(CreateTrackingEvent(id, normalizedStatus, DateTimeOffset.UtcNow, note));
+        await db.SaveChangesAsync();
+        return ToDto(order);
+    }
+
+    public async Task<OrderDto?> CancelByCustomerAsync(string id, string customerEmail)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var normalizedEmail = customerEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders
+            .Include(item => item.Items)
+            .Include(item => item.TrackingEvents)
+            .FirstOrDefaultAsync(item => item.Id == id && item.UserEmail == normalizedEmail);
+        if (order is null)
+        {
+            return null;
+        }
+
+        if (order.Status is not "Processing" and not "OnHold" and not "Packed")
+        {
+            throw new InvalidOperationException("This order can no longer be cancelled because shipping has started.");
+        }
+
+        var refundAmount = order.PaymentStatus == "paid" ? order.Total : 0;
+        if (refundAmount > 0)
+        {
+            var wallet = await db.UserWallets
+                .Include(item => item.Transactions)
+                .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
+            if (wallet is null)
+            {
+                var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(item => item.Email == normalizedEmail);
+                if (user is null)
+                {
+                    throw new InvalidOperationException("Customer account was not found.");
+                }
+
+                var now = DateTimeOffset.UtcNow;
+                wallet = new UserWalletEntity
+                {
+                    Id = $"wallet_{Guid.NewGuid():N}",
+                    UserId = user.Id,
+                    UserEmail = user.Email,
+                    Currency = "EGP",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                db.UserWallets.Add(wallet);
+            }
+
+            wallet.Balance += refundAmount;
+            wallet.LifetimeCredit += refundAmount;
+            wallet.UpdatedAt = DateTimeOffset.UtcNow;
+            wallet.Transactions.Add(new WalletTransactionEntity
+            {
+                Id = $"wtx_{Guid.NewGuid():N}",
+                WalletId = wallet.Id,
+                Amount = refundAmount,
+                Type = "credit",
+                ActorRole = "customer",
+                Reason = $"Refund for cancelled order {order.Id}",
+                ReferenceId = $"refund_{order.Id}",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            order.PaymentStatus = "refunded";
+        }
+
+        await RestoreStockAsync(order);
+        order.Status = "Cancelled";
+        order.TrackingEvents.Add(CreateTrackingEvent(
+            order.Id,
+            "Cancelled",
+            DateTimeOffset.UtcNow,
+            refundAmount > 0
+                ? $"Your order was cancelled and {refundAmount:0.##} EGP was returned to your wallet."
+                : "Your order was cancelled."));
+
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return ToDto(order);
+    }
+
+    public async Task<OrderDto?> AssignDeliveryAsync(string id, string deliveryUserId)
+    {
+        var deliveryUser = await db.Users.FirstOrDefaultAsync(user => user.Id == deliveryUserId && user.Role == "delivery" && !user.IsBlocked);
+        if (deliveryUser is null)
+        {
+            throw new InvalidOperationException("Delivery account was not found or is blocked.");
+        }
+
+        var order = await db.Orders
+            .Include(item => item.Items)
+            .Include(item => item.TrackingEvents)
+            .FirstOrDefaultAsync(item => item.Id == id);
+        if (order is null)
+        {
+            return null;
+        }
+
+        order.DeliveryUserId = deliveryUser.Id;
+        order.DeliveryName = deliveryUser.FullName;
+        order.CourierName = deliveryUser.FullName;
+        await db.SaveChangesAsync();
+        return ToDto(order);
+    }
+
+    public async Task<OrderDto?> UpdateDeliveryStatusAsync(string id, string deliveryEmail, string status, string? note)
+    {
+        var deliveryUser = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == deliveryEmail.Trim().ToLowerInvariant() && user.Role == "delivery" && !user.IsBlocked);
+        if (deliveryUser is null)
+        {
+            throw new UnauthorizedAccessException("Delivery account is not available.");
+        }
+
+        var normalizedStatus = NormalizeStatus(status);
+        if (normalizedStatus is not "OutForDelivery" and not "Delivered")
+        {
+            throw new InvalidOperationException("Delivery staff can only mark an assigned order as out for delivery or delivered.");
+        }
+
+        var order = await db.Orders
+            .Include(item => item.Items)
+            .Include(item => item.TrackingEvents)
+            .FirstOrDefaultAsync(item => item.Id == id && item.DeliveryUserId == deliveryUser.Id);
+        if (order is null)
+        {
+            return null;
+        }
+
+        order.Status = normalizedStatus;
+        if (string.IsNullOrWhiteSpace(order.TrackingNumber))
+        {
+            order.TrackingNumber = $"GN-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():X}";
         }
 
         order.TrackingEvents.Add(CreateTrackingEvent(id, normalizedStatus, DateTimeOffset.UtcNow, note));
@@ -543,6 +715,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
             order.PaymentStatus,
             order.PaymentProvider,
             order.PaymentReference,
+            order.DeliveryUserId,
+            order.DeliveryName,
             order.CourierName,
             order.TrackingNumber,
             order.EstimatedDelivery,

@@ -4,8 +4,8 @@
 }
 
 .admin-orders-header {
-  width: min(100%, 1120px);
-  margin: 0 auto 1rem;
+  width: 100%;
+  margin: 0 0 1rem;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -79,8 +79,8 @@
 
 .orders-list,
 .admin-orders-empty {
-  width: min(100%, 1120px);
-  margin-inline: auto;
+  width: 100%;
+  margin-inline: 0;
 }
 
 .orders-list {
@@ -252,6 +252,78 @@
   min-height: 2.4rem;
 }
 
+.order-card:has(app-custom-dropdown.is-open) {
+  position: relative;
+  z-index: 10;
+}
+
+.admin-orders-filters {
+  width: 100%;
+  margin-inline: 0;
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(27, 77, 77, 0.12);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 14px 28px -30px rgba(26, 21, 16, 0.66);
+}
+
+.admin-orders-filters > label:not(.admin-order-search) {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 10rem;
+}
+
+.admin-orders-filters > label > span {
+  color: #5D4E37;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-orders-filters select {
+  min-height: 2.65rem;
+  padding: 0.5rem 0.7rem;
+  color: #153f3f;
+  background: #fff;
+  border: 1px solid rgba(245, 166, 35, 0.36);
+  border-radius: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  outline: 0;
+}
+
+.admin-orders-filters select:focus { border-color: #F5A623; box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.14); }
+
+.admin-order-search {
+  flex: 1 1 28rem;
+  min-height: 2.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0.7rem;
+  background: #F7F3EC;
+  border: 1px solid rgba(27, 77, 77, 0.16);
+  border-radius: 0.45rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.admin-order-search:focus-within {
+  background: #fff;
+  border-color: #F5A623;
+  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.16);
+}
+
+.admin-order-search > i { color: #B7791F; font-size: 0.9rem; }
+.admin-order-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #153f3f; font-size: 0.92rem; font-weight: 700; }
+.admin-order-search input::placeholder { color: #8A7C69; font-weight: 600; }
+.admin-order-search button { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; padding: 0; border: 0; border-radius: 50%; background: rgba(27, 77, 77, 0.1); color: #153f3f; cursor: pointer; }
+.admin-order-search button:hover { background: #153f3f; color: #fff; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
 .admin-orders-empty {
   padding: 1.25rem;
   text-align: center;
@@ -264,7 +336,8 @@
 }
 
 :host-context(.dark) .order-card,
-:host-context(.dark) .admin-orders-empty {
+:host-context(.dark) .admin-orders-empty,
+:host-context(.dark) .admin-orders-filters {
   background: rgba(22, 34, 34, 0.96);
   border-color: rgba(245, 166, 35, 0.2);
   box-shadow: 0 18px 42px -34px rgba(0, 0, 0, 0.8);
@@ -279,6 +352,19 @@
   color: #E6D5B8;
   border-color: rgba(245, 166, 35, 0.32);
 }
+
+:host-context(.dark) .admin-orders-filters select,
+:host-context(.dark) .admin-order-search {
+  background: #1D2B2B;
+  color: #E6D5B8;
+  border-color: rgba(245, 166, 35, 0.28);
+}
+
+:host-context(.dark) .admin-order-search:focus-within { background: #223333; }
+:host-context(.dark) .admin-order-search input { color: #E6D5B8; }
+:host-context(.dark) .admin-order-search input::placeholder { color: rgba(230, 213, 184, 0.56); }
+:host-context(.dark) .admin-orders-filters > label > span { color: rgba(230, 213, 184, 0.78); }
+:host-context(.dark) .admin-order-search button { background: rgba(245, 166, 35, 0.14); color: #F5A623; }
 
 :host-context(.dark) .order-items span {
   background: rgba(245, 166, 35, 0.1);
@@ -320,4 +406,11 @@
   .status-controls {
     grid-template-columns: 1fr;
   }
+
+  .admin-orders-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-orders-filters > label:not(.admin-order-search) { min-width: 0; }
 }

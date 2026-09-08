@@ -142,7 +142,15 @@
           <div><span>Shipping</span><strong>{{ (order.shippingFee || 0) | currency:'EGP':'symbol-narrow' }}</strong></div>
           <div class="total-row"><span>{{ 'total' | t }}</span><strong>{{ order.total | currency }}</strong></div>
         </div>
-        <button type="button" (click)="reorder(order)" class="orders-reorder-btn">{{ 'reorder' | t }}</button>
+        <div class="orders-modal-actions">
+          @if (canCancel(order)) {
+            <button type="button" (click)="cancelOrder(order)" class="orders-cancel-btn" [disabled]="cancellingOrderId === order.id">
+              <i class="fas" [class.fa-spinner]="cancellingOrderId === order.id" [class.fa-spin]="cancellingOrderId === order.id" [class.fa-ban]="cancellingOrderId !== order.id"></i>
+              {{ cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel order' }}
+            </button>
+          }
+          <button type="button" (click)="reorder(order)" class="orders-reorder-btn">{{ 'reorder' | t }}</button>
+        </div>
       </div>
     </div>
   </div>

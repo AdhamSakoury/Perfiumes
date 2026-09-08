@@ -1,0 +1,16 @@
+<section class="delivery-page">
+  <header class="delivery-heading">
+    <div><p>Delivery workspace</p><h1>Today's route</h1><span>See only the orders assigned to you.</span></div>
+    <button type="button" (click)="load()" [disabled]="loading()"><i class="fas fa-rotate" [class.fa-spin]="loading()"></i> Refresh</button>
+  </header>
+  <div class="delivery-metrics">
+    <article><i class="fas fa-clipboard-list"></i><span>Assigned</span><strong>{{ orders().length }}</strong></article>
+    <article><i class="fas fa-box"></i><span>To start</span><strong>{{ pending() }}</strong></article>
+    <article><i class="fas fa-truck-fast"></i><span>On the way</span><strong>{{ outForDelivery() }}</strong></article>
+    <article><i class="fas fa-circle-check"></i><span>Delivered</span><strong>{{ delivered() }}</strong></article>
+  </div>
+  <section class="delivery-next">
+    <div><h2>Assigned orders</h2><p>Open your delivery list to update the status as you complete each stop.</p></div>
+    <a routerLink="/delivery/orders">View orders <i class="fas fa-arrow-right"></i></a>
+  </section>
+</section>

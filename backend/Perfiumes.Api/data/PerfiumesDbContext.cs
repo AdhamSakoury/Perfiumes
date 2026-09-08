@@ -92,6 +92,8 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(order => order.PaymentStatus).HasMaxLength(32);
             entity.Property(order => order.PaymentProvider).HasMaxLength(80);
             entity.Property(order => order.PaymentReference).HasMaxLength(120);
+            entity.Property(order => order.DeliveryUserId).HasMaxLength(64);
+            entity.Property(order => order.DeliveryName).HasMaxLength(160);
             entity.Property(order => order.CourierName).HasMaxLength(120);
             entity.Property(order => order.TrackingNumber).HasMaxLength(120);
             entity.Property(order => order.ShippingName).HasMaxLength(160);
@@ -177,6 +179,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(transaction => transaction.WalletId).HasMaxLength(64);
             entity.Property(transaction => transaction.Amount).HasPrecision(18, 2);
             entity.Property(transaction => transaction.Type).HasMaxLength(24);
+            entity.Property(transaction => transaction.ActorRole).HasMaxLength(24);
             entity.Property(transaction => transaction.Reason).HasMaxLength(260);
             entity.Property(transaction => transaction.ReferenceId).HasMaxLength(120);
         });

@@ -6,13 +6,14 @@ import { ToastService } from '@core/services/toast.service';
 import { FooterComponent } from './layouts/footer/footer.component';
 import { NavbarComponent } from './layouts/navbar/navbar.component';
 import { AdminSidebarComponent } from './layouts/admin-sidebar/admin-sidebar.component';
+import { DeliverySidebarComponent } from './layouts/delivery-sidebar/delivery-sidebar.component';
 import { ChatbotWidgetComponent } from './shared/components/chatbot-widget/chatbot-widget.component';
 import { Subscription, filter } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [AdminSidebarComponent, ChatbotWidgetComponent, FooterComponent, NavbarComponent, RouterOutlet],
+  imports: [AdminSidebarComponent, DeliverySidebarComponent, ChatbotWidgetComponent, FooterComponent, NavbarComponent, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -30,6 +31,7 @@ export class AppComponent implements OnInit, OnDestroy {
     return url !== '/' && url !== '/perfumes' && !url.startsWith('/perfumes/');
   });
   readonly showGlobalChrome = computed(() => !this.authFullscreen());
+  readonly showDeliverySidebar = computed(() => this.auth.currentUser()?.role === 'delivery' && this.currentUrl().split('?')[0].startsWith('/delivery'));
   private routeSubscription?: Subscription;
 
   constructor(

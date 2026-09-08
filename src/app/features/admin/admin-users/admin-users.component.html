@@ -17,10 +17,16 @@
           <h2>{{ 'adminUsers' | t }}</h2>
           <span>{{ 'adminUsersSubtitle' | t }}</span>
         </div>
-        <button type="button" (click)="load()" [disabled]="loading">
-          <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
-          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
-        </button>
+        <div class="admin-users-topbar-actions">
+          <button type="button" class="btn-add-delivery" (click)="openCreateDelivery()">
+            <i class="fas fa-truck"></i>
+            <span>Add delivery</span>
+          </button>
+          <button type="button" (click)="load()" [disabled]="loading">
+            <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
+            <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
+          </button>
+        </div>
       </header>
 
       <div class="admin-users-metrics">
@@ -162,6 +168,18 @@
                         {{ 'blockUser' | t }}
                       </button>
                     }
+                    <button
+                      type="button"
+                      class="btn-remove"
+                      (click)="openDeleteModal(user)"
+                      [disabled]="deletingUserId === user.id">
+                      @if (deletingUserId === user.id) {
+                        <i class="fas fa-spinner fa-spin"></i>
+                      } @else {
+                        <i class="fas fa-trash"></i>
+                      }
+                      Remove
+                    </button>
                   } @else {
                     <span class="admin-user-protected">
                       <i class="fas fa-shield-halved"></i> Admin Protected
@@ -204,6 +222,51 @@
         <button type="button" class="btn-cancel" (click)="closeBlockModal()">{{ 'cancel' | t }}</button>
         <button type="button" class="btn-confirm-block" (click)="confirmBlock()">
           <i class="fas fa-ban"></i> {{ 'blockUser' | t }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showCreateDelivery) {
+  <div class="admin-users-modal-backdrop" (click)="closeCreateDelivery()">
+    <form class="admin-users-modal delivery-form" (ngSubmit)="createDelivery()" (click)="$event.stopPropagation()">
+      <div class="admin-users-modal-header">
+        <i class="fas fa-truck"></i>
+        <h3>Create delivery account</h3>
+      </div>
+      <div class="delivery-form-grid">
+        <label>Full name<input name="deliveryName" [(ngModel)]="deliveryForm.fullName" required></label>
+        <label>Email<input type="email" name="deliveryEmail" [(ngModel)]="deliveryForm.email" required></label>
+        <label>Phone<input type="tel" name="deliveryPhone" [(ngModel)]="deliveryForm.phone"></label>
+        <label>Address<input name="deliveryAddress" [(ngModel)]="deliveryForm.address"></label>
+        <label>Password<input type="password" name="deliveryPassword" [(ngModel)]="deliveryForm.password" minlength="6" required></label>
+        <label>Confirm password<input type="password" name="deliveryConfirmPassword" [(ngModel)]="deliveryForm.confirmPassword" minlength="6" required></label>
+      </div>
+      <div class="admin-users-modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeCreateDelivery()" [disabled]="creatingDelivery">Cancel</button>
+        <button type="submit" class="btn-create-delivery" [disabled]="creatingDelivery">
+          <i class="fas" [class.fa-spinner]="creatingDelivery" [class.fa-spin]="creatingDelivery" [class.fa-user-plus]="!creatingDelivery"></i>
+          {{ creatingDelivery ? 'Creating...' : 'Create account' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (selectedUserForDelete) {
+  <div class="admin-users-modal-backdrop" (click)="closeDeleteModal()">
+    <div class="admin-users-modal" (click)="$event.stopPropagation()">
+      <div class="admin-users-modal-header">
+        <i class="fas fa-trash"></i>
+        <h3>Remove user</h3>
+      </div>
+      <p class="admin-users-modal-msg">Remove {{ selectedUserForDelete.fullName }} permanently? Their account access will be deleted. Existing order records are kept.</p>
+      <div class="admin-users-modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeDeleteModal()" [disabled]="deletingUserId === selectedUserForDelete.id">Cancel</button>
+        <button type="button" class="btn-confirm-block" (click)="confirmDelete()" [disabled]="deletingUserId === selectedUserForDelete.id">
+          <i class="fas" [class.fa-spinner]="deletingUserId === selectedUserForDelete.id" [class.fa-spin]="deletingUserId === selectedUserForDelete.id" [class.fa-trash]="deletingUserId !== selectedUserForDelete.id"></i>
+          Remove
         </button>
       </div>
     </div>

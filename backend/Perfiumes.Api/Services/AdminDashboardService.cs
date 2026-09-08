@@ -35,12 +35,24 @@ BEGIN
         [WalletId] nvarchar(64) NOT NULL,
         [Amount] decimal(18,2) NOT NULL,
         [Type] nvarchar(24) NOT NULL,
+        [ActorRole] nvarchar(24) NOT NULL,
         [Reason] nvarchar(260) NOT NULL,
         [ReferenceId] nvarchar(120) NULL,
         [CreatedAt] datetimeoffset NOT NULL,
         CONSTRAINT [FK_WalletTransactions_UserWallets_WalletId] FOREIGN KEY ([WalletId]) REFERENCES [UserWallets] ([Id]) ON DELETE CASCADE
     );
     CREATE INDEX [IX_WalletTransactions_WalletId] ON [WalletTransactions] ([WalletId]);
+END
+
+IF COL_LENGTH(N'[WalletTransactions]', N'ActorRole') IS NULL
+BEGIN
+    ALTER TABLE [WalletTransactions] ADD [ActorRole] nvarchar(24) NOT NULL CONSTRAINT [DF_WalletTransactions_ActorRole] DEFAULT N'system' WITH VALUES;
+    UPDATE [WalletTransactions]
+    SET [ActorRole] = CASE
+        WHEN [Reason] LIKE N'Payment for order %' OR [Reason] LIKE N'Refund for cancelled order %' OR [ReferenceId] LIKE N'topup_%' THEN N'customer'
+        WHEN [Reason] LIKE N'Admin adjustment%' THEN N'admin'
+        ELSE N'system'
+    END;
 END
 """);
 
@@ -111,6 +123,27 @@ END
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<AdminWalletTransactionDto>> GetCustomerWalletTransactionsAsync()
+    {
+        return await db.WalletTransactions
+            .AsNoTracking()
+            .Where(transaction => transaction.ActorRole == "customer")
+            .OrderByDescending(transaction => transaction.CreatedAt)
+            .Take(250)
+            .Select(transaction => new AdminWalletTransactionDto(
+                transaction.Id,
+                transaction.WalletId,
+                transaction.Wallet!.User == null ? transaction.Wallet.UserEmail : transaction.Wallet.User.FullName,
+                transaction.Wallet!.UserEmail,
+                transaction.Amount,
+                transaction.Type,
+                transaction.Reason,
+                transaction.ReferenceId,
+                transaction.Wallet.Currency,
+                transaction.CreatedAt))
+            .ToListAsync();
+    }
+
     public async Task<UserWalletDto?> GetWalletForUserAsync(string userEmail)
     {
         await EnsureWalletsForUsersAsync();
@@ -153,6 +186,7 @@ END
             WalletId = wallet.Id,
             Amount = amount,
             Type = "credit",
+            ActorRole = "customer",
             Reason = string.IsNullOrWhiteSpace(request.Reason) ? "Wallet top up" : request.Reason.Trim(),
             ReferenceId = $"topup_{Guid.NewGuid():N}",
             CreatedAt = now
@@ -192,6 +226,7 @@ END
             WalletId = wallet.Id,
             Amount = amount,
             Type = type,
+            ActorRole = "admin",
             Reason = string.IsNullOrWhiteSpace(request.Reason) ? "Admin adjustment" : request.Reason.Trim(),
             ReferenceId = request.ReferenceId?.Trim(),
             CreatedAt = now
@@ -378,6 +413,7 @@ END
                     WalletId = wallets[index].Id,
                     Amount = amount,
                     Type = "credit",
+                    ActorRole = "system",
                     Reason = "Demo opening balance",
                     ReferenceId = "demo-seed",
                     CreatedAt = wallets[index].UpdatedAt

@@ -431,6 +431,86 @@ IF COL_LENGTH(N'[Users]', N'BlockedAt') IS NULL
         );
     }
 
+    public async Task<AdminUserDto> CreateDeliveryUserAsync(CreateDeliveryUserRequest request)
+    {
+        var fullName = request.FullName?.Trim() ?? string.Empty;
+        var email = request.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+        var password = request.Password ?? string.Empty;
+        if (fullName.Length < 2 || string.IsNullOrWhiteSpace(email) || !email.Contains('@') || password.Length < 6)
+        {
+            throw new InvalidOperationException("Name, a valid email, and a password of at least 6 characters are required.");
+        }
+
+        if (await db.Users.AnyAsync(user => user.Email == email))
+        {
+            throw new InvalidOperationException("Email already registered.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var deliveryUser = new AppUserEntity
+        {
+            Id = $"delivery_{Guid.NewGuid():N}",
+            FullName = fullName,
+            Email = email,
+            PasswordHash = passwords.Hash(password),
+            Phone = request.Phone?.Trim() ?? string.Empty,
+            Address = request.Address?.Trim() ?? string.Empty,
+            Role = "delivery",
+            AuthProvider = "local",
+            IsEmailConfirmed = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        db.Users.Add(deliveryUser);
+        await db.SaveChangesAsync();
+
+        return new AdminUserDto(
+            deliveryUser.Id,
+            deliveryUser.FullName,
+            deliveryUser.Email,
+            deliveryUser.ProfilePhoto,
+            deliveryUser.Role,
+            deliveryUser.Phone,
+            deliveryUser.Address,
+            deliveryUser.AuthProvider,
+            deliveryUser.IsEmailConfirmed,
+            deliveryUser.IsBlocked,
+            deliveryUser.BlockReason,
+            deliveryUser.BlockedAt,
+            deliveryUser.CreatedAt,
+            deliveryUser.UpdatedAt,
+            0,
+            0);
+    }
+
+    public async Task<bool> DeleteUserAsync(string userId, string adminEmail)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(item => item.Id == userId);
+        if (user is null)
+        {
+            return false;
+        }
+
+        if (user.Role == "admin" || user.Email.Equals(adminEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Administrator accounts cannot be removed.");
+        }
+
+        var assignedOrders = await db.Orders.Where(order => order.DeliveryUserId == user.Id).ToListAsync();
+        foreach (var order in assignedOrders)
+        {
+            order.DeliveryUserId = null;
+            order.DeliveryName = null;
+        }
+
+        var wallets = await db.UserWallets.Where(wallet => wallet.UserId == user.Id).ToListAsync();
+        db.UserWallets.RemoveRange(wallets);
+        db.Users.Remove(user);
+        await db.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<IReadOnlyList<string>> GetAdminEmailsAsync()
     {
         return await db.Users

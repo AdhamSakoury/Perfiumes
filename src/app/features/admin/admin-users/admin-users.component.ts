@@ -54,7 +54,12 @@ export class AdminUsersComponent {
   updatingUserId: string | null = null;
 
   selectedUserForBlock: AdminUser | null = null;
+  selectedUserForDelete: AdminUser | null = null;
   blockReason = '';
+  showCreateDelivery = false;
+  creatingDelivery = false;
+  deletingUserId: string | null = null;
+  deliveryForm = { fullName: '', email: '', password: '', confirmPassword: '', phone: '', address: '' };
 
   constructor(
     readonly auth: AuthService,
@@ -121,6 +126,70 @@ export class AdminUsersComponent {
   closeBlockModal(): void {
     this.selectedUserForBlock = null;
     this.blockReason = '';
+  }
+
+  openCreateDelivery(): void {
+    this.deliveryForm = { fullName: '', email: '', password: '', confirmPassword: '', phone: '', address: '' };
+    this.showCreateDelivery = true;
+  }
+
+  closeCreateDelivery(): void {
+    if (!this.creatingDelivery) this.showCreateDelivery = false;
+  }
+
+  createDelivery(): void {
+    const form = this.deliveryForm;
+    if (!form.fullName.trim() || !form.email.trim() || form.password.length < 6 || form.password !== form.confirmPassword) {
+      this.toast.show('Enter a name and email, and use matching passwords of at least 6 characters.', 'error');
+      return;
+    }
+
+    this.creatingDelivery = true;
+    this.fetchWithAuth((token) => this.dashboard.createDelivery({
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      password: form.password,
+      phone: form.phone.trim(),
+      address: form.address.trim()
+    }, token)).subscribe({
+      next: (deliveryUser) => {
+        this.users.update((list) => [deliveryUser, ...list]);
+        this.creatingDelivery = false;
+        this.showCreateDelivery = false;
+        this.toast.show('Delivery account created successfully.', 'success');
+      },
+      error: (err: unknown) => {
+        this.creatingDelivery = false;
+        this.toast.show(err instanceof HttpErrorResponse ? err.error?.message || 'Could not create delivery account.' : 'Could not create delivery account.', 'error');
+      }
+    });
+  }
+
+  openDeleteModal(user: AdminUser): void {
+    if (user.role !== 'admin') this.selectedUserForDelete = user;
+  }
+
+  closeDeleteModal(): void {
+    if (!this.deletingUserId) this.selectedUserForDelete = null;
+  }
+
+  confirmDelete(): void {
+    const user = this.selectedUserForDelete;
+    if (!user) return;
+
+    this.deletingUserId = user.id;
+    this.fetchWithAuth((token) => this.dashboard.deleteUser(user.id, token)).subscribe({
+      next: () => {
+        this.users.update((list) => list.filter((item) => item.id !== user.id));
+        this.deletingUserId = null;
+        this.selectedUserForDelete = null;
+        this.toast.show('User account removed.', 'success');
+      },
+      error: (err: unknown) => {
+        this.deletingUserId = null;
+        this.toast.show(err instanceof HttpErrorResponse ? err.error?.message || 'Could not remove user.' : 'Could not remove user.', 'error');
+      }
+    });
   }
 
   confirmBlock(): void {

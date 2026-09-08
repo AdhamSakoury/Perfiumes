@@ -44,6 +44,18 @@ public sealed record WalletTransactionDto(
     string? ReferenceId,
     DateTimeOffset CreatedAt);
 
+public sealed record AdminWalletTransactionDto(
+    string Id,
+    string WalletId,
+    string UserName,
+    string UserEmail,
+    decimal Amount,
+    string Type,
+    string Reason,
+    string? ReferenceId,
+    string Currency,
+    DateTimeOffset CreatedAt);
+
 public sealed record UserWalletDto(
     string Id,
     decimal Balance,

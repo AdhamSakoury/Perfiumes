@@ -18,7 +18,7 @@ interface GoogleLoginResponse {
     fullName: string;
     email: string;
     profilePhoto: string | null;
-    role: 'customer' | 'admin';
+    role: 'customer' | 'admin' | 'delivery';
     phone: string;
     address: string;
     createdAt: string;

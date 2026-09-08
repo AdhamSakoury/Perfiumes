@@ -587,6 +587,32 @@
   color: #1A1510;
 }
 
+.orders-modal-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+
+.orders-modal-actions .orders-reorder-btn,
+.orders-cancel-btn {
+  width: auto;
+  flex: 1;
+  margin-top: 0;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 0.85rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.orders-cancel-btn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.orders-cancel-btn:hover:not(:disabled) { background: #fecaca; }
+.orders-cancel-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 :host-context(.dark) .orders-page {
   color: #F5F0E6;
 }
@@ -953,6 +979,18 @@
 
 .orders-page-modal .orders-reorder-btn {
   margin-top: 0.5rem !important;
+  padding: 0.58rem 0.9rem !important;
+  border-radius: 0.68rem !important;
+  font-size: 0.84rem !important;
+}
+
+.orders-page-modal .orders-modal-actions {
+  margin-top: 0.5rem;
+}
+
+.orders-page-modal .orders-modal-actions .orders-reorder-btn,
+.orders-page-modal .orders-cancel-btn {
+  margin-top: 0 !important;
   padding: 0.58rem 0.9rem !important;
   border-radius: 0.68rem !important;
   font-size: 0.84rem !important;

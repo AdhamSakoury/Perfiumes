@@ -172,6 +172,7 @@ app.MapGet("/", () => Results.Ok(new
         "GET /api/products/{id}",
         "GET /api/orders",
         "POST /api/orders",
+        "POST /api/orders/{id}/cancel",
         "GET /api/wallet",
         "POST /api/wallet/top-up",
         "PUT /api/admin/orders/{id}/status",
@@ -181,7 +182,12 @@ app.MapGet("/", () => Results.Ok(new
         "GET /api/admin/wallets",
         "POST /api/admin/wallets/{id}/adjust",
         "GET /api/admin/users",
+        "POST /api/admin/deliveries",
         "POST /api/admin/users/{id}/toggle-block",
+        "DELETE /api/admin/users/{id}",
+        "POST /api/admin/orders/{id}/assign-delivery",
+        "GET /api/delivery/orders",
+        "PUT /api/delivery/orders/{id}/status",
         "POST /api/promos/validate",
         "GET /api/admin/promos",
         "POST /api/admin/promos",
@@ -534,6 +540,40 @@ app.MapPost("/api/orders", async (
     });
 
     return Results.Created($"/api/orders/{order.Id}", order);
+});
+
+app.MapPost("/api/orders/{id}/cancel", async (
+    string id,
+    OrderService orders,
+    AdminAuthService auth,
+    NotificationService notifications,
+    HttpContext context,
+    IHubContext<NotificationHub> notificationHub) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "customer")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var order = await orders.CancelByCustomerAsync(id, principal.Email);
+        if (order is null)
+        {
+            return Results.NotFound();
+        }
+
+        var message = order.PaymentStatus == "refunded"
+            ? $"Your order {order.Id} was cancelled and {order.Total:0.##} EGP was returned to your wallet."
+            : $"Your order {order.Id} was cancelled.";
+        await PublishNotificationAsync(notifications, notificationHub, order.UserEmail, "Order cancelled", message, "order", "/wallet");
+        return Results.Ok(order);
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
 });
 
 app.MapGet("/api/wallet", async (
@@ -898,6 +938,29 @@ app.MapPut("/api/admin/orders/{id}/status", async (
     return order is null ? Results.NotFound() : Results.Ok(order);
 });
 
+app.MapPost("/api/admin/orders/{id}/assign-delivery", async (
+    string id,
+    AssignDeliveryRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var order = await orders.AssignDeliveryAsync(id, request.DeliveryUserId);
+        return order is null ? Results.NotFound() : Results.Ok(order);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 app.MapGet("/api/admin/orders", async (
     OrderService orders,
     AdminAuthService auth,
@@ -909,6 +972,48 @@ app.MapGet("/api/admin/orders", async (
     }
 
     return Results.Ok(await orders.GetAllAsync());
+});
+
+app.MapGet("/api/delivery/orders", async (
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "delivery")
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await orders.GetForDeliveryAsync(principal.Email));
+});
+
+app.MapPut("/api/delivery/orders/{id}/status", async (
+    string id,
+    UpdateOrderStatusRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "delivery")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var order = await orders.UpdateDeliveryStatusAsync(id, principal.Email, request.Status, request.Note);
+        return order is null ? Results.NotFound() : Results.Ok(order);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
 });
 
 app.MapDelete("/api/admin/orders/{id}", async (
@@ -960,6 +1065,19 @@ app.MapGet("/api/admin/wallets", async (
     return Results.Ok(await dashboard.GetWalletsAsync());
 });
 
+app.MapGet("/api/admin/wallet-transactions/customer", async (
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await dashboard.GetCustomerWalletTransactionsAsync());
+});
+
 app.MapPost("/api/admin/wallets/{id}/adjust", async (
     string id,
     AdjustWalletRequest request,
@@ -990,6 +1108,28 @@ app.MapGet("/api/admin/users", async (
     return Results.Ok(list);
 });
 
+app.MapPost("/api/admin/deliveries", async (
+    CreateDeliveryUserRequest request,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var deliveryUser = await users.CreateDeliveryUserAsync(request);
+        return Results.Created($"/api/admin/users/{deliveryUser.Id}", deliveryUser);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 app.MapPost("/api/admin/users/{id}/toggle-block", async (
     string id,
     ToggleUserBlockRequest request,
@@ -1007,6 +1147,28 @@ app.MapPost("/api/admin/users/{id}/toggle-block", async (
     {
         var updated = await users.ToggleUserBlockAsync(id, request.IsBlocked, request.Reason, principal.Email);
         return updated is null ? Results.NotFound(new { message = "User not found" }) : Results.Ok(updated);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapDelete("/api/admin/users/{id}", async (
+    string id,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        return await users.DeleteUserAsync(id, principal.Email) ? Results.NoContent() : Results.NotFound();
     }
     catch (InvalidOperationException ex)
     {

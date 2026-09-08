@@ -73,30 +73,55 @@
           <div class="admin-wallet-list">
             @for (wallet of filteredWallets(); track wallet.id) {
               <article class="admin-wallet-row">
-                <div class="admin-wallet-user">
-                  <span>{{ wallet.userName.slice(0, 1).toUpperCase() }}</span>
+                <header class="admin-wallet-row-header">
+                  <div class="admin-wallet-user">
+                    <span>{{ wallet.userName.slice(0, 1).toUpperCase() }}</span>
+                    <div>
+                      <strong>{{ wallet.userName }}</strong>
+                      <small>{{ wallet.userEmail }}</small>
+                    </div>
+                  </div>
+                  <div class="admin-wallet-balance">
+                    <span>{{ 'currentBalance' | t }}</span>
+                    <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
+                    <small>{{ 'updated' | t }} {{ wallet.updatedAt | date:'short' }}</small>
+                  </div>
+                </header>
+                <div class="admin-wallet-totals">
                   <div>
-                    <strong>{{ wallet.userName }}</strong>
-                    <small>{{ wallet.userEmail }}</small>
-                    <em>{{ wallet.id }}</em>
+                    <span>{{ 'lifetimeCredit' | t }}</span>
+                    <strong>{{ wallet.lifetimeCredit | currency:wallet.currency:'symbol-narrow' }}</strong>
+                  </div>
+                  <div>
+                    <span>{{ 'lifetimeDebit' | t }}</span>
+                    <strong>{{ wallet.lifetimeDebit | currency:wallet.currency:'symbol-narrow' }}</strong>
                   </div>
                 </div>
-                <div class="admin-wallet-balance">
-                  <span>{{ 'balance' | t }}</span>
-                  <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
-                  <small>{{ 'updated' | t }} {{ wallet.updatedAt | date:'short' }}</small>
-                </div>
-                <div class="admin-wallet-totals">
-                  <span>{{ 'credit' | t }} {{ wallet.lifetimeCredit | currency:wallet.currency:'symbol-narrow' }}</span>
-                  <span>{{ 'debit' | t }} {{ wallet.lifetimeDebit | currency:wallet.currency:'symbol-narrow' }}</span>
-                </div>
                 <div class="admin-wallet-controls">
-                  <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" [placeholder]="'amount' | t">
-                  <app-custom-dropdown [value]="walletDraft[wallet.id].type" (valueChange)="setWalletDraftType(wallet.id, $event)" [options]="walletTypeOptions" ariaLabel="Wallet adjustment type" [compact]="true" />
-                  <input [(ngModel)]="walletDraft[wallet.id].reason" [placeholder]="'reason' | t">
-                  <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
-                    {{ updatingWalletId === wallet.id ? ('saving' | t) : ('apply' | t) }}
-                  </button>
+                  <div class="wallet-adjustment-heading">
+                    <i class="fas fa-sliders"></i>
+                    <span>{{ 'walletAdjustment' | t }}</span>
+                  </div>
+                  <div class="wallet-adjustment-fields">
+                    <label>
+                      <span>{{ 'amount' | t }} (EGP)</span>
+                      <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" [placeholder]="'amount' | t">
+                    </label>
+                    <label>
+                      <span>{{ 'transactionType' | t }}</span>
+                      <select [(ngModel)]="walletDraft[wallet.id].type">
+                        <option value="credit">{{ 'credit' | t }}</option>
+                        <option value="debit">{{ 'debit' | t }}</option>
+                      </select>
+                    </label>
+                    <label class="wallet-reason-field">
+                      <span>{{ 'reason' | t }}</span>
+                      <input [(ngModel)]="walletDraft[wallet.id].reason" [placeholder]="'reasonHint' | t">
+                    </label>
+                    <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
+                      {{ updatingWalletId === wallet.id ? ('saving' | t) : (walletDraft[wallet.id].type === 'credit' ? ('addFunds' | t) : ('deductFunds' | t)) }}
+                    </button>
+                  </div>
                 </div>
               </article>
             } @empty {
@@ -106,6 +131,43 @@
               </div>
             }
           </div>
+
+          <section class="customer-transactions-section">
+            <div class="customer-transactions-heading">
+              <div>
+                <p>{{ 'customerActivity' | t }}</p>
+                <h3>{{ 'customerTransactions' | t }}</h3>
+              </div>
+              <label>
+                <i class="fas fa-search"></i>
+                <input [ngModel]="transactionQuery()" (ngModelChange)="transactionQuery.set($event)" [placeholder]="'searchCustomerTransactions' | t">
+              </label>
+            </div>
+
+            <div class="customer-transaction-list">
+              @for (transaction of filteredCustomerTransactions(); track transaction.id) {
+                <article class="customer-transaction-row" [class.debit]="transaction.type === 'debit'">
+                  <span class="customer-transaction-icon">
+                    <i class="fas" [class]="transaction.type === 'debit' ? 'fa-arrow-up-right-from-square' : 'fa-arrow-down-left-from-square'"></i>
+                  </span>
+                  <div class="customer-transaction-details">
+                    <strong>{{ transaction.reason }}</strong>
+                    <small>{{ transaction.userName }} · {{ transaction.userEmail }}</small>
+                    <em>{{ transaction.createdAt | date:'medium' }}</em>
+                    @if (transaction.referenceId) {
+                      <span>{{ transaction.referenceId }}</span>
+                    }
+                  </div>
+                  <b>{{ transaction.type === 'debit' ? '-' : '+' }}{{ transaction.amount | currency:transaction.currency:'symbol-narrow' }}</b>
+                </article>
+              } @empty {
+                <div class="customer-transactions-empty">
+                  <i class="fas fa-receipt"></i>
+                  <span>{{ 'noCustomerTransactions' | t }}</span>
+                </div>
+              }
+            </div>
+          </section>
         }
       </section>
     </div>

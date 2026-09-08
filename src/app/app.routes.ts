@@ -137,6 +137,16 @@ export const routes: Routes = [
     title: 'Admin Users | Gnouby'
   },
   {
+    path: 'delivery',
+    loadComponent: () => import('./features/delivery/delivery-dashboard/delivery-dashboard.component').then((module) => module.DeliveryDashboardComponent),
+    title: 'Delivery Dashboard | Gnouby'
+  },
+  {
+    path: 'delivery/orders',
+    loadComponent: () => import('./features/delivery/delivery-orders/delivery-orders.component').then((module) => module.DeliveryOrdersComponent),
+    title: 'Assigned Orders | Gnouby'
+  },
+  {
     path: 'orders',
     loadComponent: () => import('./features/orders/orders.component').then((module) => module.OrdersPageComponent),
     title: 'Orders | Gnouby'

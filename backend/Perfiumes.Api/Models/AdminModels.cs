@@ -43,3 +43,10 @@ public sealed record AdminUserDto(
 
 public sealed record ToggleUserBlockRequest(bool IsBlocked, string? Reason);
 
+public sealed record CreateDeliveryUserRequest(
+    string FullName,
+    string Email,
+    string Password,
+    string? Phone,
+    string? Address);
+

@@ -3,7 +3,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Order, OrderStatus } from '@core/models/store.models';
+import { AdminUser, Order, OrderStatus } from '@core/models/store.models';
+import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { OrderService } from '@core/services/order.service';
@@ -22,12 +23,15 @@ import { catchError, finalize, Observable, switchMap, throwError, timeout } from
 export class AdminOrdersComponent implements OnDestroy {
   private static cachedOrders: Order[] = [];
 
-  readonly statuses: OrderStatus[] = ['Processing', 'Packed', 'Shipped', 'OutForDelivery', 'Delivered', 'Cancelled'];
+  readonly statuses: OrderStatus[] = ['Processing', 'OnHold', 'Packed', 'ReadyForPickup', 'Shipped', 'OutForDelivery', 'Delivered', 'Cancelled'];
   orders: Order[] = [];
   loading = false;
   updatingId: string | null = null;
   draftStatus: Record<string, OrderStatus> = {};
   statusNotes: Record<string, string> = {};
+  draftDeliveryId: Record<string, string> = {};
+  deliveries: AdminUser[] = [];
+  assigningDeliveryId: string | null = null;
   query = '';
   statusFilter: 'all' | OrderStatus = 'all';
   loadError = '';
@@ -40,6 +44,7 @@ export class AdminOrdersComponent implements OnDestroy {
   constructor(
     readonly auth: AuthService,
     private readonly ordersApi: OrderService,
+    private readonly dashboard: AdminDashboardService,
     private readonly router: Router,
     private readonly toast: ToastService,
     private readonly i18n: LocalizationService
@@ -51,6 +56,7 @@ export class AdminOrdersComponent implements OnDestroy {
 
     if (AdminOrdersComponent.cachedOrders.length) this.applyOrders(AdminOrdersComponent.cachedOrders);
     this.load(AdminOrdersComponent.cachedOrders.length > 0);
+    this.loadDeliveries();
     this.startAutoRefresh();
   }
 
@@ -86,12 +92,20 @@ export class AdminOrdersComponent implements OnDestroy {
         ? 'fa-circle-check'
         : status === 'Cancelled'
           ? 'fa-circle-xmark'
-          : 'fa-truck-fast'
+          : status === 'OnHold'
+            ? 'fa-circle-pause'
+            : status === 'ReadyForPickup'
+              ? 'fa-dolly'
+              : 'fa-truck-fast'
     }));
   }
 
   setDraftStatus(orderId: string, status: string): void {
     this.draftStatus[orderId] = this.statuses.includes(status as OrderStatus) ? status as OrderStatus : 'Processing';
+  }
+
+  clearSearch(): void {
+    this.query = '';
   }
 
   ngOnDestroy(): void {
@@ -142,6 +156,26 @@ export class AdminOrdersComponent implements OnDestroy {
     });
   }
 
+  assignDelivery(order: Order): void {
+    const deliveryUserId = this.draftDeliveryId[order.id];
+    if (!deliveryUserId || deliveryUserId === order.deliveryUserId || this.assigningDeliveryId) return;
+
+    this.assigningDeliveryId = order.id;
+    this.adminRequest((token) => this.ordersApi.assignDelivery(order.id, deliveryUserId, token)).subscribe({
+      next: (updated) => {
+        this.orders = this.orders.map((item) => item.id === updated.id ? updated : item);
+        AdminOrdersComponent.cachedOrders = this.orders;
+        this.draftDeliveryId[updated.id] = updated.deliveryUserId || '';
+        this.assigningDeliveryId = null;
+        this.toast.show('Delivery partner assigned.', 'success');
+      },
+      error: (error) => {
+        this.assigningDeliveryId = null;
+        this.toast.show(error?.error?.message || 'Could not assign delivery partner.', 'error');
+      }
+    });
+  }
+
   statusLabel(status: string): string {
     const key = `status_${status.toLowerCase().replaceAll(' ', '').replaceAll('-', '')}`;
     const translated = this.i18n.t(key);
@@ -177,10 +211,19 @@ export class AdminOrdersComponent implements OnDestroy {
     this.loading = false;
     this.draftStatus = {};
     this.statusNotes = {};
+    this.draftDeliveryId = {};
     for (const order of orders) {
       this.draftStatus[order.id] = order.status;
       this.statusNotes[order.id] = '';
+      this.draftDeliveryId[order.id] = order.deliveryUserId || '';
     }
+  }
+
+  private loadDeliveries(): void {
+    this.adminRequest((token) => this.dashboard.getUsers(token)).subscribe({
+      next: (users) => this.deliveries = users.filter((user) => user.role === 'delivery' && !user.isBlocked),
+      error: () => this.toast.show('Could not load delivery accounts.', 'error')
+    });
   }
 
   private adminRequest<T>(request: (token: string) => Observable<T>): Observable<T> {

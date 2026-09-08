@@ -78,26 +78,42 @@
                   <p>{{ 'finance' | t }}</p>
                   <h3>{{ 'userWallets' | t }}</h3>
                 </div>
-                <a routerLink="/admin/wallets">{{ 'walletsShown' | t:{ count: summary.wallets.length } }}</a>
+                <a routerLink="/admin/wallets">
+                  <span>{{ 'walletManagement' | t }}</span>
+                  <i class="fas fa-arrow-right"></i>
+                </a>
               </div>
               <div class="wallet-list">
                 @for (wallet of summary.wallets; track wallet.id) {
                   <article class="wallet-row">
-                    <div class="wallet-user">
-                      <span>{{ wallet.userName.slice(0, 1).toUpperCase() }}</span>
-                      <div>
-                        <strong>{{ wallet.userName }}</strong>
-                        <small>{{ wallet.userEmail }}</small>
+                    <header class="wallet-row-header">
+                      <div class="wallet-user">
+                        <span>{{ wallet.userName.slice(0, 1).toUpperCase() }}</span>
+                        <div>
+                          <strong>{{ wallet.userName }}</strong>
+                          <small>{{ wallet.userEmail }}</small>
+                        </div>
                       </div>
-                    </div>
-                    <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
-                    <div class="wallet-controls">
-                      <input type="number" min="0" step="0.01" [(ngModel)]="walletDraft[wallet.id].amount" [placeholder]="'amount' | t">
-                      <app-custom-dropdown [value]="walletDraft[wallet.id].type" (valueChange)="setWalletDraftType(wallet.id, $event)" [options]="walletTypeOptions" ariaLabel="Wallet adjustment type" [compact]="true" />
-                      <input [(ngModel)]="walletDraft[wallet.id].reason" [placeholder]="'reason' | t">
-                      <button type="button" (click)="adjustWallet(wallet)" [disabled]="updatingWalletId === wallet.id || walletDraft[wallet.id].amount <= 0">
-                        {{ updatingWalletId === wallet.id ? ('saving' | t) : ('apply' | t) }}
-                      </button>
+                      <div class="wallet-balance">
+                        <span>{{ 'currentBalance' | t }}</span>
+                        <b>{{ wallet.balance | currency:wallet.currency:'symbol-narrow' }}</b>
+                      </div>
+                    </header>
+                    <div class="wallet-status-summary">
+                      <div class="wallet-status-credit">
+                        <i class="fas fa-arrow-up"></i>
+                        <div>
+                          <span>{{ 'lifetimeCredit' | t }}</span>
+                          <strong>{{ wallet.lifetimeCredit | currency:wallet.currency:'symbol-narrow' }}</strong>
+                        </div>
+                      </div>
+                      <div class="wallet-status-debit">
+                        <i class="fas fa-arrow-down"></i>
+                        <div>
+                          <span>{{ 'lifetimeDebit' | t }}</span>
+                          <strong>{{ wallet.lifetimeDebit | currency:wallet.currency:'symbol-narrow' }}</strong>
+                        </div>
+                      </div>
                     </div>
                   </article>
                 } @empty {

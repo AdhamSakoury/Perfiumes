@@ -22,10 +22,14 @@
       </button>
     </div>
 
-    <div class="status-controls mb-5">
-      <label>
-        <span>Search</span>
-        <input [(ngModel)]="query" name="admin-order-search" placeholder="Order, customer, city, perfume">
+    <div class="admin-orders-filters mb-5">
+      <label class="admin-order-search">
+        <span class="sr-only">Search orders</span>
+        <i class="fas fa-search"></i>
+        <input [(ngModel)]="query" name="admin-order-search" placeholder="Search order, customer, city, or perfume">
+        @if (query) {
+          <button type="button" (click)="clearSearch()" aria-label="Clear order search"><i class="fas fa-xmark"></i></button>
+        }
       </label>
       <label>
         <span>Status</span>
@@ -87,6 +91,19 @@
             </div>
 
             <div class="status-controls">
+              <label>
+                <span>Delivery partner</span>
+                <select [(ngModel)]="draftDeliveryId[order.id]" [name]="'delivery-' + order.id">
+                  <option value="">Not assigned</option>
+                  @for (delivery of deliveries; track delivery.id) {
+                    <option [value]="delivery.id">{{ delivery.fullName }}</option>
+                  }
+                </select>
+              </label>
+              <button type="button" (click)="assignDelivery(order)" [disabled]="assigningDeliveryId === order.id || !draftDeliveryId[order.id] || draftDeliveryId[order.id] === order.deliveryUserId">
+                <i class="fas" [class.fa-spinner]="assigningDeliveryId === order.id" [class.fa-spin]="assigningDeliveryId === order.id" [class.fa-user-check]="assigningDeliveryId !== order.id"></i>
+                <span>Assign</span>
+              </button>
               <label>
                 <span>{{ 'status' | t }}</span>
                 <app-custom-dropdown [value]="draftStatus[order.id]" (valueChange)="setDraftStatus(order.id, $event)" [options]="statusOptions" ariaLabel="Order status" [compact]="true" />

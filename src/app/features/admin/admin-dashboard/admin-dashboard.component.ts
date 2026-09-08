@@ -1,13 +1,11 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AdminDashboardSummary, AdminWallet } from '@core/models/store.models';
+import { AdminDashboardSummary } from '@core/models/store.models';
 import { AdminDashboardService } from '@core/services/admin-dashboard.service';
 import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
-import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
@@ -15,7 +13,7 @@ import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
+  imports: [CurrencyPipe, DatePipe, RouterLink, TranslatePipe],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css'
 })
@@ -24,8 +22,6 @@ export class AdminDashboardComponent {
   loading = false;
   refreshing = false;
   loadError = '';
-  walletDraft: Record<string, { amount: number; type: 'credit' | 'debit'; reason: string }> = {};
-  updatingWalletId: string | null = null;
   private retriedWithFreshToken = false;
   private fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -47,13 +43,6 @@ export class AdminDashboardComponent {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
-  }
-
-  get walletTypeOptions(): CustomDropdownOption[] {
-    return [
-      { value: 'credit', label: 'Credit', icon: 'fa-arrow-up' },
-      { value: 'debit', label: 'Debit', icon: 'fa-arrow-down' }
-    ];
   }
 
   get cards(): { label: string; value: string | number; icon: string; tone: string }[] {
@@ -164,7 +153,6 @@ export class AdminDashboardComponent {
     this.refreshing = false;
     this.loadError = '';
     this.retriedWithFreshToken = false;
-    for (const wallet of summary.wallets) this.ensureWalletDraft(wallet);
   }
 
   private handleLoadError(error: unknown, attemptedToken: string | null, showRefreshState = true): void {
@@ -179,41 +167,6 @@ export class AdminDashboardComponent {
       : this.i18n.t('adminDashboardLoadFailed');
     this.toast.show(this.loadError, 'error');
     this.loadDemoSummary();
-  }
-
-  adjustWallet(wallet: AdminWallet): void {
-    const token = this.auth.currentAccessToken();
-    const draft = this.walletDraft[wallet.id];
-    if (!token || !draft || draft.amount <= 0 || this.updatingWalletId) return;
-
-    this.updatingWalletId = wallet.id;
-    this.dashboard.adjustWallet(wallet.id, Number(draft.amount), draft.type, draft.reason || this.i18n.t('adminAdjustment'), token).pipe(
-      finalize(() => {
-        this.updatingWalletId = null;
-      })
-    ).subscribe({
-      next: (updated) => {
-        if (!this.summary) return;
-        this.summary = {
-          ...this.summary,
-          walletBalance: this.summary.walletBalance - wallet.balance + updated.balance,
-          wallets: this.summary.wallets.map((item) => item.id === updated.id ? updated : item)
-        };
-        this.walletDraft[wallet.id] = { amount: 0, type: 'credit', reason: '' };
-        this.toast.show(this.i18n.t('walletUpdated'));
-      },
-      error: () => {
-        this.toast.show(this.i18n.t('walletUpdateFailed'), 'error');
-      }
-    });
-  }
-
-  setWalletDraftType(walletId: string, type: string): void {
-    this.walletDraft[walletId].type = type === 'debit' ? 'debit' : 'credit';
-  }
-
-  private ensureWalletDraft(wallet: AdminWallet): void {
-    this.walletDraft[wallet.id] ||= { amount: 0, type: 'credit', reason: '' };
   }
 
   private startHardFallbackTimer(): void {

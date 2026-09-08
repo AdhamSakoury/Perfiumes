@@ -1,0 +1,21 @@
+<button type="button" class="delivery-sidebar-toggle" (click)="open.set(!open())" aria-label="Open delivery navigation">
+  <i class="fas" [class.fa-bars]="!open()" [class.fa-times]="open()"></i>
+</button>
+
+<button type="button" class="delivery-sidebar-backdrop" [class.show]="open()" (click)="close()" aria-label="Close delivery navigation"></button>
+
+<aside class="delivery-sidebar" [class.open]="open()">
+  <div class="delivery-sidebar-head">
+    <span>{{ (auth.currentUser()?.fullName || 'D').slice(0, 1).toUpperCase() }}</span>
+    <div>
+      <strong>{{ auth.currentUser()?.fullName }}</strong>
+      <small>Delivery partner</small>
+    </div>
+  </div>
+  <nav>
+    <a routerLink="/delivery" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="close()"><i class="fas fa-gauge-high"></i>Dashboard</a>
+    <a routerLink="/delivery/orders" routerLinkActive="active" (click)="close()"><i class="fas fa-truck-fast"></i>Assigned orders</a>
+    <a routerLink="/account" routerLinkActive="active" (click)="close()"><i class="fas fa-user"></i>Account</a>
+  </nav>
+  <button type="button" class="delivery-logout" (click)="auth.logout()"><i class="fas fa-arrow-right-from-bracket"></i>Sign out</button>
+</aside>

@@ -25,6 +25,12 @@ export class OrderService {
       .pipe(timeout(10_000));
   }
 
+  cancel(orderId: string, token: string): Observable<Order> {
+    return this.http.post<Order>(`${environment.apiBaseUrl}/api/orders/${orderId}/cancel`, {}, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
+    });
+  }
+
   getAdminOrders(token: string): Observable<Order[]> {
     return this.http.get<Order[]>(`${environment.apiBaseUrl}/api/admin/orders`, {
       headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
@@ -34,6 +40,28 @@ export class OrderService {
   updateStatus(orderId: string, status: OrderStatus, token: string, note = ''): Observable<Order> {
     return this.http.put<Order>(
       `${environment.apiBaseUrl}/api/admin/orders/${orderId}/status`,
+      { status, note },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  assignDelivery(orderId: string, deliveryUserId: string, token: string): Observable<Order> {
+    return this.http.post<Order>(
+      `${environment.apiBaseUrl}/api/admin/orders/${orderId}/assign-delivery`,
+      { deliveryUserId },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  getDeliveryOrders(token: string): Observable<Order[]> {
+    return this.http.get<Order[]>(`${environment.apiBaseUrl}/api/delivery/orders`, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
+    });
+  }
+
+  updateDeliveryStatus(orderId: string, status: 'OutForDelivery' | 'Delivered', token: string, note = ''): Observable<Order> {
+    return this.http.put<Order>(
+      `${environment.apiBaseUrl}/api/delivery/orders/${orderId}/status`,
       { status, note },
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
     );

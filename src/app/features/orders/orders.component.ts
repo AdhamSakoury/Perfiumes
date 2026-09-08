@@ -26,7 +26,8 @@ export class OrdersPageComponent {
   loading = signal(false);
   userOrders = signal<Order[]>([]);
   selectedOrder = signal<Order | null>(null);
-  readonly trackingSteps = ['Processing', 'Packed', 'Shipped', 'OutForDelivery', 'Delivered'];
+  cancellingOrderId: string | null = null;
+  readonly trackingSteps = ['Processing', 'Packed', 'ReadyForPickup', 'Shipped', 'OutForDelivery', 'Delivered'];
   private requestedEmail: string | null = null;
   readonly orders = computed(() => {
     const all = [...this.userOrders()];
@@ -99,6 +100,40 @@ export class OrdersPageComponent {
     this.toast.show(this.i18n.t('itemsAddedToCart'));
   }
 
+  canCancel(order: Order): boolean {
+    return order.status === 'Processing' || order.status === 'OnHold' || order.status === 'Packed';
+  }
+
+  cancelOrder(order: Order): void {
+    if (!this.canCancel(order) || this.cancellingOrderId) return;
+    if (!window.confirm('Cancel this order? Paid orders are refunded to your wallet.')) return;
+
+    this.cancellingOrderId = order.id;
+    this.auth.ensureAccessToken().subscribe((token) => {
+      if (!token) {
+        this.cancellingOrderId = null;
+        this.toast.show('Please login again to cancel this order.', 'error');
+        return;
+      }
+
+      this.orderService.cancel(order.id, token).subscribe({
+        next: (updated) => {
+          const orders = this.userOrders().map((item) => item.id === updated.id ? updated : item);
+          this.userOrders.set(orders);
+          this.selectedOrder.set(updated);
+          const user = this.auth.currentUser();
+          if (user) this.auth.updateCurrentUser({ ...user, orders });
+          this.cancellingOrderId = null;
+          this.toast.show(updated.paymentStatus === 'refunded' ? 'Order cancelled. The refund was added to your wallet.' : 'Order cancelled.', 'success');
+        },
+        error: (error) => {
+          this.cancellingOrderId = null;
+          this.toast.show(error?.error?.message || 'Could not cancel this order.', 'error');
+        }
+      });
+    });
+  }
+
   statusLabel(status: string): string {
     return this.i18n.t(`status_${status.toLowerCase()}`);
   }
@@ -117,7 +152,9 @@ export class OrdersPageComponent {
   trackingTitle(status: string): string {
     const labels: Record<string, string> = {
       Processing: 'Confirmed',
+      OnHold: 'On hold',
       Packed: 'Packed',
+      ReadyForPickup: 'Ready for pickup',
       Shipped: 'Shipped',
       OutForDelivery: 'Out for delivery',
       Delivered: 'Delivered',
@@ -128,6 +165,7 @@ export class OrdersPageComponent {
 
   paymentLabel(order: Order): string {
     if (order.paymentMethod === 'wallet') return 'Wallet paid';
+    if (order.paymentStatus === 'refunded') return 'Refunded to wallet';
     if (order.paymentMethod === 'card') return 'Card paid';
     if (order.paymentMethod === 'instapay') return order.paymentStatus === 'paid' ? 'InstaPay paid' : 'InstaPay pending';
     return 'Cash on delivery';

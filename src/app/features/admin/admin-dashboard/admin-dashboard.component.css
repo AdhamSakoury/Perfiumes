@@ -5,8 +5,8 @@
 }
 
 .admin-main {
-  width: min(100%, 1280px);
-  margin-inline: auto;
+  width: 100%;
+  margin-inline: 0;
 }
 
 .admin-topbar {
@@ -46,8 +46,7 @@
 
 .admin-topbar button,
 .admin-dashboard-empty a,
-.admin-dashboard-empty button,
-.wallet-controls button {
+.admin-dashboard-empty button {
   min-height: 2.35rem;
   display: inline-flex;
   align-items: center;
@@ -63,8 +62,7 @@
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.admin-topbar button:hover,
-.wallet-controls button:hover {
+.admin-topbar button:hover {
   background: #F5A623;
   color: #1A1510;
   transform: translateY(-1px);
@@ -72,14 +70,11 @@
 }
 
 .admin-topbar button span,
-.admin-topbar button i,
-.wallet-controls button span,
-.wallet-controls button i {
+.admin-topbar button i {
   color: inherit;
 }
 
-.admin-topbar button:disabled,
-.wallet-controls button:disabled {
+.admin-topbar button:disabled {
   background: #8DA3A0;
   color: #fff;
   opacity: 1;
@@ -293,8 +288,7 @@
   font-size: 0.8rem;
 }
 
-.order-feed b,
-.wallet-row b {
+.order-feed b {
   display: block;
   color: #F5A623;
   font-size: 0.95rem;
@@ -302,14 +296,19 @@
   text-align: right;
 }
 
-:host-context([dir="rtl"]) .order-feed b,
-:host-context([dir="rtl"]) .wallet-row b {
+:host-context([dir="rtl"]) .order-feed b {
   text-align: left;
 }
 
 .wallet-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  gap: 0.7rem;
+}
+
+.wallet-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .wallet-user {
@@ -348,25 +347,70 @@
   text-overflow: ellipsis;
 }
 
-.wallet-controls {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 5rem 6.25rem minmax(0, 1fr) 5.25rem;
-  gap: 0.45rem;
+.wallet-balance {
+  flex: 0 0 auto;
+  text-align: right;
 }
 
-.wallet-controls input,
-.wallet-controls select {
+.wallet-balance span,
+.wallet-status-summary span {
+  display: block;
+  color: #5D4E37;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.wallet-balance b {
+  display: block;
+  color: #F5A623;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.wallet-status-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  border-top: 1px solid rgba(21, 63, 63, 0.1);
+  padding-top: 0.7rem;
+}
+
+.wallet-status-summary > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   min-width: 0;
-  min-height: 2.35rem;
-  border: 1px solid rgba(245, 166, 35, 0.3);
+  border: 1px solid rgba(21, 63, 63, 0.1);
   border-radius: 0.45rem;
-  background: #fff;
+  background: rgba(21, 63, 63, 0.035);
+  padding: 0.5rem 0.6rem;
+}
+
+.wallet-status-summary i {
+  width: 1.8rem;
+  height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 0.35rem;
+}
+
+.wallet-status-credit i {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16803b;
+}
+
+.wallet-status-debit i {
+  background: rgba(220, 90, 61, 0.12);
+  color: #b63c27;
+}
+
+.wallet-status-summary strong {
+  display: block;
   color: #153f3f;
   font-size: 0.88rem;
-  font-weight: 700;
-  outline: 0;
-  padding: 0.45rem 0.55rem;
+  font-weight: 900;
 }
 
 .admin-dashboard-empty {
@@ -392,13 +436,6 @@
 :host-context(.dark) .wallet-row {
   background: rgba(29, 43, 43, 0.78);
   border-color: rgba(245, 166, 35, 0.16);
-}
-
-:host-context(.dark) .wallet-controls input,
-:host-context(.dark) .wallet-controls select {
-  background: #1D2B2B;
-  color: #E6D5B8;
-  border-color: rgba(245, 166, 35, 0.32);
 }
 
 :host-context(.dark) .admin-topbar h2,
@@ -449,18 +486,43 @@
   }
 
   .order-feed article,
-  .wallet-row,
-  .wallet-controls {
+  .wallet-status-summary {
     grid-template-columns: 1fr;
   }
 
-  .order-feed b,
-  .wallet-row b {
+  .wallet-row-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wallet-balance {
     text-align: left;
   }
 
-  :host-context([dir="rtl"]) .order-feed b,
-  :host-context([dir="rtl"]) .wallet-row b {
+  .order-feed b {
+    text-align: left;
+  }
+
+  :host-context([dir="rtl"]) .order-feed b {
     text-align: right;
   }
+
+}
+
+:host-context(.dark) .wallet-balance span,
+:host-context(.dark) .wallet-status-summary span {
+  color: rgba(230, 213, 184, 0.72);
+}
+
+:host-context(.dark) .wallet-status-summary {
+  border-color: rgba(245, 166, 35, 0.16);
+}
+
+:host-context(.dark) .wallet-status-summary > div {
+  border-color: rgba(245, 166, 35, 0.14);
+  background: rgba(245, 166, 35, 0.05);
+}
+
+:host-context(.dark) .wallet-status-summary strong {
+  color: #E6D5B8;
 }
