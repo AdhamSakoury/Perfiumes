@@ -1,4 +1,4 @@
-<section class="delivery-page">
+<section class="delivery-page" [class.delivery-dark-mode]="theme.isDark()">
   <header class="delivery-heading">
     <div><p>Delivery workspace</p><h1>Today's route</h1><span>See only the orders assigned to you.</span></div>
     <button type="button" (click)="load()" [disabled]="loading()"><i class="fas fa-rotate" [class.fa-spin]="loading()"></i> Refresh</button>
