@@ -435,10 +435,26 @@
   transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
+.notification-button i {
+  color: inherit;
+}
+
+:host-context(.dark) .notification-button {
+  color: #F5A623;
+  background: rgba(245, 166, 35, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.12);
+}
+
 .notification-button:hover {
   transform: translateY(-1px);
   background: #F5A623;
   color: #1A1510;
+}
+
+:host-context(.dark) .notification-button:hover {
+  background: #F5A623;
+  color: #172F2F;
+  box-shadow: 0 10px 22px -16px rgba(245, 166, 35, 0.9);
 }
 
 .notification-badge {
