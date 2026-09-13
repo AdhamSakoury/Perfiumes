@@ -46,15 +46,6 @@ END
 
 IF COL_LENGTH(N'[WalletTransactions]', N'ActorRole') IS NULL
 BEGIN
-<<<<<<< HEAD
-    ALTER TABLE [WalletTransactions] ADD [ActorRole] nvarchar(24) NOT NULL CONSTRAINT [DF_WalletTransactions_ActorRole] DEFAULT N'system' WITH VALUES;
-    EXEC(N'UPDATE [WalletTransactions]
-    SET [ActorRole] = CASE
-        WHEN [Reason] LIKE N''Payment for order %'' OR [Reason] LIKE N''Refund for cancelled order %'' OR [ReferenceId] LIKE N''topup_%'' THEN N''customer''
-        WHEN [Reason] LIKE N''Admin adjustment%'' THEN N''admin''
-        ELSE N''system''
-    END;');
-=======
     -- SQL Server validates all column references in this batch before executing it.
     -- Run the schema change and its backfill in separate dynamic batches so an
     -- existing database without ActorRole can be upgraded safely.
@@ -72,7 +63,6 @@ BEGIN
             WHEN [Reason] LIKE N''Admin adjustment%'' THEN N''admin''
             ELSE N''system''
         END;';
->>>>>>> e5832361bff973661e9d4eca45004cf0b39f3aba
 END
 """);
 

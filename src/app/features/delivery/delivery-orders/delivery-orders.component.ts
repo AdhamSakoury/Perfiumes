@@ -7,12 +7,9 @@ import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
-<<<<<<< HEAD
 import { OrderMapComponent } from '@shared/components/order-map/order-map.component';
 import { OrderChatComponent } from '@shared/components/order-chat/order-chat.component';
-=======
 import { ThemeService } from '@core/services/theme.service';
->>>>>>> e5832361bff973661e9d4eca45004cf0b39f3aba
 
 @Component({
   selector: 'app-delivery-orders',
@@ -24,11 +21,8 @@ import { ThemeService } from '@core/services/theme.service';
 export class DeliveryOrdersComponent {
   readonly orders = signal<Order[]>([]);
   readonly loading = signal(true);
-<<<<<<< HEAD
   readonly activeMapOrder = signal<Order | null>(null);
   readonly activeChatOrder = signal<Order | null>(null);
-
-=======
   readonly search = signal('');
   readonly filter = signal<'all' | 'ready' | 'on-the-way' | 'delivered'>('all');
   readonly filteredOrders = computed(() => {
@@ -51,7 +45,6 @@ export class DeliveryOrdersComponent {
       return matchesFilter && (!query || searchableText.includes(query));
     });
   });
->>>>>>> e5832361bff973661e9d4eca45004cf0b39f3aba
   updatingId: string | null = null;
   notes: Record<string, string> = {};
 
@@ -120,7 +113,6 @@ export class DeliveryOrdersComponent {
     });
   }
 
-<<<<<<< HEAD
   onLocationUpdated(order: Order, coords: { latitude: number; longitude: number }): void {
     this.auth.ensureAccessToken().subscribe((token) => {
       if (!token) return;
@@ -157,7 +149,8 @@ export class DeliveryOrdersComponent {
     const lat = order.customerLatitude ?? 30.0444;
     const lng = order.customerLongitude ?? 31.2357;
     return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-=======
+  }
+
   routeUrl(order: Order): string {
     const address = order.shippingAddress;
     const destination = [address.street, address.city, address.state, address.country]
@@ -184,6 +177,5 @@ export class DeliveryOrdersComponent {
   smsUrl(order: Order): string | null {
     const phone = order.shippingAddress.phone?.replace(/[^+\d]/g, '') || '';
     return phone ? `sms:${phone}` : null;
->>>>>>> e5832361bff973661e9d4eca45004cf0b39f3aba
   }
 }
