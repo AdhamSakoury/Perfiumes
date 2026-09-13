@@ -62,7 +62,27 @@
 }
 
 .chat-bubble {
-  @apply max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm;
+  @apply max-w-[88%] md:max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm;
+}
+
+.message-content {
+  @apply leading-relaxed break-words;
+}
+
+.message-content strong {
+  @apply font-bold text-nubian-earth dark:text-nubian-gold;
+}
+
+.chat-row.user .message-content strong {
+  @apply text-amber-200;
+}
+
+.message-content ul {
+  @apply list-disc list-inside space-y-1 my-1.5 pr-2;
+}
+
+.message-content li {
+  @apply leading-relaxed;
 }
 
 .chat-row.user .chat-bubble {

@@ -47,12 +47,12 @@ END
 IF COL_LENGTH(N'[WalletTransactions]', N'ActorRole') IS NULL
 BEGIN
     ALTER TABLE [WalletTransactions] ADD [ActorRole] nvarchar(24) NOT NULL CONSTRAINT [DF_WalletTransactions_ActorRole] DEFAULT N'system' WITH VALUES;
-    UPDATE [WalletTransactions]
+    EXEC(N'UPDATE [WalletTransactions]
     SET [ActorRole] = CASE
-        WHEN [Reason] LIKE N'Payment for order %' OR [Reason] LIKE N'Refund for cancelled order %' OR [ReferenceId] LIKE N'topup_%' THEN N'customer'
-        WHEN [Reason] LIKE N'Admin adjustment%' THEN N'admin'
-        ELSE N'system'
-    END;
+        WHEN [Reason] LIKE N''Payment for order %'' OR [Reason] LIKE N''Refund for cancelled order %'' OR [ReferenceId] LIKE N''topup_%'' THEN N''customer''
+        WHEN [Reason] LIKE N''Admin adjustment%'' THEN N''admin''
+        ELSE N''system''
+    END;');
 END
 """);
 

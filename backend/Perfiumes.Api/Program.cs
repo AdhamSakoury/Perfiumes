@@ -152,6 +152,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapHub<NotificationHub>("/notificationHub");
 app.MapHub<SupportMessageHub>("/supportHub");
+app.MapHub<OrderTrackingHub>("/orderTrackingHub");
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -1028,6 +1029,168 @@ app.MapDelete("/api/admin/orders/{id}", async (
     }
 
     return await orders.DeleteAsync(id) ? Results.NoContent() : Results.NotFound();
+});
+app.MapPost("/api/delivery/orders/{id}/location", async (
+    string id,
+    UpdateLocationRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "delivery" && principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var order = await orders.UpdateDeliveryLocationAsync(id, principal.Email, request.Latitude, request.Longitude);
+        return order is null ? Results.NotFound() : Results.Ok(order);
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapGet("/api/orders/{id}/messages", async (
+    string id,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var messages = await orders.GetOrderMessagesAsync(id, principal.Email, principal.Role);
+        return Results.Ok(messages);
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapPost("/api/orders/{id}/messages", async (
+    string id,
+    SendOrderMessageRequest request,
+    OrderService orders,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Message))
+    {
+        return Results.BadRequest(new { message = "Message is required." });
+    }
+
+    try
+    {
+        var user = await users.GetByEmailAsync(principal.Email);
+        var senderName = user?.FullName ?? principal.Email;
+        var message = await orders.SendOrderMessageAsync(id, principal.Email, principal.Role, senderName, request.Message);
+        return Results.Ok(message);
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapGet("/api/orders/{id}/ratings", async (
+    string id,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    var status = await orders.GetOrderRatingsStatusAsync(id, principal.Email);
+    return Results.Ok(status);
+});
+
+app.MapPost("/api/orders/{id}/product-reviews", async (
+    string id,
+    CreateProductReviewRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "customer")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var review = await orders.CreateProductReviewAsync(id, principal.Email, request);
+        return Results.Ok(review);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapPost("/api/orders/{id}/delivery-rating", async (
+    string id,
+    CreateDeliveryRatingRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "customer")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var rating = await orders.CreateDeliveryRatingAsync(id, principal.Email, request);
+        return Results.Ok(rating);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapGet("/api/products/{id:int}/reviews", async (
+    int id,
+    OrderService orders) =>
+{
+    var reviews = await orders.GetProductReviewsAsync(id);
+    return Results.Ok(reviews);
 });
 
 app.MapGet("/api/admin/dashboard", async (

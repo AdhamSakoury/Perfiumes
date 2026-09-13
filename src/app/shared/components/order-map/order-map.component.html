@@ -1,0 +1,53 @@
+<div class="order-map-wrapper">
+  <!-- Map container -->
+  <div #mapContainer class="order-map-canvas"></div>
+
+  <!-- Floating Stats Header -->
+  <div class="order-map-stats-bar">
+    <div class="stat-pill">
+      <i class="fas fa-route text-amber-500"></i>
+      <div>
+        <span class="stat-label">Distance</span>
+        <strong class="stat-value">{{ distanceKm !== null ? distanceKm + ' km' : 'Calculating...' }}</strong>
+      </div>
+    </div>
+
+    <div class="stat-pill">
+      <i class="fas fa-clock text-blue-500"></i>
+      <div>
+        <span class="stat-label">Est. Time</span>
+        <strong class="stat-value">{{ estimatedMinutes !== null ? estimatedMinutes + ' mins' : '~' }}</strong>
+      </div>
+    </div>
+
+    <div class="stat-pill status-pill" [class.live]="isWatching || isSimulating">
+      <span class="pulse-dot"></span>
+      <span>{{ isSimulating ? 'Simulating' : isWatching ? 'Live GPS' : 'Active Tracking' }}</span>
+    </div>
+
+    <a [href]="googleMapsUrl" target="_blank" rel="noopener noreferrer" class="nav-button" title="Navigate in Google Maps">
+      <i class="fas fa-location-arrow"></i>
+      <span>Google Maps</span>
+    </a>
+  </div>
+
+  <!-- Delivery Controls Toolbar (Only shown in delivery mode) -->
+  @if (isDeliveryView) {
+    <div class="delivery-map-controls">
+      <button type="button" class="btn-map-action" (click)="useCurrentGPS()" title="Send current device GPS coordinates">
+        <i class="fas fa-crosshairs"></i>
+        <span>My GPS</span>
+      </button>
+
+      <button type="button" class="btn-map-action" [class.active]="isWatching" (click)="toggleLiveTracking()">
+        <i class="fas" [class.fa-satellite-dish]="!isWatching" [class.fa-circle-stop]="isWatching"></i>
+        <span>{{ isWatching ? 'Stop GPS' : 'Live GPS' }}</span>
+      </button>
+
+      <button type="button" class="btn-map-action btn-sim" [class.active]="isSimulating" (click)="toggleSimulation()">
+        <i class="fas" [class.fa-play]="!isSimulating" [class.fa-pause]="isSimulating"></i>
+        <span>{{ isSimulating ? 'Pause Route' : 'Simulate Drive' }}</span>
+      </button>
+    </div>
+  }
+</div>

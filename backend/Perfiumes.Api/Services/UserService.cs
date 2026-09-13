@@ -626,6 +626,11 @@ IF COL_LENGTH(N'[Users]', N'BlockedAt') IS NULL
                 user.UpdatedAt));
     }
 
+    public async Task<AppUserEntity?> GetByEmailAsync(string email)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalized);
+    }
     private static string CreateToken()
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))

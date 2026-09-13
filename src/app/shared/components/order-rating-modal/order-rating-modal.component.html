@@ -1,0 +1,172 @@
+<div class="rating-modal-backdrop" (click)="closeModal.emit()">
+  <div class="rating-modal-panel" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <header class="modal-header">
+      <div>
+        <h2 class="modal-title">Rate Order #{{ order.id }}</h2>
+        <p class="modal-subtitle">Share your experience with the products and delivery</p>
+      </div>
+      <button type="button" class="close-btn" (click)="closeModal.emit()" aria-label="Close modal">
+        <i class="fas fa-times"></i>
+      </button>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="modal-tabs">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab === 'products'"
+        (click)="activeTab = 'products'"
+      >
+        <i class="fas fa-spray-can-sparkles"></i>
+        <span>Perfumes ({{ productForms.length }})</span>
+      </button>
+
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeTab === 'delivery'"
+        (click)="activeTab = 'delivery'"
+      >
+        <i class="fas fa-truck-fast"></i>
+        <span>Delivery Courier</span>
+      </button>
+    </div>
+
+    <!-- Content Body -->
+    <div class="modal-body">
+      @if (loading()) {
+        <div class="rating-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading ratings...</p>
+        </div>
+      } @else {
+        <!-- Products Tab -->
+        @if (activeTab === 'products') {
+          <div class="products-list">
+            @for (form of productForms; track form.productId) {
+              <div class="product-rating-card" [class.done]="form.submitted">
+                <div class="product-info-row">
+                  <img [src]="form.productImage" [alt]="form.productName" class="product-thumb">
+                  <div class="product-meta">
+                    <h4 class="product-name">{{ form.productName }}</h4>
+                    <div class="star-picker">
+                      @for (star of [1, 2, 3, 4, 5]; track star) {
+                        <button
+                          type="button"
+                          class="star-btn"
+                          [class.filled]="star <= (form.hoverRating || form.rating)"
+                          [disabled]="form.submitted"
+                          (mouseenter)="!form.submitted && (form.hoverRating = star)"
+                          (mouseleave)="!form.submitted && (form.hoverRating = form.rating)"
+                          (click)="setProductStar(form, star)"
+                        >
+                          <i class="fas fa-star"></i>
+                        </button>
+                      }
+                      <span class="rating-number">{{ form.rating }}/5</span>
+                    </div>
+                  </div>
+                </div>
+
+                @if (!form.submitted) {
+                  <textarea
+                    [(ngModel)]="form.comment"
+                    placeholder="Write a quick review about this fragrance (scent, longevity, etc.)..."
+                    class="rating-comment-input"
+                    rows="2"
+                  ></textarea>
+
+                  <div class="card-footer">
+                    <button
+                      type="button"
+                      class="btn-submit-rating"
+                      (click)="submitProductReview(form)"
+                      [disabled]="form.submitting"
+                    >
+                      <i class="fas" [class.fa-check]="!form.submitting" [class.fa-spinner]="form.submitting" [class.fa-spin]="form.submitting"></i>
+                      <span>{{ form.submitting ? 'Submitting...' : 'Submit Perfume Review' }}</span>
+                    </button>
+                  </div>
+                } @else {
+                  <div class="reviewed-badge">
+                    <i class="fas fa-circle-check"></i>
+                    <span>Review submitted. Thank you!</span>
+                  </div>
+                  @if (form.comment) {
+                    <p class="submitted-comment">"{{ form.comment }}"</p>
+                  }
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Delivery Tab -->
+        @if (activeTab === 'delivery') {
+          <div class="delivery-rating-card" [class.done]="deliveryForm.submitted">
+            <div class="delivery-hero">
+              <div class="delivery-avatar">
+                <i class="fas fa-motorcycle"></i>
+              </div>
+              <div>
+                <h3 class="delivery-name">{{ order.deliveryName || 'Delivery Courier' }}</h3>
+                <span class="delivery-badge">Delivery Representative</span>
+              </div>
+            </div>
+
+            <div class="delivery-stars-section">
+              <p class="section-label">How was the delivery service and speed?</p>
+              <div class="star-picker large">
+                @for (star of [1, 2, 3, 4, 5]; track star) {
+                  <button
+                    type="button"
+                    class="star-btn"
+                    [class.filled]="star <= (deliveryForm.hoverRating || deliveryForm.rating)"
+                    [disabled]="deliveryForm.submitted"
+                    (mouseenter)="!deliveryForm.submitted && (deliveryForm.hoverRating = star)"
+                    (mouseleave)="!deliveryForm.submitted && (deliveryForm.hoverRating = deliveryForm.rating)"
+                    (click)="setDeliveryStar(star)"
+                  >
+                    <i class="fas fa-star"></i>
+                  </button>
+                }
+                <span class="rating-number large">{{ deliveryForm.rating }} of 5 Stars</span>
+              </div>
+            </div>
+
+            @if (!deliveryForm.submitted) {
+              <textarea
+                [(ngModel)]="deliveryForm.comment"
+                placeholder="Optional feedback about the courier (punctuality, politeness, handling)..."
+                class="rating-comment-input"
+                rows="3"
+              ></textarea>
+
+              <div class="card-footer">
+                <button
+                  type="button"
+                  class="btn-submit-rating"
+                  (click)="submitDeliveryRating()"
+                  [disabled]="deliveryForm.submitting"
+                >
+                  <i class="fas" [class.fa-check]="!deliveryForm.submitting" [class.fa-spinner]="deliveryForm.submitting" [class.fa-spin]="deliveryForm.submitting"></i>
+                  <span>{{ deliveryForm.submitting ? 'Submitting...' : 'Submit Delivery Rating' }}</span>
+                </button>
+              </div>
+            } @else {
+              <div class="reviewed-badge">
+                <i class="fas fa-circle-check"></i>
+                <span>Delivery rating recorded. Thank you for your feedback!</span>
+              </div>
+              @if (deliveryForm.comment) {
+                <p class="submitted-comment">"{{ deliveryForm.comment }}"</p>
+              }
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>

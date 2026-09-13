@@ -91,6 +91,62 @@
         </div>
         <button type="button" (click)="selectedOrder.set(null)" class="orders-modal-close" aria-label="Close order details"><i class="fas fa-times"></i></button>
       </div>
+
+      <!-- Rating Prompt Banner if Order is Delivered -->
+      @if (order.status === 'Delivered') {
+        <div class="delivered-rating-banner">
+          <div>
+            <h4><i class="fas fa-award text-amber-500 mr-2"></i>Order Completed & Delivered!</h4>
+            <p>Help us improve by rating your perfumes and the delivery courier service.</p>
+          </div>
+          <button type="button" (click)="openRating(order)" class="btn-open-rating">
+            <i class="fas fa-star text-amber-300"></i>
+            <span>Rate Order & Courier</span>
+          </button>
+        </div>
+      }
+
+      <!-- Assigned Delivery Partner Card -->
+      @if (order.deliveryName) {
+        <div class="order-delivery-card">
+          <div class="delivery-card-top">
+            <div class="delivery-avatar">
+              <i class="fas fa-motorcycle"></i>
+            </div>
+            <div class="delivery-details">
+              <span class="badge-role">Assigned Delivery Partner</span>
+              <h4 class="delivery-name">{{ order.deliveryName }}</h4>
+            </div>
+            <div class="delivery-contact-buttons">
+              @if (order.deliveryPhone) {
+                <a [href]="'tel:' + cleanPhone(order.deliveryPhone)" class="btn-tel" title="Call Courier">
+                  <i class="fas fa-phone"></i>
+                  <span>{{ order.deliveryPhone }}</span>
+                </a>
+                <a [href]="'https://wa.me/' + cleanPhone(order.deliveryPhone)" target="_blank" rel="noopener noreferrer" class="btn-wa" title="WhatsApp Courier">
+                  <i class="fab fa-whatsapp"></i>
+                </a>
+              }
+              <button type="button" (click)="openChat(order)" class="btn-order-chat">
+                <i class="fas fa-comments"></i>
+                <span>Chat</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="delivery-map-cta">
+            <div class="tracking-live-indicator">
+              <span class="live-dot"></span>
+              <span>Live GPS tracking available</span>
+            </div>
+            <button type="button" (click)="openMap(order)" class="btn-open-map">
+              <i class="fas fa-map-location-dot"></i>
+              <span>View Live Map & Courier Route</span>
+            </button>
+          </div>
+        </div>
+      }
+
       <div class="orders-modal-items">
         @for (item of order.items; track item.id) {
           <div class="orders-modal-item">
@@ -103,6 +159,7 @@
           </div>
         }
       </div>
+
       <div class="tracking-panel">
         @if (order.trackingNumber || order.courierName || order.paymentReference) {
           <div class="rounded-xl border border-nubian-gold/20 p-4 mb-5 text-sm">
@@ -133,6 +190,7 @@
           }
         </div>
       </div>
+
       <div class="orders-modal-footer">
         <div class="orders-modal-summary">
           <div><span>{{ 'subtotal' | t }}</span><strong>{{ order.subtotal | currency }}</strong></div>
@@ -156,7 +214,42 @@
   </div>
 }
 
+<!-- Map Modal for Customer -->
+@if (activeMapOrder(); as mapOrder) {
+  <div class="delivery-map-modal-backdrop" (click)="closeMap()">
+    <div class="delivery-map-modal-panel" (click)="$event.stopPropagation()">
+      <header class="delivery-modal-header">
+        <div>
+          <h3>Live Delivery Tracking - Order #{{ mapOrder.id }}</h3>
+          <p>Courier: {{ mapOrder.deliveryName || 'Assigned Courier' }} | Heading to: {{ mapOrder.shippingAddress.street }}, {{ mapOrder.shippingAddress.city }}</p>
+        </div>
+        <button type="button" class="btn-modal-close" (click)="closeMap()" aria-label="Close map">
+          <i class="fas fa-times"></i>
+        </button>
+      </header>
+      <div class="delivery-modal-body">
+        <app-order-map
+          [order]="mapOrder"
+          [isDeliveryView]="false"
+        />
+      </div>
+    </div>
+  </div>
+}
 
+<!-- Chat Modal for Customer -->
+@if (activeChatOrder(); as chatOrder) {
+  <app-order-chat
+    [order]="chatOrder"
+    [currentRole]="'customer'"
+    (closeChat)="closeChat()"
+  />
+}
 
-
-
+<!-- Rating Modal for Customer -->
+@if (activeRatingOrder(); as ratingOrder) {
+  <app-order-rating-modal
+    [order]="ratingOrder"
+    (closeModal)="closeRating()"
+  />
+}

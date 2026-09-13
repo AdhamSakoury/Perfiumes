@@ -71,7 +71,15 @@ export class ChatbotWidgetComponent {
     this.sending.set(true);
     this.scrollSoon();
 
-    this.chatbot.sendMessage(message).subscribe({
+const history = this.messages
+      .filter((m) => m.text && m.text !== this.welcomeMessage().text)
+      .slice(-6)
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        text: m.text
+      }));
+
+    this.chatbot.sendMessage(message, null, history).subscribe({
       next: (response) => {
         this.messages = [
           ...this.messages,
@@ -154,6 +162,30 @@ export class ChatbotWidgetComponent {
         this.scrollSoon();
       }
     });
+  }
+
+  formatMessage(text: string): string {
+    if (!text) return '';
+    // Escape HTML tags to prevent XSS
+    let safe = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Replace bold **text** with styled <strong>
+    safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-nubian-gold dark:text-nubian-gold">$1</strong>');
+    
+    // Replace bullet points starting with * or - or •
+    safe = safe.replace(/^[\*\-\•]\s*(.+)$/gm, '<li class="my-0.5 leading-relaxed">$1</li>');
+    safe = safe.replace(/(<li[\s\S]*?<\/li>)/g, '<ul class="list-disc pr-4 space-y-1 my-1.5">$1</ul>');
+    // Consolidate adjacent </ul><ul class="..."> tags
+    safe = safe.replace(/<\/ul>\s*<ul class="list-disc pr-4 space-y-1 my-1.5">/g, '');
+
+    // Convert newlines to breaks
+    safe = safe.replace(/\n\n+/g, '<div class="h-2"></div>');
+    safe = safe.replace(/\n/g, '<br/>');
+
+    return safe;
   }
 
   useFallback(event: Event): void {

@@ -1,0 +1,86 @@
+<div class="chat-modal-backdrop" (click)="closeChat.emit()">
+  <div class="chat-modal-panel" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <header class="chat-header">
+      <div class="chat-partner-info">
+        <div class="partner-avatar">
+          <i class="fas" [class.fa-truck-fast]="currentRole === 'customer'" [class.fa-user]="currentRole !== 'customer'"></i>
+        </div>
+        <div>
+          <h3 class="partner-name">{{ partnerName }}</h3>
+          <span class="partner-role">
+            {{ currentRole === 'customer' ? 'Assigned Delivery Partner' : 'Customer - Order ' + order.id }}
+          </span>
+        </div>
+      </div>
+
+      <div class="chat-actions">
+        @if (partnerPhone) {
+          <a [href]="'tel:' + cleanPhone(partnerPhone)" class="action-btn call-btn" title="Call directly">
+            <i class="fas fa-phone"></i>
+            <span>Call</span>
+          </a>
+          <a [href]="'https://wa.me/' + cleanPhone(partnerPhone)" target="_blank" rel="noopener noreferrer" class="action-btn wa-btn" title="WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+          </a>
+        }
+        <button type="button" class="close-btn" (click)="closeChat.emit()" aria-label="Close chat">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Messages Container -->
+    <div #messagesContainer class="chat-messages-body">
+      @if (loading()) {
+        <div class="chat-empty-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading messages...</p>
+        </div>
+      } @else if (messages().length === 0) {
+        <div class="chat-empty-state">
+          <i class="fas fa-comments"></i>
+          <p>No messages yet for this order.</p>
+          <span>Send a message to start communicating directly!</span>
+        </div>
+      } @else {
+        <div class="messages-stream">
+          @for (msg of messages(); track msg.id) {
+            <div class="message-row" [class.mine]="isMyMessage(msg)">
+              <div class="message-bubble">
+                <div class="msg-meta">
+                  <span class="sender-name">{{ msg.senderName }}</span>
+                  <span class="badge" [class.badge-del]="msg.senderRole === 'delivery'" [class.badge-cust]="msg.senderRole === 'customer'">
+                    {{ msg.senderRole === 'delivery' ? 'Courier' : 'Customer' }}
+                  </span>
+                </div>
+                <p class="msg-text">{{ msg.message }}</p>
+                <span class="msg-time">{{ msg.createdAt | date:'shortTime' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Input Footer -->
+    <footer class="chat-input-bar">
+      <input
+        type="text"
+        [(ngModel)]="newMessage"
+        (keydown.enter)="sendMessage()"
+        placeholder="Type a message here..."
+        [disabled]="sending()"
+        class="chat-text-input"
+      />
+      <button
+        type="button"
+        (click)="sendMessage()"
+        [disabled]="!newMessage.trim() || sending()"
+        class="chat-send-btn"
+      >
+        <i class="fas" [class.fa-paper-plane]="!sending()" [class.fa-spinner]="sending()" [class.fa-spin]="sending()"></i>
+      </button>
+    </footer>
+  </div>
+</div>

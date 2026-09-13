@@ -21,7 +21,7 @@
         @for (item of messages; track $index) {
           <div class="chat-row" [class.user]="item.role === 'user'" [class.bot]="item.role === 'bot'">
             <div class="chat-bubble">
-              <p>{{ item.text }}</p>
+              <div class="message-content" [innerHTML]="formatMessage(item.text)"></div>
 
               @if (item.suggestedProducts?.length) {
                 <div class="suggestions">

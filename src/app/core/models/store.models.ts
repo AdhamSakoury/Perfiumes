@@ -108,7 +108,13 @@ export interface Order {
   paymentProvider?: string;
   paymentReference?: string;
   deliveryUserId?: string | null;
-  deliveryName?: string | null;
+deliveryName?: string | null;
+  deliveryPhone?: string | null;
+  customerLatitude?: number | null;
+  customerLongitude?: number | null;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
+  deliveryLocationUpdatedAt?: string | null;
   courierName?: string;
   trackingNumber?: string;
   estimatedDelivery?: string;
@@ -259,3 +265,43 @@ export interface AdminUser {
 }
 
 
+
+
+export interface OrderMessage {
+  id: string;
+  orderId: string;
+  senderRole: 'customer' | 'delivery' | 'admin' | string;
+  senderName: string;
+  senderEmail: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface ProductReview {
+  id: string;
+  productId: number;
+  orderId: string;
+  userEmail: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface DeliveryRating {
+  id: string;
+  orderId: string;
+  deliveryUserId: string;
+  userEmail: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface OrderRatingsStatus {
+  hasRatedDelivery: boolean;
+  deliveryRating?: number | null;
+  deliveryComment?: string | null;
+  productReviews: ProductReview[];
+}

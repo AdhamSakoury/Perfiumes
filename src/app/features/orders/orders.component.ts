@@ -11,11 +11,24 @@ import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { OrderMapComponent } from '@shared/components/order-map/order-map.component';
+import { OrderChatComponent } from '@shared/components/order-chat/order-chat.component';
+import { OrderRatingModalComponent } from '@shared/components/order-rating-modal/order-rating-modal.component';
 
 @Component({
   selector: 'app-orders-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    CustomDropdownComponent,
+    TranslatePipe,
+    OrderMapComponent,
+    OrderChatComponent,
+    OrderRatingModalComponent
+  ],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css'
 })
@@ -27,8 +40,14 @@ export class OrdersPageComponent {
   userOrders = signal<Order[]>([]);
   selectedOrder = signal<Order | null>(null);
   cancellingOrderId: string | null = null;
+
+  readonly activeMapOrder = signal<Order | null>(null);
+  readonly activeChatOrder = signal<Order | null>(null);
+  readonly activeRatingOrder = signal<Order | null>(null);
+
   readonly trackingSteps = ['Processing', 'Packed', 'ReadyForPickup', 'Shipped', 'OutForDelivery', 'Delivered'];
   private requestedEmail: string | null = null;
+
   readonly orders = computed(() => {
     const all = [...this.userOrders()];
     const status = this.filter();
@@ -171,6 +190,35 @@ export class OrdersPageComponent {
     return 'Cash on delivery';
   }
 
+  cleanPhone(phone?: string | null): string {
+    if (!phone) return '';
+    return phone.replace(/[^\d+]/g, '');
+  }
+
+  openMap(order: Order): void {
+    this.activeMapOrder.set(order);
+  }
+
+  closeMap(): void {
+    this.activeMapOrder.set(null);
+  }
+
+  openChat(order: Order): void {
+    this.activeChatOrder.set(order);
+  }
+
+  closeChat(): void {
+    this.activeChatOrder.set(null);
+  }
+
+  openRating(order: Order): void {
+    this.activeRatingOrder.set(order);
+  }
+
+  closeRating(): void {
+    this.activeRatingOrder.set(null);
+  }
+
   private loadOrders(userEmail: string, showBusy: boolean): void {
     this.loading.set(showBusy);
     this.orderService.getForUser(userEmail).subscribe({
@@ -187,4 +235,3 @@ export class OrdersPageComponent {
     });
   }
 }
-

@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Order, OrderStatus } from '@core/models/store.models';
+import { DeliveryRating, Order, OrderMessage, OrderRatingsStatus, OrderStatus, ProductReview } from '@core/models/store.models';
 import { Observable, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -65,5 +65,55 @@ export class OrderService {
       { status, note },
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
     );
+  }
+
+  updateDeliveryLocation(orderId: string, latitude: number, longitude: number, token: string): Observable<Order> {
+    return this.http.post<Order>(
+      `${environment.apiBaseUrl}/api/delivery/orders/${orderId}/location`,
+      { latitude, longitude },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  getOrderMessages(orderId: string, token: string): Observable<OrderMessage[]> {
+    return this.http.get<OrderMessage[]>(
+      `${environment.apiBaseUrl}/api/orders/${orderId}/messages`,
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  sendOrderMessage(orderId: string, message: string, token: string): Observable<OrderMessage> {
+    return this.http.post<OrderMessage>(
+      `${environment.apiBaseUrl}/api/orders/${orderId}/messages`,
+      { message },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  getOrderRatings(orderId: string, token: string): Observable<OrderRatingsStatus> {
+    return this.http.get<OrderRatingsStatus>(
+      `${environment.apiBaseUrl}/api/orders/${orderId}/ratings`,
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  submitProductReview(orderId: string, productId: number, rating: number, comment: string, token: string): Observable<ProductReview> {
+    return this.http.post<ProductReview>(
+      `${environment.apiBaseUrl}/api/orders/${orderId}/product-reviews`,
+      { productId, rating, comment },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  submitDeliveryRating(orderId: string, rating: number, comment: string, token: string): Observable<DeliveryRating> {
+    return this.http.post<DeliveryRating>(
+      `${environment.apiBaseUrl}/api/orders/${orderId}/delivery-rating`,
+      { rating, comment },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  getProductReviews(productId: number): Observable<ProductReview[]> {
+    return this.http.get<ProductReview[]>(`${environment.apiBaseUrl}/api/products/${productId}/reviews`);
   }
 }

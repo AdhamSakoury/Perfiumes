@@ -1004,3 +1004,290 @@
 :host-context(.dark) .orders-page-modal .tracking-step-dot {
   box-shadow: 0 0 0 0.18rem rgba(29, 43, 43, 0.96) !important;
 }
+
+
+/* Delivery Partner Card & Ratings */
+.delivered-rating-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 0.85rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.delivered-rating-banner h4 {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #065f46;
+  margin: 0;
+}
+
+.delivered-rating-banner p {
+  font-size: 0.78rem;
+  color: #047857;
+  margin: 2px 0 0 0;
+}
+
+:host-context(.dark) .delivered-rating-banner h4 {
+  color: #34d399;
+}
+
+:host-context(.dark) .delivered-rating-banner p {
+  color: #6ee7b7;
+}
+
+.btn-open-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 1.1rem;
+  border-radius: 9999px;
+  background: #059669;
+  color: white;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.btn-open-rating:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+.order-delivery-card {
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 0.85rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+:host-context(.dark) .order-delivery-card {
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.delivery-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.delivery-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #D4AF37, #b38b1f);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+
+.delivery-details {
+  flex: 1;
+}
+
+.badge-role {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #b45309;
+  letter-spacing: 0.05em;
+}
+
+:host-context(.dark) .badge-role {
+  color: #D4AF37;
+}
+
+.delivery-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1c1917;
+  margin: 2px 0 0 0;
+}
+
+:host-context(.dark) .delivery-name {
+  color: #f5f5f4;
+}
+
+.delivery-contact-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-tel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  background: #0284c7;
+  color: white;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.btn-wa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.btn-order-chat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: #D4AF37;
+  color: #1a1505;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-order-chat:hover {
+  background: #c29d28;
+}
+
+.delivery-map-cta {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tracking-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #047857;
+  font-weight: 600;
+}
+
+:host-context(.dark) .tracking-live-indicator {
+  color: #34d399;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse-ring 1.8s infinite;
+}
+
+.btn-open-map {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 0.5rem;
+  background: #1B4D4D;
+  color: white;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-open-map:hover {
+  background: #153f3f;
+  transform: translateY(-1px);
+}
+
+:host-context(.dark) .btn-open-map {
+  background: #D4AF37;
+  color: #181512;
+}
+
+/* Modals for Map & Chat in Customer Page */
+.delivery-map-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.delivery-map-modal-panel {
+  width: 100%;
+  max-width: 800px;
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.delivery-modal-header {
+  padding: 14px 20px;
+  background: #0f172a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.delivery-modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.delivery-modal-header p {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+.btn-modal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.btn-modal-close:hover {
+  color: white;
+}
+
+.delivery-modal-body {
+  padding: 16px;
+}

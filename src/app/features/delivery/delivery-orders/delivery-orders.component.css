@@ -1,1 +1,367 @@
-.delivery-orders-page { width: min(100%, 1080px); margin: 0 auto; padding: 5.5rem 1.5rem 3rem 18rem; color: #153f3f; }.delivery-orders-page header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }.delivery-orders-page header p { color: #b45309; font-size: .78rem; font-weight: 800; text-transform: uppercase; }.delivery-orders-page h1 { margin-top: .2rem; font-size: 2rem; font-weight: 900; }.delivery-orders-page header button { padding: .65rem .9rem; background: #153f3f; color: #fff; border: 0; border-radius: .45rem; font-weight: 700; cursor: pointer; }.delivery-orders-list { display: grid; gap: 1rem; margin-top: 1.5rem; }.delivery-order-card { background: #fff; border: 1px solid #eadfca; border-left: 4px solid #b45309; border-radius: .5rem; padding: 1.15rem; }.delivery-order-card.done { border-left-color: #15803d; opacity: .8; }.delivery-order-top, .delivery-customer, .delivery-address, .delivery-order-meta, .delivery-actions { display: flex; align-items: center; gap: .65rem; }.delivery-order-top { justify-content: space-between; }.delivery-order-top strong, .delivery-customer strong { display: block; font-weight: 900; }.delivery-order-top span, .delivery-customer span { display: block; margin-top: .15rem; color: #5d4e37; font-size: .8rem; }.delivery-order-top b { padding: .35rem .55rem; background: #fff4db; color: #92400e; border-radius: .4rem; font-size: .75rem; }.delivery-customer, .delivery-address { margin-top: .9rem; }.delivery-customer i, .delivery-address i { width: 1rem; color: #b45309; text-align: center; }.delivery-address { color: #5d4e37; font-size: .88rem; }.delivery-order-meta { justify-content: space-between; margin-top: .85rem; padding-top: .75rem; border-top: 1px solid #eee4d5; color: #5d4e37; font-size: .85rem; }.delivery-order-meta strong { color: #153f3f; }.delivery-actions { flex-wrap: wrap; margin-top: 1rem; }.delivery-actions input { flex: 1 1 180px; min-height: 2.4rem; padding: .5rem .65rem; border: 1px solid #dccdb7; border-radius: .4rem; }.delivery-actions button { min-height: 2.4rem; padding: .5rem .7rem; border: 0; border-radius: .4rem; color: #fff; font-weight: 800; cursor: pointer; }.delivery-actions button:disabled { opacity: .55; cursor: not-allowed; }.delivery-actions .start { background: #b45309; }.delivery-actions .complete { background: #15803d; }.delivery-empty { margin-top: 1.5rem; padding: 3rem 1rem; text-align: center; color: #5d4e37; background: #fff; border: 1px solid #eadfca; border-radius: .5rem; }@media (max-width: 900px) { .delivery-orders-page { padding: 5.5rem 1rem 2rem; } }@media (max-width: 600px) { .delivery-actions button { flex: 1; } }
+.delivery-orders-page {
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding: 5.5rem 1.5rem 3rem 18rem;
+  color: #153f3f;
+}
+
+.delivery-orders-page header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.delivery-orders-page header p {
+  color: #b45309;
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.delivery-orders-page h1 {
+  margin-top: .2rem;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.delivery-orders-page header button {
+  padding: .65rem .9rem;
+  background: #153f3f;
+  color: #fff;
+  border: 0;
+  border-radius: .45rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delivery-orders-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.delivery-order-card {
+  background: #fff;
+  border: 1px solid #eadfca;
+  border-left: 4px solid #b45309;
+  border-radius: .5rem;
+  padding: 1.15rem;
+}
+
+.delivery-order-card.done {
+  border-left-color: #15803d;
+  opacity: .85;
+}
+
+.delivery-order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
+.delivery-order-top strong {
+  display: block;
+  font-weight: 900;
+}
+
+.delivery-order-top span {
+  display: block;
+  margin-top: .15rem;
+  color: #5d4e37;
+  font-size: .8rem;
+}
+
+.delivery-order-top b {
+  padding: .35rem .55rem;
+  background: #fff4db;
+  color: #92400e;
+  border-radius: .4rem;
+  font-size: .75rem;
+}
+
+/* Customer Contact Card */
+.delivery-customer-box {
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+  background: #fdfaf5;
+  border: 1px solid #f2e9dc;
+  border-radius: 0.5rem;
+}
+
+.delivery-customer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.delivery-customer-header i {
+  font-size: 1.35rem;
+  color: #b45309;
+}
+
+.delivery-customer-header strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1c1917;
+}
+
+.delivery-customer-header span {
+  display: block;
+  font-size: 0.78rem;
+  color: #78716c;
+}
+
+.delivery-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.75rem;
+}
+
+.btn-contact-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-call {
+  background: #0284c7;
+  color: white;
+}
+
+.btn-call:hover {
+  background: #0369a1;
+}
+
+.btn-whatsapp {
+  background: #16a34a;
+  color: white;
+}
+
+.btn-whatsapp:hover {
+  background: #15803d;
+}
+
+.btn-chat-site {
+  background: #D4AF37;
+  color: #1a1505;
+}
+
+.btn-chat-site:hover {
+  background: #c29d28;
+}
+
+/* Address Box & Map Nav */
+.delivery-address-box {
+  margin-top: 0.85rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.address-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.address-text i {
+  color: #e11d48;
+  margin-top: 3px;
+}
+
+.map-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.65rem;
+}
+
+.btn-map-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 0.4rem;
+  background: #0f172a;
+  color: #f8fafc;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-map-nav:hover {
+  background: #1e293b;
+}
+
+.btn-google-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 0.4rem;
+  background: #2563eb;
+  color: white;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.btn-google-nav:hover {
+  background: #1d4ed8;
+}
+
+.delivery-order-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: .85rem;
+  padding-top: .75rem;
+  border-top: 1px solid #eee4d5;
+  color: #5d4e37;
+  font-size: .85rem;
+}
+
+.delivery-order-meta strong {
+  color: #153f3f;
+  font-size: 1.05rem;
+}
+
+.delivery-actions {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.delivery-actions input {
+  flex: 1 1 180px;
+  min-height: 2.4rem;
+  padding: .5rem .65rem;
+  border: 1px solid #dccdb7;
+  border-radius: .4rem;
+}
+
+.delivery-actions button {
+  min-height: 2.4rem;
+  padding: .5rem .7rem;
+  border: 0;
+  border-radius: .4rem;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.delivery-actions button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.delivery-actions .start {
+  background: #b45309;
+}
+
+.delivery-actions .complete {
+  background: #15803d;
+}
+
+.delivery-empty {
+  margin-top: 1.5rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: #5d4e37;
+  background: #fff;
+  border: 1px solid #eadfca;
+  border-radius: .5rem;
+}
+
+/* Map Modal */
+.delivery-map-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.delivery-map-modal-panel {
+  width: 100%;
+  max-width: 800px;
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.delivery-modal-header {
+  padding: 14px 20px;
+  background: #0f172a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.delivery-modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.delivery-modal-header p {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+.btn-modal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.btn-modal-close:hover {
+  color: white;
+}
+
+.delivery-modal-body {
+  padding: 16px;
+}
+
+@media (max-width: 900px) {
+  .delivery-orders-page {
+    padding: 5.5rem 1rem 2rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .delivery-actions button {
+    flex: 1;
+  }
+}

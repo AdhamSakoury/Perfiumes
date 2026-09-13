@@ -1,78 +1,122 @@
 <section class="page-shell page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
-      @if (perfume; as item) {
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-          <div class="bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl overflow-hidden">
-            <img [src]="item.image" [alt]="item.name" class="w-full aspect-square object-cover" (error)="useFallback($event)">
+  @if (perfume; as item) {
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+      <div class="bg-white dark:bg-nubian-surface rounded-2xl shadow-2xl overflow-hidden">
+        <img [src]="item.image" [alt]="item.name" class="w-full aspect-square object-cover" (error)="useFallback($event)">
+      </div>
+      <div>
+        <p class="text-nubian-gold font-semibold text-lg">{{ item.brand }}</p>
+        <h1 class="text-3xl md:text-4xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mt-2 mb-4">{{ item.name }}</h1>
+        <div class="flex items-center gap-3 mb-6">
+          <app-star-rating [rating]="item.rating" />
+          <span class="text-nubian-earth dark:text-nubian-sand">{{ 'ratingOutOfFive' | t:{ rating: item.rating } }}</span>
+        </div>
+        <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-6">{{ item.price | currency }}</p>
+        <p class="mb-4 font-semibold" [class.text-green-600]="(item.stockQuantity || 0) > 5" [class.text-nubian-terracotta]="(item.stockQuantity || 0) <= 5">
+          {{ (item.stockQuantity || 0) > 0 ? ((item.stockQuantity || 0) + ' available now') : 'Out of stock' }}
+        </p>
+        <p class="text-lg leading-relaxed text-nubian-earth dark:text-nubian-sand mb-6">{{ item.description }}</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+            <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'gender' | t }}</span>
+            <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.gender }}</p>
           </div>
-          <div>
-            <p class="text-nubian-gold font-semibold text-lg">{{ item.brand }}</p>
-            <h1 class="text-3xl md:text-4xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mt-2 mb-4">{{ item.name }}</h1>
-            <div class="flex items-center gap-3 mb-6">
-              <app-star-rating [rating]="item.rating" />
-              <span class="text-nubian-earth dark:text-nubian-sand">{{ 'ratingOutOfFive' | t:{ rating: item.rating } }}</span>
-            </div>
-            <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-6">{{ item.price | currency }}</p>
-            <p class="mb-4 font-semibold" [class.text-green-600]="(item.stockQuantity || 0) > 5" [class.text-nubian-terracotta]="(item.stockQuantity || 0) <= 5">
-              {{ (item.stockQuantity || 0) > 0 ? ((item.stockQuantity || 0) + ' available now') : 'Out of stock' }}
-            </p>
-            <p class="text-lg leading-relaxed text-nubian-earth dark:text-nubian-sand mb-6">{{ item.description }}</p>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
-                <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'gender' | t }}</span>
-                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.gender }}</p>
-              </div>
-              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
-                <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'concentration' | t }}</span>
-                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.concentration }}</p>
-              </div>
-              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
-                <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'category' | t }}</span>
-                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.category }}</p>
-              </div>
-              <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
-                <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'season' | t }}</span>
-                <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.season.join(', ') }}</p>
-              </div>
-            </div>
-
-            <div class="mb-6">
-              <h2 class="font-bold text-nubian-brown dark:text-nubian-gold mb-3 font-cinzel">{{ 'notes' | t }}</h2>
-              <div class="flex flex-wrap gap-2">
-                @for (note of item.notes; track note) {
-                  <span class="px-3 py-1 rounded-full bg-nubian-sand/70 dark:bg-nubian-surface2 text-sm">{{ note }}</span>
-                }
-              </div>
-            </div>
-
-            <div class="flex flex-col sm:flex-row gap-4">
-              <button type="button" (click)="cart.add(item.id)" [disabled]="(item.stockQuantity || 0) <= 0" class="px-8 py-4 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fas fa-shopping-cart mr-2"></i> {{ 'addToCart' | t }}
-              </button>
-              <button type="button" (click)="wishlist.add(item.id)" class="px-8 py-4 border-2 border-nubian-brown dark:border-nubian-gold text-nubian-brown dark:text-nubian-gold font-bold rounded-lg hover:bg-nubian-brown hover:text-white transition-all">
-                <i class="fas fa-heart mr-2"></i> {{ 'addToWishlist' | t }}
-              </button>
-            </div>
+          <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+            <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'concentration' | t }}</span>
+            <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.concentration }}</p>
+          </div>
+          <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+            <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'category' | t }}</span>
+            <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.category }}</p>
+          </div>
+          <div class="p-4 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20">
+            <span class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'season' | t }}</span>
+            <p class="font-bold text-nubian-brown dark:text-nubian-gold">{{ item.season.join(', ') }}</p>
           </div>
         </div>
 
-        <div class="mt-20">
-          <h2 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mb-6">{{ 'relatedPerfumes' | t }}</h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-            @for (related of perfumeService.relatedTo(item); track related.id) {
-              <app-perfume-card [perfume]="related" />
+        <div class="mb-6">
+          <h2 class="font-bold text-nubian-brown dark:text-nubian-gold mb-3 font-cinzel">{{ 'notes' | t }}</h2>
+          <div class="flex flex-wrap gap-2">
+            @for (note of item.notes; track note) {
+              <span class="px-3 py-1 rounded-full bg-nubian-sand/70 dark:bg-nubian-surface2 text-sm">{{ note }}</span>
             }
           </div>
         </div>
+
+        <div class="flex flex-col sm:flex-row gap-4">
+          <button type="button" (click)="cart.add(item.id)" [disabled]="(item.stockQuantity || 0) <= 0" class="px-8 py-4 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fas fa-shopping-cart mr-2"></i> {{ 'addToCart' | t }}
+          </button>
+          <button type="button" (click)="wishlist.add(item.id)" class="px-8 py-4 border-2 border-nubian-brown dark:border-nubian-gold text-nubian-brown dark:text-nubian-gold font-bold rounded-lg hover:bg-nubian-brown hover:text-white transition-all">
+            <i class="fas fa-heart mr-2"></i> {{ 'addToWishlist' | t }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verified Customer Reviews Section -->
+    <div class="mt-16 pt-12 border-t border-nubian-gold/20">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <span class="text-xs uppercase tracking-widest text-nubian-gold font-bold">Verified Buyer Reviews</span>
+          <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mt-1">Customer Opinions</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-lg font-bold text-nubian-brown dark:text-nubian-gold">{{ item.rating }} / 5</span>
+          <app-star-rating [rating]="item.rating" />
+        </div>
+      </div>
+
+      @if (loadingReviews()) {
+        <div class="py-8 text-center text-nubian-earth/70 dark:text-nubian-sand/70">
+          <i class="fas fa-spinner fa-spin mr-2"></i> Loading reviews...
+        </div>
+      } @else if (reviews().length === 0) {
+        <div class="p-8 rounded-xl bg-nubian-sand/20 dark:bg-nubian-surface text-center">
+          <i class="fas fa-star-half-stroke text-3xl text-nubian-gold mb-3"></i>
+          <h3 class="font-bold text-nubian-brown dark:text-nubian-gold">No written customer reviews yet</h3>
+          <p class="text-sm text-nubian-earth dark:text-nubian-sand mt-1">Customers who purchase this perfume can review it directly from their order details once delivered.</p>
+        </div>
       } @else {
-        <div class="text-center py-14 md:py-16">
-          <h1 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-4">{{ 'perfumeNotFound' | t }}</h1>
-          <a routerLink="/perfumes" class="text-nubian-gold font-semibold">{{ 'backToCollection' | t }}</a>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          @for (review of reviews(); track review.id) {
+            <div class="p-5 rounded-xl bg-white dark:bg-nubian-surface border border-nubian-gold/20 shadow-sm flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-bold text-nubian-brown dark:text-nubian-gold text-sm">{{ review.userName }}</span>
+                  <span class="text-xs text-nubian-earth/70 dark:text-nubian-sand/70">{{ review.createdAt | date:'mediumDate' }}</span>
+                </div>
+                <div class="mb-3">
+                  <app-star-rating [rating]="review.rating" />
+                </div>
+                @if (review.comment) {
+                  <p class="text-sm text-nubian-earth dark:text-nubian-sand leading-relaxed">"{{ review.comment }}"</p>
+                }
+              </div>
+              <div class="mt-4 pt-2 border-t border-nubian-gold/10 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                <i class="fas fa-certificate text-emerald-500"></i>
+                <span>Verified Buyer Purchase</span>
+              </div>
+            </div>
+          }
         </div>
       }
-    </section>
+    </div>
 
-
-
-
-
+    <div class="mt-20">
+      <h2 class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold font-cinzel mb-6">{{ 'relatedPerfumes' | t }}</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+        @for (related of perfumeService.relatedTo(item); track related.id) {
+          <app-perfume-card [perfume]="related" />
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="text-center py-14 md:py-16">
+      <h1 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-4">{{ 'perfumeNotFound' | t }}</h1>
+      <a routerLink="/perfumes" class="text-nubian-gold font-semibold">{{ 'backToCollection' | t }}</a>
+    </div>
+  }
+</section>

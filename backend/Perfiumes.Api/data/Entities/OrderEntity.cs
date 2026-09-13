@@ -17,6 +17,12 @@ public sealed class OrderEntity
     public string PaymentReference { get; set; } = string.Empty;
     public string? DeliveryUserId { get; set; }
     public string? DeliveryName { get; set; }
+    public string? DeliveryPhone { get; set; }
+    public double? CustomerLatitude { get; set; }
+    public double? CustomerLongitude { get; set; }
+    public double? DeliveryLatitude { get; set; }
+    public double? DeliveryLongitude { get; set; }
+    public DateTimeOffset? DeliveryLocationUpdatedAt { get; set; }
     public string CourierName { get; set; } = string.Empty;
     public string TrackingNumber { get; set; } = string.Empty;
     public DateTimeOffset? EstimatedDelivery { get; set; }
@@ -30,4 +36,7 @@ public sealed class OrderEntity
     public string? PromoCode { get; set; }
     public List<OrderItemEntity> Items { get; set; } = [];
     public List<OrderTrackingEventEntity> TrackingEvents { get; set; } = [];
+    public List<OrderMessageEntity> Messages { get; set; } = [];
+    public List<ProductReviewEntity> ProductReviews { get; set; } = [];
+    public DeliveryRatingEntity? DeliveryRating { get; set; }
 }

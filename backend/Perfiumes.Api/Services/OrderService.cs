@@ -1,12 +1,14 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Data.Entities;
+using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using System.Data;
 
 namespace Perfiumes.Api.Services;
 
-public sealed class OrderService(PerfiumesDbContext db)
+public sealed class OrderService(PerfiumesDbContext db, IHubContext<OrderTrackingHub> trackingHub)
 {
     private static readonly IReadOnlyDictionary<string, (string Title, string Description)> TrackingCopy =
         new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
@@ -123,6 +125,74 @@ IF COL_LENGTH(N'[Orders]', N'ClientRequestId') IS NULL
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_ClientRequestId' AND object_id = OBJECT_ID(N'[Orders]'))
     EXEC(N'CREATE UNIQUE INDEX [UX_Orders_UserEmail_ClientRequestId] ON [Orders]([UserEmail], [ClientRequestId]) WHERE [ClientRequestId] IS NOT NULL;');
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryPhone') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryPhone] nvarchar(64) NULL;
+
+IF COL_LENGTH(N'[Orders]', N'CustomerLatitude') IS NULL
+    ALTER TABLE [Orders] ADD [CustomerLatitude] float NULL;
+
+IF COL_LENGTH(N'[Orders]', N'CustomerLongitude') IS NULL
+    ALTER TABLE [Orders] ADD [CustomerLongitude] float NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryLatitude') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryLatitude] float NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryLongitude') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryLongitude] float NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryLocationUpdatedAt') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryLocationUpdatedAt] datetimeoffset NULL;
+
+IF OBJECT_ID(N'[OrderMessages]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [OrderMessages] (
+        [Id] nvarchar(64) NOT NULL CONSTRAINT [PK_OrderMessages] PRIMARY KEY,
+        [OrderId] nvarchar(64) NOT NULL,
+        [SenderRole] nvarchar(32) NOT NULL,
+        [SenderName] nvarchar(160) NOT NULL,
+        [SenderEmail] nvarchar(256) NOT NULL,
+        [Message] nvarchar(2000) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [FK_OrderMessages_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE CASCADE
+    );
+    CREATE INDEX [IX_OrderMessages_OrderId_CreatedAt] ON [OrderMessages] ([OrderId], [CreatedAt]);
+END
+
+IF OBJECT_ID(N'[ProductReviews]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [ProductReviews] (
+        [Id] nvarchar(64) NOT NULL CONSTRAINT [PK_ProductReviews] PRIMARY KEY,
+        [ProductId] int NOT NULL,
+        [OrderId] nvarchar(64) NOT NULL,
+        [UserEmail] nvarchar(256) NOT NULL,
+        [UserName] nvarchar(160) NOT NULL,
+        [Rating] int NOT NULL,
+        [Comment] nvarchar(1000) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [FK_ProductReviews_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_ProductReviews_Products_ProductId] FOREIGN KEY ([ProductId]) REFERENCES [Products] ([Id]) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX [UX_ProductReviews_OrderId_ProductId] ON [ProductReviews] ([OrderId], [ProductId]);
+    CREATE INDEX [IX_ProductReviews_ProductId] ON [ProductReviews] ([ProductId]);
+END
+
+IF OBJECT_ID(N'[DeliveryRatings]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [DeliveryRatings] (
+        [Id] nvarchar(64) NOT NULL CONSTRAINT [PK_DeliveryRatings] PRIMARY KEY,
+        [OrderId] nvarchar(64) NOT NULL,
+        [DeliveryUserId] nvarchar(64) NOT NULL,
+        [UserEmail] nvarchar(256) NOT NULL,
+        [UserName] nvarchar(160) NOT NULL,
+        [Rating] int NOT NULL,
+        [Comment] nvarchar(1000) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [FK_DeliveryRatings_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX [UX_DeliveryRatings_OrderId] ON [DeliveryRatings] ([OrderId]);
+    CREATE INDEX [IX_DeliveryRatings_DeliveryUserId] ON [DeliveryRatings] ([DeliveryUserId]);
+END
 """);
     }
 
@@ -262,8 +332,6 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
                 throw new UnauthorizedAccessException("Wallet payment requires the logged-in customer.");
             }
 
-            // Only the wallet balance is required here. Loading the full transaction
-            // history made every wallet checkout slower as that history grew.
             var wallet = await db.UserWallets
                 .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
             if (wallet is null)
@@ -293,6 +361,10 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
             });
         }
 
+        var (defaultLat, defaultLng) = GetCityCoordinates(request.ShippingAddress.City);
+        var custLat = request.ShippingAddress.Latitude ?? defaultLat;
+        var custLng = request.ShippingAddress.Longitude ?? defaultLng;
+
         var order = new OrderEntity
         {
             Id = id,
@@ -318,6 +390,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
             ShippingState = request.ShippingAddress.State,
             ShippingZip = request.ShippingAddress.Zip,
             ShippingCountry = request.ShippingAddress.Country,
+            CustomerLatitude = custLat,
+            CustomerLongitude = custLng,
             PromoCode = promoCode,
             Items = request.Items.Select(item => new OrderItemEntity
             {
@@ -369,8 +443,6 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
             return null;
         }
 
-        // Payment gateways can redeliver callbacks. Once finalized, never
-        // change the result or restore stock again for the same order.
         if (order.PaymentStatus is "paid" or "failed")
         {
             return ToDto(order);
@@ -422,6 +494,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
 
         order.TrackingEvents.Add(CreateTrackingEvent(id, normalizedStatus, DateTimeOffset.UtcNow, note));
         await db.SaveChangesAsync();
+
+        await trackingHub.Clients
+            .Group(OrderTrackingHub.OrderGroup(id))
+            .SendAsync(OrderTrackingHub.OrderStatusChangedEvent, new { OrderId = id, Status = normalizedStatus });
+
         return ToDto(order);
     }
 
@@ -499,6 +576,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
 
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
+
+        await trackingHub.Clients
+            .Group(OrderTrackingHub.OrderGroup(id))
+            .SendAsync(OrderTrackingHub.OrderStatusChangedEvent, new { OrderId = id, Status = "Cancelled" });
+
         return ToDto(order);
     }
 
@@ -521,8 +603,45 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
 
         order.DeliveryUserId = deliveryUser.Id;
         order.DeliveryName = deliveryUser.FullName;
+        order.DeliveryPhone = deliveryUser.Phone;
         order.CourierName = deliveryUser.FullName;
+
+        // Ensure customer coordinates exist
+        if (!order.CustomerLatitude.HasValue || !order.CustomerLongitude.HasValue)
+        {
+            var (cLat, cLng) = GetCityCoordinates(order.ShippingCity);
+            order.CustomerLatitude = cLat;
+            order.CustomerLongitude = cLng;
+        }
+
+        // Initialize delivery partner location at warehouse/dispatch hub
+        var (hubLat, hubLng) = (30.0444, 31.2357); // Cairo hub
+        if (order.CustomerLatitude.HasValue && order.CustomerLongitude.HasValue)
+        {
+            // Position delivery slightly offset (e.g. 1.5 - 2 km away from customer) for immediate tracking display
+            order.DeliveryLatitude = order.CustomerLatitude.Value - 0.015;
+            order.DeliveryLongitude = order.CustomerLongitude.Value - 0.012;
+        }
+        else
+        {
+            order.DeliveryLatitude = hubLat;
+            order.DeliveryLongitude = hubLng;
+        }
+
+        order.DeliveryLocationUpdatedAt = DateTimeOffset.UtcNow;
+
         await db.SaveChangesAsync();
+
+        await trackingHub.Clients
+            .Group(OrderTrackingHub.OrderGroup(id))
+            .SendAsync(OrderTrackingHub.DeliveryLocationUpdatedEvent, new
+            {
+                OrderId = id,
+                Latitude = order.DeliveryLatitude,
+                Longitude = order.DeliveryLongitude,
+                UpdatedAt = order.DeliveryLocationUpdatedAt
+            });
+
         return ToDto(order);
     }
 
@@ -559,7 +678,302 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
 
         order.TrackingEvents.Add(CreateTrackingEvent(id, normalizedStatus, DateTimeOffset.UtcNow, note));
         await db.SaveChangesAsync();
+
+        await trackingHub.Clients
+            .Group(OrderTrackingHub.OrderGroup(id))
+            .SendAsync(OrderTrackingHub.OrderStatusChangedEvent, new { OrderId = id, Status = normalizedStatus });
+
         return ToDto(order);
+    }
+
+    public async Task<OrderDto?> UpdateDeliveryLocationAsync(string orderId, string deliveryEmail, double lat, double lng)
+    {
+        var deliveryUser = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == deliveryEmail.Trim().ToLowerInvariant() && user.Role == "delivery" && !user.IsBlocked);
+        if (deliveryUser is null)
+        {
+            throw new UnauthorizedAccessException("Delivery account is not available.");
+        }
+
+        var order = await db.Orders
+            .Include(item => item.Items)
+            .Include(item => item.TrackingEvents)
+            .FirstOrDefaultAsync(item => item.Id == orderId && item.DeliveryUserId == deliveryUser.Id);
+
+        if (order is null)
+        {
+            return null;
+        }
+
+        order.DeliveryLatitude = lat;
+        order.DeliveryLongitude = lng;
+        var now = DateTimeOffset.UtcNow;
+        order.DeliveryLocationUpdatedAt = now;
+        await db.SaveChangesAsync();
+
+        await trackingHub.Clients
+            .Group(OrderTrackingHub.OrderGroup(orderId))
+            .SendAsync(OrderTrackingHub.DeliveryLocationUpdatedEvent, new
+            {
+                OrderId = orderId,
+                Latitude = lat,
+                Longitude = lng,
+                UpdatedAt = now
+            });
+
+        return ToDto(order);
+    }
+
+    public async Task<IReadOnlyList<OrderMessageDto>> GetOrderMessagesAsync(string orderId, string userEmail, string role)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order is null) return [];
+
+        var isCustomer = order.UserEmail.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase);
+        var isDelivery = !string.IsNullOrWhiteSpace(order.DeliveryUserId) &&
+            await db.Users.AnyAsync(u => u.Id == order.DeliveryUserId && u.Email == normalizedEmail);
+        var isAdmin = role.Equals("admin", StringComparison.OrdinalIgnoreCase);
+
+        if (!isCustomer && !isDelivery && !isAdmin)
+        {
+            throw new UnauthorizedAccessException("You are not authorized to view messages for this order.");
+        }
+
+        var messages = await db.OrderMessages
+            .AsNoTracking()
+            .Where(m => m.OrderId == orderId)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync();
+
+        return messages.Select(m => new OrderMessageDto(
+            m.Id,
+            m.OrderId,
+            m.SenderRole,
+            m.SenderName,
+            m.SenderEmail,
+            m.Message,
+            m.CreatedAt)).ToList();
+    }
+
+    public async Task<OrderMessageDto> SendOrderMessageAsync(string orderId, string senderEmail, string senderRole, string senderName, string text)
+    {
+        var normalizedEmail = senderEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order is null)
+        {
+            throw new InvalidOperationException("Order not found.");
+        }
+
+        var isCustomer = order.UserEmail.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase);
+        var isDelivery = !string.IsNullOrWhiteSpace(order.DeliveryUserId) &&
+            await db.Users.AnyAsync(u => u.Id == order.DeliveryUserId && u.Email == normalizedEmail);
+        var isAdmin = senderRole.Equals("admin", StringComparison.OrdinalIgnoreCase);
+
+        if (!isCustomer && !isDelivery && !isAdmin)
+        {
+            throw new UnauthorizedAccessException("Not authorized to chat on this order.");
+        }
+
+        var effectiveRole = isDelivery ? "delivery" : (isCustomer ? "customer" : "admin");
+        var effectiveName = !string.IsNullOrWhiteSpace(senderName)
+            ? senderName.Trim()
+            : (isDelivery ? (order.DeliveryName ?? "Delivery partner") : (isCustomer ? order.ShippingName : "Admin"));
+
+        var message = new OrderMessageEntity
+        {
+            Id = $"msg_{Guid.NewGuid():N}",
+            OrderId = orderId,
+            SenderRole = effectiveRole,
+            SenderName = effectiveName,
+            SenderEmail = normalizedEmail,
+            Message = text.Trim(),
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        db.OrderMessages.Add(message);
+        await db.SaveChangesAsync();
+
+        var dto = new OrderMessageDto(
+            message.Id,
+            message.OrderId,
+            message.SenderRole,
+            message.SenderName,
+            message.SenderEmail,
+            message.Message,
+            message.CreatedAt);
+
+        await trackingHub.Clients
+            .Group(OrderTrackingHub.OrderGroup(orderId))
+            .SendAsync(OrderTrackingHub.OrderMessageReceivedEvent, dto);
+
+        return dto;
+    }
+
+    public async Task<OrderRatingsStatusDto> GetOrderRatingsStatusAsync(string orderId, string userEmail)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId && o.UserEmail == normalizedEmail);
+        if (order is null)
+        {
+            return new OrderRatingsStatusDto(false, null, null, []);
+        }
+
+        var deliveryRating = await db.DeliveryRatings.AsNoTracking().FirstOrDefaultAsync(r => r.OrderId == orderId);
+        var productReviews = await db.ProductReviews.AsNoTracking()
+            .Where(r => r.OrderId == orderId)
+            .Select(r => new ProductReviewDto(r.Id, r.ProductId, r.OrderId, r.UserEmail, r.UserName, r.Rating, r.Comment, r.CreatedAt))
+            .ToListAsync();
+
+        return new OrderRatingsStatusDto(
+            deliveryRating is not null,
+            deliveryRating?.Rating,
+            deliveryRating?.Comment,
+            productReviews);
+    }
+
+    public async Task<ProductReviewDto> CreateProductReviewAsync(string orderId, string userEmail, CreateProductReviewRequest request)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == orderId && o.UserEmail == normalizedEmail);
+        if (order is null)
+        {
+            throw new InvalidOperationException("Order not found.");
+        }
+
+        if (order.Status != "Delivered")
+        {
+            throw new InvalidOperationException("Products can only be reviewed after the order is delivered.");
+        }
+
+        if (!order.Items.Any(i => i.ProductId == request.ProductId))
+        {
+            throw new InvalidOperationException("This product is not part of this order.");
+        }
+
+        if (request.Rating < 1 || request.Rating > 5)
+        {
+            throw new InvalidOperationException("Rating must be between 1 and 5 stars.");
+        }
+
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        var userName = user?.FullName ?? order.ShippingName;
+
+        var existing = await db.ProductReviews.FirstOrDefaultAsync(r => r.OrderId == orderId && r.ProductId == request.ProductId);
+        if (existing is not null)
+        {
+            existing.Rating = request.Rating;
+            existing.Comment = request.Comment?.Trim() ?? string.Empty;
+            existing.CreatedAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            existing = new ProductReviewEntity
+            {
+                Id = $"prev_{Guid.NewGuid():N}",
+                ProductId = request.ProductId,
+                OrderId = orderId,
+                UserEmail = normalizedEmail,
+                UserName = userName,
+                Rating = request.Rating,
+                Comment = request.Comment?.Trim() ?? string.Empty,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            db.ProductReviews.Add(existing);
+        }
+
+        await db.SaveChangesAsync();
+
+        // Recalculate average product rating
+        var product = await db.Products.FirstOrDefaultAsync(p => p.Id == request.ProductId);
+        if (product is not null)
+        {
+            var ratings = await db.ProductReviews.Where(r => r.ProductId == request.ProductId).Select(r => r.Rating).ToListAsync();
+            if (ratings.Count > 0)
+            {
+                product.Rating = Math.Round((decimal)ratings.Average(), 1);
+                product.UpdatedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync();
+            }
+        }
+
+        return new ProductReviewDto(existing.Id, existing.ProductId, existing.OrderId, existing.UserEmail, existing.UserName, existing.Rating, existing.Comment, existing.CreatedAt);
+    }
+
+    public async Task<DeliveryRatingDto> CreateDeliveryRatingAsync(string orderId, string userEmail, CreateDeliveryRatingRequest request)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.UserEmail == normalizedEmail);
+        if (order is null)
+        {
+            throw new InvalidOperationException("Order not found.");
+        }
+
+        if (order.Status != "Delivered")
+        {
+            throw new InvalidOperationException("Delivery can only be rated after the order is delivered.");
+        }
+
+        if (string.IsNullOrWhiteSpace(order.DeliveryUserId))
+        {
+            throw new InvalidOperationException("No delivery partner was assigned to this order.");
+        }
+
+        if (request.Rating < 1 || request.Rating > 5)
+        {
+            throw new InvalidOperationException("Rating must be between 1 and 5 stars.");
+        }
+
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        var userName = user?.FullName ?? order.ShippingName;
+
+        var existing = await db.DeliveryRatings.FirstOrDefaultAsync(r => r.OrderId == orderId);
+        if (existing is not null)
+        {
+            existing.Rating = request.Rating;
+            existing.Comment = request.Comment?.Trim() ?? string.Empty;
+            existing.CreatedAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            existing = new DeliveryRatingEntity
+            {
+                Id = $"drev_{Guid.NewGuid():N}",
+                OrderId = orderId,
+                DeliveryUserId = order.DeliveryUserId,
+                UserEmail = normalizedEmail,
+                UserName = userName,
+                Rating = request.Rating,
+                Comment = request.Comment?.Trim() ?? string.Empty,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            db.DeliveryRatings.Add(existing);
+        }
+
+        await db.SaveChangesAsync();
+        return new DeliveryRatingDto(existing.Id, existing.OrderId, existing.DeliveryUserId, existing.UserEmail, existing.UserName, existing.Rating, existing.Comment, existing.CreatedAt);
+    }
+
+    public async Task<IReadOnlyList<ProductReviewDto>> GetProductReviewsAsync(int productId)
+    {
+        var reviews = await db.ProductReviews
+            .AsNoTracking()
+            .Where(r => r.ProductId == productId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        return reviews.Select(r => new ProductReviewDto(
+            r.Id,
+            r.ProductId,
+            r.OrderId,
+            r.UserEmail,
+            r.UserName,
+            r.Rating,
+            r.Comment,
+            r.CreatedAt)).ToList();
     }
 
     public async Task<bool> DeleteAsync(string id)
@@ -659,6 +1073,35 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
         }
     }
 
+    public static (double Lat, double Lng) GetCityCoordinates(string city)
+    {
+        var normalized = (city ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("alex") || normalized.Contains("اسكندرية") || normalized.Contains("الإسكندرية"))
+            return (31.2001, 29.9187);
+        if (normalized.Contains("giza") || normalized.Contains("الجيزة") || normalized.Contains("هرم") || normalized.Contains("أكتوبر") || normalized.Contains("october") || normalized.Contains("zayed"))
+            return (30.0131, 31.2089);
+        if (normalized.Contains("mansoura") || normalized.Contains("المنصورة"))
+            return (31.0409, 31.3785);
+        if (normalized.Contains("tanta") || normalized.Contains("طنطا"))
+            return (30.7865, 31.0004);
+        if (normalized.Contains("port said") || normalized.Contains("بورسعيد"))
+            return (31.2653, 32.3019);
+        if (normalized.Contains("suez") || normalized.Contains("السويس"))
+            return (29.9668, 32.5498);
+        if (normalized.Contains("ismailia") || normalized.Contains("الإسماعيلية"))
+            return (30.5965, 32.2715);
+        if (normalized.Contains("aswan") || normalized.Contains("أسوان"))
+            return (24.0889, 32.8998);
+        if (normalized.Contains("luxor") || normalized.Contains("الأقصر"))
+            return (25.6872, 32.6396);
+        if (normalized.Contains("asyut") || normalized.Contains("أسيوط"))
+            return (27.1783, 31.1859);
+        if (normalized.Contains("sohag") || normalized.Contains("سوهاج"))
+            return (26.5569, 31.6948);
+        // Default Cairo
+        return (30.0444, 31.2357);
+    }
+
     private static decimal CalculateShippingFee(string city)
     {
         var normalized = city.Trim().ToLowerInvariant();
@@ -717,6 +1160,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
             order.PaymentReference,
             order.DeliveryUserId,
             order.DeliveryName,
+            order.DeliveryPhone,
+            order.CustomerLatitude,
+            order.CustomerLongitude,
+            order.DeliveryLatitude,
+            order.DeliveryLongitude,
+            order.DeliveryLocationUpdatedAt,
             order.CourierName,
             order.TrackingNumber,
             order.EstimatedDelivery,
@@ -727,7 +1176,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Orders_UserEmail_Clie
                 order.ShippingState,
                 order.ShippingZip,
                 order.ShippingCountry,
-                order.ShippingPhone),
+                order.ShippingPhone,
+                order.CustomerLatitude,
+                order.CustomerLongitude),
             order.PromoCode,
             (order.TrackingEvents ?? [])
                 .OrderBy(item => item.CreatedAt)
