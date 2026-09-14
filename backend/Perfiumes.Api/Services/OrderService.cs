@@ -8,7 +8,12 @@ using System.Data;
 
 namespace Perfiumes.Api.Services;
 
-public sealed class OrderService(PerfiumesDbContext db, IHubContext<OrderTrackingHub> trackingHub)
+public sealed class OrderService(
+    PerfiumesDbContext db,
+    IHubContext<OrderTrackingHub> trackingHub,
+    IHubContext<NotificationHub> notificationHub,
+    NotificationService notifications,
+    UserService users)
 {
     private static readonly IReadOnlyDictionary<string, (string Title, string Description)> TrackingCopy =
         new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
@@ -192,6 +197,23 @@ BEGIN
     );
     CREATE UNIQUE INDEX [UX_DeliveryRatings_OrderId] ON [DeliveryRatings] ([OrderId]);
     CREATE INDEX [IX_DeliveryRatings_DeliveryUserId] ON [DeliveryRatings] ([DeliveryUserId]);
+END
+
+IF OBJECT_ID(N'[CustomerRatings]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [CustomerRatings] (
+        [Id] nvarchar(64) NOT NULL CONSTRAINT [PK_CustomerRatings] PRIMARY KEY,
+        [OrderId] nvarchar(64) NOT NULL,
+        [DeliveryUserId] nvarchar(64) NOT NULL,
+        [UserEmail] nvarchar(256) NOT NULL,
+        [UserName] nvarchar(160) NOT NULL,
+        [Rating] int NOT NULL,
+        [Comment] nvarchar(1000) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [FK_CustomerRatings_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX [UX_CustomerRatings_OrderId] ON [CustomerRatings] ([OrderId]);
+    CREATE INDEX [IX_CustomerRatings_DeliveryUserId] ON [CustomerRatings] ([DeliveryUserId]);
 END
 """);
     }
@@ -739,6 +761,7 @@ END
             return null;
         }
 
+        var previousStatus = order.Status;
         order.Status = normalizedStatus;
         if (string.IsNullOrWhiteSpace(order.TrackingNumber))
         {
@@ -751,6 +774,21 @@ END
         await trackingHub.Clients
             .Group(OrderTrackingHub.OrderGroup(id))
             .SendAsync(OrderTrackingHub.OrderStatusChangedEvent, new { OrderId = id, Status = normalizedStatus });
+
+        if (previousStatus != normalizedStatus && normalizedStatus == "Delivered")
+        {
+            await PublishNotificationAsync(
+                order.UserEmail,
+                "Order delivered",
+                $"Your order {order.Id} has been delivered. You can now rate the delivery experience.",
+                "order",
+                "/orders");
+            await PublishAdminNotificationAsync(
+                "Order delivered",
+                $"Order {order.Id} was delivered to {order.UserEmail}.",
+                "order",
+                "/admin/orders");
+        }
 
         return ToDto(order);
     }
@@ -1023,7 +1061,93 @@ END
         }
 
         await db.SaveChangesAsync();
+        var deliveryUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == existing.DeliveryUserId);
+        if (deliveryUser is not null)
+        {
+            await PublishNotificationAsync(
+                deliveryUser.Email,
+                "New delivery rating",
+                $"{userName} rated your delivery for order {order.Id} {existing.Rating}/5.",
+                "rating",
+                "/delivery/orders");
+        }
+
         return new DeliveryRatingDto(existing.Id, existing.OrderId, existing.DeliveryUserId, existing.UserEmail, existing.UserName, existing.Rating, existing.Comment, existing.CreatedAt);
+    }
+
+    public async Task<CustomerRatingDto> CreateCustomerRatingAsync(string orderId, string deliveryEmail, CreateCustomerRatingRequest request)
+    {
+        var normalizedEmail = deliveryEmail.Trim().ToLowerInvariant();
+        var deliveryUser = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.Role == "delivery" && !u.IsBlocked);
+        if (deliveryUser is null)
+        {
+            throw new UnauthorizedAccessException("Delivery account is not available.");
+        }
+
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.DeliveryUserId == deliveryUser.Id);
+        if (order is null)
+        {
+            throw new InvalidOperationException("Order not found.");
+        }
+
+        if (order.Status != "Delivered")
+        {
+            throw new InvalidOperationException("Customer can only be rated after the order is delivered.");
+        }
+
+        if (request.Rating < 1 || request.Rating > 5)
+        {
+            throw new InvalidOperationException("Rating must be between 1 and 5 stars.");
+        }
+
+        var customer = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == order.UserEmail);
+        var userName = customer?.FullName ?? order.ShippingName;
+        var existing = await db.CustomerRatings.FirstOrDefaultAsync(r => r.OrderId == orderId);
+        if (existing is null)
+        {
+            existing = new CustomerRatingEntity
+            {
+                Id = $"crev_{Guid.NewGuid():N}",
+                OrderId = orderId,
+                DeliveryUserId = deliveryUser.Id,
+                UserEmail = order.UserEmail,
+                UserName = userName,
+                Rating = request.Rating,
+                Comment = request.Comment?.Trim() ?? string.Empty,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            db.CustomerRatings.Add(existing);
+        }
+        else
+        {
+            existing.Rating = request.Rating;
+            existing.Comment = request.Comment?.Trim() ?? string.Empty;
+            existing.CreatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
+        await PublishNotificationAsync(
+            order.UserEmail,
+            "New delivery feedback",
+            $"Your delivery partner rated your order {order.Id} {existing.Rating}/5.",
+            "rating",
+            "/orders");
+
+        return new CustomerRatingDto(existing.Id, existing.OrderId, existing.DeliveryUserId, existing.UserEmail, existing.UserName, existing.Rating, existing.Comment, existing.CreatedAt);
+    }
+
+    private async Task PublishNotificationAsync(string email, string title, string message, string type, string link)
+    {
+        var notification = notifications.Create(email.Trim().ToLowerInvariant(), title, message, type, link);
+        await notificationHub.Clients
+            .Group(NotificationHub.GroupName(notification.UserEmail))
+            .SendAsync(NotificationHub.NotificationCreatedEvent, notification);
+    }
+
+    private async Task PublishAdminNotificationAsync(string title, string message, string type, string link)
+    {
+        var adminEmails = await users.GetAdminEmailsAsync();
+        await Task.WhenAll(adminEmails.Select(email => PublishNotificationAsync(email, title, message, type, link)));
     }
 
     public async Task<IReadOnlyList<ProductReviewDto>> GetProductReviewsAsync(int productId)

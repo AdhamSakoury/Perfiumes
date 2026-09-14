@@ -1,128 +1,326 @@
-<section class="delivery-orders-page" [class.delivery-dark-mode]="theme.isDark()">
-  <header class="delivery-orders-heading">
-    <div><p>Delivery workspace</p><h1>Assigned orders</h1><span>Plan your stops, contact customers, and close each delivery.</span></div>
-    <button type="button" class="refresh-button" (click)="load()" [disabled]="loading()"><i class="fas fa-rotate" [class.fa-spin]="loading()"></i> Refresh</button>
+<section class="delivery-orders-root w-full min-h-screen px-4 sm:px-6 lg:px-10 py-8 transition-colors duration-300"
+  [class.dark]="theme.isDark()"
+  [dir]="isAr ? 'rtl' : 'ltr'">
+
+  <!-- Header & Navigation Bar -->
+  <header class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 rounded-2xl bg-gradient-to-br from-white/90 via-nubian-sand/20 to-white/70 dark:from-nubian-earth/90 dark:via-nubian-dark/60 dark:to-nubian-earth/80 border border-nubian-gold/25 shadow-xl backdrop-blur-md">
+    <div>
+      <div class="flex items-center gap-2.5 flex-wrap mb-1">
+        <a routerLink="/delivery" class="text-xs font-bold text-amber-700 dark:text-amber-300 hover:underline flex items-center gap-1">
+          <i class="fas" [class.fa-arrow-left]="!isAr" [class.fa-arrow-right]="isAr"></i>
+          <span>{{ 'deliveryWorkspace' | t }}</span>
+        </a>
+        <span class="text-xs text-nubian-earth/40 dark:text-nubian-sand/40">•</span>
+        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40">
+          {{ 'onDutyGps' | t }}
+        </span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black font-cinzel text-nubian-brown dark:text-nubian-gold">
+        {{ 'assignedOrders' | t }}
+      </h1>
+      <p class="text-sm text-nubian-earth dark:text-nubian-sand mt-0.5">
+        {{ 'planYourStops' | t }}
+      </p>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-3 self-start md:self-center">
+      <button type="button" class="refresh-button inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-nubian-dark text-nubian-brown dark:text-nubian-sand font-bold text-sm border border-nubian-gold/30 shadow-sm hover:border-nubian-gold hover:text-nubian-gold transition-all duration-200"
+        (click)="load()" [disabled]="loading()">
+        <i class="fas fa-rotate" [class.fa-spin]="loading()"></i>
+        <span>{{ 'refreshRoute' | t }}</span>
+      </button>
+
+      <a routerLink="/delivery"
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-nubian-sand/30 dark:bg-nubian-dark text-nubian-brown dark:text-nubian-gold font-bold text-sm border border-nubian-gold/25 hover:border-nubian-gold transition-all">
+        <i class="fas fa-gauge-high"></i>
+        <span>{{ isAr ? 'لوحة المندوب' : 'Dashboard' }}</span>
+      </a>
+    </div>
   </header>
-  <div class="delivery-orders-toolbar">
-    <label class="delivery-search"><i class="fas fa-magnifying-glass"></i><input [ngModel]="search()" (ngModelChange)="search.set($event)" aria-label="Search assigned orders" placeholder="Search order, customer, or area"></label>
-    <div class="delivery-filters" role="tablist" aria-label="Filter assigned orders">
-      <button type="button" [class.active]="filter() === 'all'" (click)="setFilter('all')">All <span>{{ orders().length }}</span></button>
-      <button type="button" [class.active]="filter() === 'ready'" (click)="setFilter('ready')">Ready <span>{{ orders().filter(o => !['OutForDelivery', 'Delivered', 'Cancelled'].includes(o.status)).length }}</span></button>
-      <button type="button" [class.active]="filter() === 'on-the-way'" (click)="setFilter('on-the-way')">On the way <span>{{ orders().filter(o => o.status === 'OutForDelivery').length }}</span></button>
-      <button type="button" [class.active]="filter() === 'delivered'" (click)="setFilter('delivered')">Delivered <span>{{ orders().filter(o => o.status === 'Delivered').length }}</span></button>
+
+  <!-- Search & Filter Toolbar -->
+  <div class="mb-8 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-lg backdrop-blur-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+    
+    <!-- Search Input -->
+    <label class="relative flex-1 flex items-center">
+      <i class="fas fa-magnifying-glass absolute text-nubian-gold/70 text-sm"
+        [class.left-3]="!isAr" [class.right-3]="isAr"></i>
+      <input [ngModel]="search()" (ngModelChange)="search.set($event)"
+        class="w-full py-2.5 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/50 border border-nubian-gold/20 focus:border-nubian-gold focus:outline-none text-nubian-brown dark:text-nubian-sand text-sm font-medium transition-all"
+        [ngClass]="isAr ? 'pr-9 pl-4' : 'pl-9 pr-4'"
+        [placeholder]="'searchStopsPlaceholder' | t"
+        aria-label="Search assigned orders">
+      @if (search()) {
+        <button type="button" (click)="search.set('')"
+          class="absolute text-xs text-nubian-earth hover:text-rose-500"
+          [class.right-3]="!isAr" [class.left-3]="isAr">
+          <i class="fas fa-times-circle"></i>
+        </button>
+      }
+    </label>
+
+    <!-- Filter Pills -->
+    <div class="flex items-center gap-1.5 flex-wrap self-start md:self-auto p-1 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/60 border border-nubian-gold/15">
+      <button type="button" (click)="setFilter('all')"
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5"
+        [ngClass]="filter() === 'all' ? 'bg-nubian-brown text-white dark:bg-nubian-gold dark:text-nubian-dark shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-nubian-gold'">
+        <span>{{ 'allStops' | t }}</span>
+        <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">{{ totalCount() }}</span>
+      </button>
+
+      <button type="button" (click)="setFilter('ready')"
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5"
+        [ngClass]="filter() === 'ready' ? 'bg-amber-600 text-white shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-amber-500'">
+        <span>{{ 'toStart' | t }}</span>
+        <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">{{ readyCount() }}</span>
+      </button>
+
+      <button type="button" (click)="setFilter('on-the-way')"
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5"
+        [ngClass]="filter() === 'on-the-way' ? 'bg-sky-600 text-white shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-sky-500'">
+        <span>{{ 'onTheWay' | t }}</span>
+        <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">{{ onTheWayCount() }}</span>
+      </button>
+
+      <button type="button" (click)="setFilter('delivered')"
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5"
+        [ngClass]="filter() === 'delivered' ? 'bg-emerald-600 text-white shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-emerald-500'">
+        <span>{{ 'delivered' | t }}</span>
+        <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">{{ deliveredCount() }}</span>
+      </button>
     </div>
   </div>
-  @if (loading()) {
-    <div class="delivery-empty">Loading assigned orders...</div>
-  } @else {
-    <div class="delivery-orders-list">
-      @for (order of filteredOrders(); track order.id) {
-        <article class="delivery-order-card" [class.done]="order.status === 'Delivered'">
-          <div class="delivery-order-top">
-            <div>
-              <strong>{{ order.id }}</strong>
-              <span>{{ order.date | date:'medium' }}</span>
-            </div>
-            <b [class]="statusClass(order.status)">
-              <i class="fas" [class.fa-circle-check]="order.status === 'Delivered'" [class.fa-truck-fast]="order.status === 'OutForDelivery'" [class.fa-box]="order.status !== 'OutForDelivery' && order.status !== 'Delivered'"></i>
-              {{ statusLabel(order.status) }}
-            </b>
-          </div>
 
-          <!-- Customer Contact Card -->
-          <div class="delivery-customer-box">
-            <div class="delivery-customer-header">
-              <i class="fas fa-user-circle"></i>
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="py-20 text-center">
+      <i class="fas fa-spinner fa-spin text-3xl text-nubian-gold mb-3"></i>
+      <p class="text-sm font-bold text-nubian-earth dark:text-nubian-sand">{{ isAr ? 'جارٍ تحميل الطلبات الموكلة...' : 'Loading assigned orders...' }}</p>
+    </div>
+  } @else {
+    <!-- Full-Width Responsive Cards Grid (1 to 3 cols) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      @for (order of filteredOrders(); track order.id; let idx = $index) {
+        <article class="delivery-order-card p-5 rounded-2xl bg-white/95 dark:bg-nubian-earth/85 border shadow-lg transition-all duration-300 hover:shadow-2xl flex flex-col justify-between"
+          [ngClass]="{
+            'border-emerald-500/60 dark:border-emerald-500/50 bg-emerald-50/15': order.status === 'Delivered',
+            'border-sky-500/60 dark:border-sky-500/50 bg-sky-50/15': order.status === 'OutForDelivery',
+            'border-nubian-gold/25': order.status !== 'Delivered' && order.status !== 'OutForDelivery'
+          }">
+
+          <div>
+            <!-- Order Top Header: Number, Date, Status Badge -->
+            <div class="flex items-center justify-between gap-2 mb-3.5 pb-3 border-b border-nubian-gold/15">
               <div>
-                <strong>{{ order.shippingAddress.name }}</strong>
-                <span>{{ order.userEmail }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-md bg-nubian-brown text-white dark:bg-nubian-gold dark:text-nubian-dark flex items-center justify-center font-black text-xs">
+                    #{{ idx + 1 }}
+                  </span>
+                  <strong class="text-sm font-bold text-nubian-brown dark:text-nubian-gold">{{ order.id }}</strong>
+                </div>
+                <span class="text-xs text-nubian-earth dark:text-nubian-sand block mt-0.5">{{ order.date | date:'medium' }}</span>
+              </div>
+
+              <!-- Status Badge -->
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"
+                [ngClass]="{
+                  'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/40': order.status === 'Delivered',
+                  'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300/40': order.status === 'OutForDelivery',
+                  'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/40': order.status !== 'Delivered' && order.status !== 'OutForDelivery'
+                }">
+                <i class="fas text-[11px]"
+                  [class.fa-circle-check]="order.status === 'Delivered'"
+                  [class.fa-truck-fast]="order.status === 'OutForDelivery'"
+                  [class.fa-box]="order.status !== 'OutForDelivery' && order.status !== 'Delivered'"></i>
+                <span>{{ statusLabel(order.status) }}</span>
+              </span>
+            </div>
+
+            <!-- Customer Contact Box -->
+            <div class="p-3.5 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/40 border border-nubian-gold/15 mb-3.5">
+              <div class="flex items-center gap-2.5 mb-2.5">
+                <div class="w-8 h-8 rounded-full bg-nubian-gold/20 text-nubian-gold flex items-center justify-center text-sm font-bold">
+                  <i class="fas fa-user"></i>
+                </div>
+                <div class="truncate">
+                  <strong class="text-sm font-bold text-nubian-brown dark:text-nubian-sand block truncate">{{ order.shippingAddress.name }}</strong>
+                  <span class="text-xs text-nubian-earth/70 dark:text-nubian-sand/60 block truncate">{{ order.userEmail }}</span>
+                </div>
+              </div>
+
+              <!-- Contact Actions: Call, WhatsApp, Chat on site -->
+              <div class="flex items-center gap-2 flex-wrap">
+                @if (order.shippingAddress.phone) {
+                  <a [href]="'tel:' + cleanPhone(order.shippingAddress.phone)"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300/40 text-xs font-bold hover:bg-emerald-500 hover:text-white transition-colors">
+                    <i class="fas fa-phone-alt"></i>
+                    <span>{{ order.shippingAddress.phone }}</span>
+                  </a>
+
+                  <a [href]="'https://wa.me/' + cleanPhone(order.shippingAddress.phone)"
+                    target="_blank" rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors"
+                    title="WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>{{ 'whatsappCustomer' | t }}</span>
+                  </a>
+                }
+                
+                <button type="button" (click)="openChat(order)"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-nubian-sand/40 dark:bg-nubian-dark text-nubian-brown dark:text-nubian-gold border border-nubian-gold/30 text-xs font-bold hover:border-nubian-gold transition-colors">
+                  <i class="fas fa-comments"></i>
+                  <span>{{ 'chatOnSite' | t }}</span>
+                </button>
               </div>
             </div>
 
-            <div class="delivery-contact-actions">
-              @if (order.shippingAddress.phone) {
-                <a [href]="'tel:' + cleanPhone(order.shippingAddress.phone)" class="btn-contact-action btn-call" title="Call customer">
-                  <i class="fas fa-phone"></i>
-                  <span>{{ order.shippingAddress.phone }}</span>
+            <!-- Delivery Address Box -->
+            <div class="p-3.5 rounded-xl bg-nubian-sand/15 dark:bg-nubian-dark/30 border border-nubian-gold/15 mb-3.5 text-xs">
+              <div class="flex items-start gap-2 mb-2.5 text-nubian-brown dark:text-nubian-sand">
+                <i class="fas fa-location-dot text-rose-500 mt-0.5 text-sm"></i>
+                <span class="leading-relaxed">
+                  {{ order.shippingAddress.street }}, <strong>{{ order.shippingAddress.city }}</strong>, {{ order.shippingAddress.state }}
+                </span>
+              </div>
+
+              <!-- Map Navigation Actions -->
+              <div class="flex items-center gap-2">
+                <button type="button" (click)="openMap(order)"
+                  class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white dark:bg-nubian-dark border border-nubian-gold/30 text-nubian-brown dark:text-nubian-gold font-bold text-xs hover:border-nubian-gold transition-colors">
+                  <i class="fas fa-map-location-dot text-amber-500"></i>
+                  <span>{{ 'liveGpsNav' | t }}</span>
+                </button>
+
+                <a [href]="getGoogleNavUrl(order)" target="_blank" rel="noopener noreferrer"
+                  class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 transition-colors">
+                  <i class="fas fa-diamond-turn-right"></i>
+                  <span>{{ 'openInGmaps' | t }}</span>
                 </a>
-                <a [href]="'https://wa.me/' + cleanPhone(order.shippingAddress.phone)" target="_blank" rel="noopener noreferrer" class="btn-contact-action btn-whatsapp" title="Chat on WhatsApp">
-                  <i class="fab fa-whatsapp"></i>
-                  <span>WhatsApp</span>
-                </a>
-              }
-              <button type="button" class="btn-contact-action btn-chat-site" (click)="openChat(order)" title="Chat on site">
-                <i class="fas fa-comments"></i>
-                <span>Chat on site</span>
-              </button>
+              </div>
+            </div>
+
+            <!-- Financials & Items Summary -->
+            <div class="flex items-center justify-between p-3 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/40 border border-nubian-gold/15 mb-4 text-xs">
+              <div>
+                <span class="text-nubian-earth dark:text-nubian-sand block">
+                  <i class="fas fa-boxes-stacked mr-1"></i> {{ order.items.length }} {{ isAr ? 'منتج' : 'item(s)' }}
+                </span>
+                <span class="text-[11px] font-bold mt-0.5 inline-block"
+                  [ngClass]="order.paymentMethod === 'cashOnDelivery' ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'">
+                  {{ order.paymentMethod === 'cashOnDelivery' ? ('cashOnDelivery' | t) : ('paidOnline' | t) }}
+                </span>
+              </div>
+              
+              <div class="flex items-center gap-2">
+                <strong class="text-lg font-black text-nubian-brown dark:text-nubian-gold">
+                  {{ order.total | egp }}
+                </strong>
+
+                <!-- PDF Invoice Download -->
+                <button type="button" (click)="downloadInvoice(order, $event)"
+                  class="p-1.5 rounded-lg bg-white dark:bg-nubian-dark border border-nubian-gold/30 hover:border-nubian-gold text-red-500 transition-colors"
+                  [title]="'downloadInvoice' | t">
+                  <i class="fas fa-file-pdf"></i>
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Delivery Address with direct navigation -->
-          <div class="delivery-address-box">
-            <div class="address-text">
-              <i class="fas fa-location-dot"></i>
-              <span>{{ order.shippingAddress.street }}, {{ order.shippingAddress.city }}, {{ order.shippingAddress.state }}</span>
-            </div>
-            <div class="map-action-row">
-              <button type="button" class="btn-map-nav" (click)="openMap(order)">
-                <i class="fas fa-map-location-dot"></i>
-                <span>Open Live Route & GPS</span>
-              </button>
-              <a [href]="getGoogleNavUrl(order)" target="_blank" rel="noopener noreferrer" class="btn-google-nav">
-                <i class="fas fa-arrow-up-right-from-square"></i>
-                <span>Google Maps</span>
-              </a>
-            </div>
-          </div>
-
-          <div class="delivery-order-meta">
-            <span><i class="fas fa-boxes-stacked"></i> {{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</span>
-            <span>{{ order.paymentMethod === 'cashOnDelivery' ? 'Cash on delivery' : 'Paid online' }}</span>
-            <strong>{{ order.total | currency:'EGP':'symbol-narrow' }}</strong>
-          </div>
+          <!-- Actions Footer (Notes & Status change) -->
           @if (order.status !== 'Delivered') {
-            <div class="delivery-actions">
-              <input [(ngModel)]="notes[order.id]" [name]="'note-' + order.id" placeholder="Optional delivery note">
-              <button type="button" class="start" (click)="updateStatus(order, 'OutForDelivery')" [disabled]="updatingId === order.id || order.status === 'OutForDelivery'">
-                <i class="fas fa-truck-fast"></i> On the way
-              </button>
-              <button type="button" class="complete" (click)="updateStatus(order, 'Delivered')" [disabled]="updatingId === order.id">
-                <i class="fas" [class.fa-spinner]="updatingId === order.id" [class.fa-spin]="updatingId === order.id" [class.fa-circle-check]="updatingId !== order.id"></i> Delivered
-              </button>
+            <div class="pt-3 border-t border-nubian-gold/15 flex flex-col gap-2">
+              <input [(ngModel)]="notes[order.id]" [name]="'note-' + order.id"
+                class="w-full py-1.5 px-3 rounded-xl bg-nubian-sand/15 dark:bg-nubian-dark border border-nubian-gold/20 text-xs text-nubian-brown dark:text-nubian-sand focus:outline-none focus:border-nubian-gold"
+                [placeholder]="'deliveryNotePlaceholder' | t">
+
+              <div class="flex items-center gap-2">
+                @if (order.status !== 'OutForDelivery') {
+                  <button type="button" (click)="updateStatus(order, 'OutForDelivery')"
+                    [disabled]="updatingId === order.id"
+                    class="flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow hover:shadow-md transition-all flex items-center justify-center gap-1.5">
+                    <i class="fas" [class.fa-spinner]="updatingId === order.id" [class.fa-spin]="updatingId === order.id" [class.fa-truck-fast]="updatingId !== order.id"></i>
+                    <span>{{ 'startTrip' | t }}</span>
+                  </button>
+                }
+                
+                <button type="button" (click)="updateStatus(order, 'Delivered')"
+                  [disabled]="updatingId === order.id"
+                  class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow hover:shadow-md transition-all flex items-center justify-center gap-1.5">
+                  <i class="fas" [class.fa-spinner]="updatingId === order.id" [class.fa-spin]="updatingId === order.id" [class.fa-circle-check]="updatingId !== order.id"></i>
+                  <span>{{ 'markDelivered' | t }}</span>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <div class="pt-3 border-t border-nubian-gold/15">
+              <div class="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold text-xs text-center border border-emerald-300/40 flex items-center justify-center gap-1.5">
+                <i class="fas fa-check-double"></i>
+                <span>{{ isAr ? 'تم تسليم الشحنة بنجاح' : 'Delivered successfully' }}</span>
+              </div>
+              <div class="mt-3 grid gap-2">
+                <label class="text-xs font-bold text-nubian-brown dark:text-nubian-sand">
+                  {{ isAr ? 'قيّم العميل' : 'Rate customer' }}
+                  <select [(ngModel)]="customerRatings[order.id]" [name]="'customer-rating-' + order.id"
+                    class="ml-2 rounded-lg border border-nubian-gold/30 bg-white dark:bg-nubian-dark px-2 py-1 text-xs">
+                    <option [ngValue]="0">-</option>
+                    <option [ngValue]="1">1 / 5</option>
+                    <option [ngValue]="2">2 / 5</option>
+                    <option [ngValue]="3">3 / 5</option>
+                    <option [ngValue]="4">4 / 5</option>
+                    <option [ngValue]="5">5 / 5</option>
+                  </select>
+                </label>
+                <input [(ngModel)]="customerRatingComments[order.id]" [name]="'customer-rating-comment-' + order.id"
+                  class="w-full rounded-lg border border-nubian-gold/20 bg-white dark:bg-nubian-dark px-3 py-1.5 text-xs"
+                  [placeholder]="isAr ? 'تعليق اختياري' : 'Optional comment'">
+                <button type="button" (click)="submitCustomerRating(order)"
+                  [disabled]="ratingId === order.id || !customerRatings[order.id]"
+                  class="w-full rounded-lg bg-nubian-brown px-3 py-2 text-xs font-bold text-white hover:bg-nubian-gold disabled:opacity-50 dark:bg-nubian-gold dark:text-nubian-dark">
+                  <i class="fas" [class.fa-spinner]="ratingId === order.id" [class.fa-spin]="ratingId === order.id" [class.fa-star]="ratingId !== order.id"></i>
+                  {{ isAr ? 'إرسال تقييم العميل' : 'Send customer rating' }}
+                </button>
+              </div>
             </div>
           }
         </article>
       } @empty {
-        <div class="delivery-empty"><i class="fas fa-inbox"></i><strong>{{ search() || filter() !== 'all' ? 'No matching orders' : 'No assigned orders yet' }}</strong><span>{{ search() || filter() !== 'all' ? 'Try another search or clear the filter.' : 'New orders assigned to you will appear here.' }}</span></div>
+        <div class="col-span-full py-16 text-center">
+          <div class="w-16 h-16 rounded-full bg-nubian-gold/10 text-nubian-gold text-2xl flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-box-open"></i>
+          </div>
+          <h3 class="text-lg font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">
+            {{ 'noMatchingOrders' | t }}
+          </h3>
+          <p class="text-sm text-nubian-earth dark:text-nubian-sand mt-1">
+            {{ 'tryAnotherFilter' | t }}
+          </p>
+        </div>
       }
     </div>
   }
 
-  <!-- Interactive Map Modal for Delivery Driver -->
+  <!-- Live Map Modal -->
   @if (activeMapOrder(); as mapOrder) {
-    <div class="delivery-map-modal-backdrop" (click)="closeMap()">
-      <div class="delivery-map-modal-panel" (click)="$event.stopPropagation()">
-        <header class="delivery-modal-header">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" (click)="closeMap()">
+      <div class="w-full max-w-4xl bg-white dark:bg-nubian-earth rounded-2xl shadow-2xl overflow-hidden border border-nubian-gold/30" (click)="$event.stopPropagation()">
+        <div class="p-4 bg-nubian-brown text-white flex items-center justify-between">
           <div>
-            <h3>Live Navigation - Order #{{ mapOrder.id }}</h3>
-            <p>Customer: {{ mapOrder.shippingAddress.name }} | {{ mapOrder.shippingAddress.street }}, {{ mapOrder.shippingAddress.city }}</p>
+            <h3 class="font-bold font-cinzel text-lg">{{ isAr ? 'خريطة التوصيل المباشر' : 'Live Delivery GPS Route' }} - {{ mapOrder.id }}</h3>
+            <p class="text-xs text-amber-200/80">{{ mapOrder.shippingAddress.name }} · {{ mapOrder.shippingAddress.street }}, {{ mapOrder.shippingAddress.city }}</p>
           </div>
-          <button type="button" class="btn-modal-close" (click)="closeMap()" aria-label="Close map">
+          <button type="button" (click)="closeMap()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center">
             <i class="fas fa-times"></i>
           </button>
-        </header>
-        <div class="delivery-modal-body">
-          <app-order-map
-            [order]="mapOrder"
-            [isDeliveryView]="true"
-            (locationUpdated)="onLocationUpdated(mapOrder, $event)"
-          />
+        </div>
+        <div class="p-4">
+          <app-order-map [order]="mapOrder" [isDeliveryView]="true" />
         </div>
       </div>
     </div>
   }
 
-  <!-- Order Chat Modal -->
+  <!-- Live Chat Modal -->
   @if (activeChatOrder(); as chatOrder) {
     <app-order-chat
       [order]="chatOrder"
@@ -130,4 +328,5 @@
       (closeChat)="closeChat()"
     />
   }
+
 </section>

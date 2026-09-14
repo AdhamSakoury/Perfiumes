@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { DeliveryRating, Order, OrderMessage, OrderRatingsStatus, OrderStatus, ProductReview } from '@core/models/store.models';
+import { CustomerRating, DeliveryRating, Order, OrderMessage, OrderRatingsStatus, OrderStatus, ProductReview } from '@core/models/store.models';
 import { Observable, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -108,6 +108,14 @@ export class OrderService {
   submitDeliveryRating(orderId: string, rating: number, comment: string, token: string): Observable<DeliveryRating> {
     return this.http.post<DeliveryRating>(
       `${environment.apiBaseUrl}/api/orders/${orderId}/delivery-rating`,
+      { rating, comment },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  submitCustomerRating(orderId: string, rating: number, comment: string, token: string): Observable<CustomerRating> {
+    return this.http.post<CustomerRating>(
+      `${environment.apiBaseUrl}/api/delivery/orders/${orderId}/customer-rating`,
       { rating, comment },
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
     );

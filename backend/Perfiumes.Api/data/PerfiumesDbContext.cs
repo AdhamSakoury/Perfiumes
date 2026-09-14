@@ -19,6 +19,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
     public DbSet<OrderMessageEntity> OrderMessages => Set<OrderMessageEntity>();
     public DbSet<ProductReviewEntity> ProductReviews => Set<ProductReviewEntity>();
     public DbSet<DeliveryRatingEntity> DeliveryRatings => Set<DeliveryRatingEntity>();
+    public DbSet<CustomerRatingEntity> CustomerRatings => Set<CustomerRatingEntity>();
     public DbSet<AdminExpenseEntity> AdminExpenses => Set<AdminExpenseEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -180,6 +181,24 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.HasOne(review => review.Product)
                 .WithMany()
                 .HasForeignKey(review => review.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CustomerRatingEntity>(entity =>
+        {
+            entity.ToTable("CustomerRatings");
+            entity.HasKey(rating => rating.Id);
+            entity.HasIndex(rating => rating.OrderId).IsUnique();
+            entity.HasIndex(rating => rating.DeliveryUserId);
+            entity.Property(rating => rating.Id).HasMaxLength(64);
+            entity.Property(rating => rating.OrderId).HasMaxLength(64);
+            entity.Property(rating => rating.DeliveryUserId).HasMaxLength(64);
+            entity.Property(rating => rating.UserEmail).HasMaxLength(256);
+            entity.Property(rating => rating.UserName).HasMaxLength(160);
+            entity.Property(rating => rating.Comment).HasMaxLength(1000);
+            entity.HasOne(rating => rating.Order)
+                .WithOne()
+                .HasForeignKey<CustomerRatingEntity>(rating => rating.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

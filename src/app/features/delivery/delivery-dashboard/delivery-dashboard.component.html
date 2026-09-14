@@ -1,16 +1,538 @@
-<section class="delivery-page" [class.delivery-dark-mode]="theme.isDark()">
-  <header class="delivery-heading">
-    <div><p>Delivery workspace</p><h1>Today's route</h1><span>See only the orders assigned to you.</span></div>
-    <button type="button" (click)="load()" [disabled]="loading()"><i class="fas fa-rotate" [class.fa-spin]="loading()"></i> Refresh</button>
+<section class="delivery-dashboard-root w-full min-h-screen px-4 sm:px-6 lg:px-10 py-8 transition-colors duration-300"
+  [class.dark]="theme.isDark()"
+  [dir]="isAr ? 'rtl' : 'ltr'">
+
+  <!-- Top Hero & Command Bar -->
+  <header class="dashboard-hero-header mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 rounded-2xl bg-gradient-to-br from-white/90 via-nubian-sand/20 to-white/70 dark:from-nubian-earth/90 dark:via-nubian-dark/60 dark:to-nubian-earth/80 border border-nubian-gold/25 shadow-xl backdrop-blur-md">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-nubian-brown to-nubian-gold text-white shadow-lg flex items-center justify-center text-2xl font-bold font-cinzel">
+        <i class="fas fa-motorcycle text-amber-300"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40">
+            {{ 'deliveryWorkspace' | t }}
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/50">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            {{ 'onDutyGps' | t }}
+          </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black font-cinzel text-nubian-brown dark:text-nubian-gold mt-1">
+          {{ 'todaysRoute' | t }}
+        </h1>
+        <p class="text-sm text-nubian-earth dark:text-nubian-sand">
+          {{ isAr ? 'مرحباً، ' + courierName + ' · إليك محطات وخط سير التوصيل الموكل إليك اليوم' : 'Welcome back, ' + courierName + ' · Here is your live dispatch itinerary for today' }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick Action Header Buttons -->
+    <div class="flex items-center gap-3 self-start md:self-center flex-wrap">
+      <button type="button" (click)="load()" [disabled]="loading()"
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-nubian-dark text-nubian-brown dark:text-nubian-sand font-bold text-sm border border-nubian-gold/30 shadow-sm hover:border-nubian-gold hover:text-nubian-gold transition-all duration-200">
+        <i class="fas fa-rotate" [class.fa-spin]="loading()"></i>
+        <span>{{ 'refreshRoute' | t }}</span>
+      </button>
+
+      <a routerLink="/delivery/orders"
+        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-nubian-brown to-nubian-gold text-white font-bold text-sm shadow-md hover:shadow-lg hover:brightness-110 transition-all duration-200">
+        <i class="fas fa-boxes-stacked"></i>
+        <span>{{ 'viewFullList' | t }}</span>
+        <i class="fas" [class.fa-arrow-right]="!isAr" [class.fa-arrow-left]="isAr"></i>
+      </a>
+    </div>
   </header>
-  <div class="delivery-metrics">
-    <article><i class="fas fa-clipboard-list"></i><span>Assigned</span><strong>{{ orders().length }}</strong></article>
-    <article><i class="fas fa-box"></i><span>To start</span><strong>{{ pending() }}</strong></article>
-    <article><i class="fas fa-truck-fast"></i><span>On the way</span><strong>{{ outForDelivery() }}</strong></article>
-    <article><i class="fas fa-circle-check"></i><span>Delivered</span><strong>{{ delivered() }}</strong></article>
+
+  <!-- 6 Key Performance Metric Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+    <!-- Total Assigned -->
+    <div class="kpi-metric-card p-4 rounded-2xl bg-white/85 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-md flex flex-col justify-between hover:border-nubian-gold transition-all duration-300">
+      <div class="flex items-center justify-between text-nubian-earth dark:text-nubian-sand">
+        <span class="text-xs font-bold uppercase tracking-wider">{{ 'assignedOrders' | t }}</span>
+        <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm">
+          <i class="fas fa-clipboard-list"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-3xl font-black font-cinzel text-nubian-brown dark:text-nubian-gold">{{ totalAssigned() }}</span>
+        <span class="block text-xs text-nubian-earth/70 dark:text-nubian-sand/60 mt-0.5">{{ isAr ? 'محطة مقررة' : 'Stops total' }}</span>
+      </div>
+    </div>
+
+    <!-- Ready / To Start -->
+    <div class="kpi-metric-card p-4 rounded-2xl bg-white/85 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-md flex flex-col justify-between hover:border-amber-500 transition-all duration-300">
+      <div class="flex items-center justify-between text-nubian-earth dark:text-nubian-sand">
+        <span class="text-xs font-bold uppercase tracking-wider">{{ 'toStart' | t }}</span>
+        <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-sm">
+          <i class="fas fa-box-open"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-3xl font-black font-cinzel text-amber-600 dark:text-amber-400">{{ pending() }}</span>
+        <span class="block text-xs text-nubian-earth/70 dark:text-nubian-sand/60 mt-0.5">{{ isAr ? 'بانتظار الانطلاق' : 'Ready to start' }}</span>
+      </div>
+    </div>
+
+    <!-- On the Road -->
+    <div class="kpi-metric-card p-4 rounded-2xl bg-white/85 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-md flex flex-col justify-between hover:border-sky-500 transition-all duration-300">
+      <div class="flex items-center justify-between text-nubian-earth dark:text-nubian-sand">
+        <span class="text-xs font-bold uppercase tracking-wider">{{ 'onTheWay' | t }}</span>
+        <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center text-sm relative">
+          <i class="fas fa-truck-fast"></i>
+          <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-sky-500 animate-ping"></span>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-3xl font-black font-cinzel text-sky-600 dark:text-sky-400">{{ outForDelivery() }}</span>
+        <span class="block text-xs text-nubian-earth/70 dark:text-nubian-sand/60 mt-0.5">{{ isAr ? 'جارٍ توصيلها الآن' : 'Active on route' }}</span>
+      </div>
+    </div>
+
+    <!-- Successfully Delivered -->
+    <div class="kpi-metric-card p-4 rounded-2xl bg-white/85 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-md flex flex-col justify-between hover:border-emerald-500 transition-all duration-300">
+      <div class="flex items-center justify-between text-nubian-earth dark:text-nubian-sand">
+        <span class="text-xs font-bold uppercase tracking-wider">{{ 'delivered' | t }}</span>
+        <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm">
+          <i class="fas fa-circle-check"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-3xl font-black font-cinzel text-emerald-600 dark:text-emerald-400">{{ delivered() }}</span>
+        <span class="block text-xs text-nubian-earth/70 dark:text-nubian-sand/60 mt-0.5">{{ isAr ? 'تم تسليمها بنجاح' : 'Delivered stops' }}</span>
+      </div>
+    </div>
+
+    <!-- Route Completion Rate -->
+    <div class="kpi-metric-card p-4 rounded-2xl bg-white/85 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-md flex flex-col justify-between hover:border-nubian-gold transition-all duration-300">
+      <div class="flex items-center justify-between text-nubian-earth dark:text-nubian-sand">
+        <span class="text-xs font-bold uppercase tracking-wider">{{ 'completionRate' | t }}</span>
+        <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm">
+          <i class="fas fa-chart-pie"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-3xl font-black font-cinzel text-purple-600 dark:text-purple-400">{{ completionRate() }}%</span>
+        <div class="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1.5">
+          <div class="bg-gradient-to-r from-purple-500 to-emerald-500 h-full rounded-full transition-all duration-500" [style.width.%]="completionRate()"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cash to Collect (COD) -->
+    <div class="kpi-metric-card p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-white dark:from-nubian-earth dark:to-nubian-dark border-2 border-amber-400/40 shadow-md flex flex-col justify-between hover:border-amber-400 transition-all duration-300">
+      <div class="flex items-center justify-between text-nubian-earth dark:text-nubian-sand">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">{{ 'cashToCollect' | t }}</span>
+        <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center text-sm shadow">
+          <i class="fas fa-coins"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <span class="text-xl sm:text-2xl font-black font-cinzel text-amber-700 dark:text-amber-300 block truncate">{{ cashToCollect() | egp }}</span>
+        <span class="block text-xs text-amber-700/80 dark:text-amber-300/70 mt-0.5">{{ isAr ? 'مطلوب تحصيلها كاش' : 'Cash on delivery' }}</span>
+      </div>
+    </div>
   </div>
-  <section class="delivery-next">
-    <div><h2>Assigned orders</h2><p>Open your delivery list to update the status as you complete each stop.</p></div>
-    <a routerLink="/delivery/orders">View orders <i class="fas fa-arrow-right"></i></a>
+
+  <!-- Charts & Visual Analytics Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+    
+    <!-- Graph 1: Route Status Donut Chart (5 cols) -->
+    <div class="lg:col-span-5 p-6 rounded-2xl bg-white/90 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-lg backdrop-blur-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-base font-bold text-nubian-brown dark:text-nubian-gold font-cinzel flex items-center gap-2">
+            <i class="fas fa-chart-pie text-nubian-gold"></i>
+            {{ 'statusDistribution' | t }}
+          </h3>
+          <span class="text-xs text-nubian-earth dark:text-nubian-sand">{{ isAr ? 'نسب إنجاز وحالات المحطات الموكلة' : 'Breakdown of your delivery route stops' }}</span>
+        </div>
+        <span class="text-xs px-2.5 py-1 rounded-lg bg-nubian-sand/30 dark:bg-nubian-dark font-bold text-nubian-brown dark:text-nubian-gold">
+          {{ totalAssigned() }} {{ isAr ? 'طلبات' : 'Orders' }}
+        </span>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-around gap-6 py-4">
+        <!-- SVG Donut Chart -->
+        <div class="relative w-44 h-44 flex items-center justify-center">
+          <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+            <!-- Background track -->
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor"
+              class="text-slate-200 dark:text-slate-800" stroke-width="12" />
+
+            <!-- Delivered slice (Emerald) -->
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" stroke-width="12"
+              stroke-linecap="round"
+              [style.strokeDasharray]="donutCircumference"
+              [style.strokeDashoffset]="donutDeliveredOffset()"
+              class="transition-all duration-700 ease-out" />
+
+            <!-- Out for delivery slice (Sky Blue) -->
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#0284c7" stroke-width="12"
+              stroke-linecap="round"
+              [style.strokeDasharray]="donutOnTheWayStrokeDasharray()"
+              [style.strokeDashoffset]="donutOnTheWayOffset()"
+              class="transition-all duration-700 ease-out" />
+
+            <!-- Pending slice (Amber) -->
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f59e0b" stroke-width="12"
+              stroke-linecap="round"
+              [style.strokeDasharray]="donutPendingStrokeDasharray()"
+              [style.strokeDashoffset]="donutPendingOffset()"
+              class="transition-all duration-700 ease-out" />
+          </svg>
+
+          <!-- Center Label -->
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+            <span class="text-3xl font-black font-cinzel text-nubian-brown dark:text-nubian-gold leading-none">
+              {{ completionRate() }}%
+            </span>
+            <span class="text-[11px] font-bold text-nubian-earth dark:text-nubian-sand uppercase tracking-wider mt-1">
+              {{ 'completionRate' | t }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Donut Legend & Stats -->
+        <div class="flex flex-col gap-2.5 w-full sm:w-auto">
+          <div class="flex items-center justify-between gap-4 p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/50 dark:border-emerald-800/40">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <span class="text-xs font-bold text-emerald-900 dark:text-emerald-300">{{ 'delivered' | t }}</span>
+            </div>
+            <strong class="text-sm text-emerald-900 dark:text-emerald-300">{{ delivered() }}</strong>
+          </div>
+
+          <div class="flex items-center justify-between gap-4 p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/50 dark:border-sky-800/40">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-sky-500"></span>
+              <span class="text-xs font-bold text-sky-900 dark:text-sky-300">{{ 'onTheWay' | t }}</span>
+            </div>
+            <strong class="text-sm text-sky-900 dark:text-sky-300">{{ outForDelivery() }}</strong>
+          </div>
+
+          <div class="flex items-center justify-between gap-4 p-2 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-800/40">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+              <span class="text-xs font-bold text-amber-900 dark:text-amber-300">{{ 'toStart' | t }}</span>
+            </div>
+            <strong class="text-sm text-amber-900 dark:text-amber-300">{{ pending() }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-nubian-gold/15 flex items-center justify-between text-xs text-nubian-earth dark:text-nubian-sand">
+        <span>{{ isAr ? 'إجمالي قيمة شحنات اليوم:' : 'Total route merchandise value:' }}</span>
+        <strong class="font-bold text-nubian-brown dark:text-nubian-gold">{{ totalRouteValue() | egp }}</strong>
+      </div>
+    </div>
+
+    <!-- Graph 2: Financial Split & Hourly Velocity (7 cols) -->
+    <div class="lg:col-span-7 p-6 rounded-2xl bg-white/90 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-lg backdrop-blur-sm flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-nubian-brown dark:text-nubian-gold font-cinzel flex items-center gap-2">
+              <i class="fas fa-wallet text-amber-500"></i>
+              {{ isAr ? 'تحصيل المبالغ وسرعة التوصيل اليومية' : 'Collections & Shift Velocity' }}
+            </h3>
+            <span class="text-xs text-nubian-earth dark:text-nubian-sand">{{ isAr ? 'مقارنة المبالغ النقدية وسرعة إنجاز المحطات' : 'Payment collection split and delivery throughput' }}</span>
+          </div>
+        </div>
+
+        <!-- Cash vs Prepaid Stacked Visual Bar -->
+        <div class="mb-6 p-4 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/50 border border-nubian-gold/15">
+          <div class="flex justify-between items-center text-xs font-bold mb-2">
+            <span class="text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <i class="fas fa-hand-holding-dollar"></i>
+              {{ 'cashToCollect' | t }}: {{ cashToCollect() | egp }}
+            </span>
+            <span class="text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+              <i class="fas fa-credit-card"></i>
+              {{ 'prepaidOrders' | t }}: {{ prepaidTotal() | egp }}
+            </span>
+          </div>
+          <div class="w-full h-3.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex">
+            <div class="bg-gradient-to-r from-amber-500 to-amber-600 h-full transition-all duration-500"
+              [style.width.%]="totalRouteValue() > 0 ? (cashToCollect() / totalRouteValue()) * 100 : 50"></div>
+            <div class="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-500"
+              [style.width.%]="totalRouteValue() > 0 ? (prepaidTotal() / totalRouteValue()) * 100 : 50"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-nubian-earth dark:text-nubian-sand mt-2">
+            <span>{{ isAr ? 'تم تحصيله فعلياً كاش: ' : 'Collected cash so far: ' }} <strong class="text-emerald-600 dark:text-emerald-400">{{ cashCollectedSoFar() | egp }}</strong></span>
+            <span>{{ isAr ? 'نسبة الدفع الإلكتروني: ' : 'Digital/Prepaid: ' }} <strong>{{ prepaidPercentage() }}%</strong></span>
+          </div>
+        </div>
+
+        <!-- Hourly Velocity Bar Chart -->
+        <div>
+          <span class="text-xs font-bold text-nubian-earth dark:text-nubian-sand block mb-2">
+            {{ isAr ? '📊 سرعة التوزيع على فترات اليوم (تقديري)' : '📊 Hourly Route Velocity Throughput' }}
+          </span>
+          <div class="flex items-end justify-between gap-3 h-28 pt-4 pb-2 px-3 rounded-xl bg-nubian-sand/15 dark:bg-nubian-dark/30 border border-nubian-gold/10">
+            @for (slot of hourlySlots(); track slot.timeLabel) {
+              <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                <span class="text-[10px] font-bold text-nubian-gold opacity-0 group-hover:opacity-100 transition-opacity">
+                  {{ slot.count }} {{ isAr ? 'طلب' : 'stops' }}
+                </span>
+                <div class="w-full max-w-[28px] bg-gradient-to-t from-nubian-brown to-nubian-gold dark:from-nubian-gold/60 dark:to-nubian-gold rounded-t-md transition-all duration-500 hover:brightness-125"
+                  [style.height.%]="slot.heightPercent"></div>
+                <span class="text-[10px] font-semibold text-nubian-earth dark:text-nubian-sand mt-1">
+                  {{ slot.timeLabel }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Destination Area Chips -->
+      <div class="pt-3 mt-4 border-t border-nubian-gold/15 flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-bold text-nubian-earth dark:text-nubian-sand">{{ isAr ? 'المناطق:' : 'Areas:' }}</span>
+        @for (area of areaGroups(); track area.city) {
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-nubian-sand/40 dark:bg-nubian-dark border border-nubian-gold/25 text-nubian-brown dark:text-nubian-gold">
+            <i class="fas fa-location-dot text-[10px] text-amber-600"></i>
+            {{ area.city }} ({{ area.count }})
+          </span>
+        } @empty {
+          <span class="text-xs text-nubian-earth/60 dark:text-nubian-sand/50">—</span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Route / Scheduled Stops Section -->
+  <section class="active-route-section p-6 rounded-2xl bg-white/90 dark:bg-nubian-earth/80 border border-nubian-gold/20 shadow-xl backdrop-blur-md">
+    
+    <!-- Section Header & Filter Tabs -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-nubian-gold/15">
+      <div>
+        <h2 class="text-xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold flex items-center gap-2.5">
+          <i class="fas fa-route text-nubian-gold"></i>
+          {{ 'activeStops' | t }}
+        </h2>
+        <p class="text-xs text-nubian-earth dark:text-nubian-sand mt-0.5">
+          {{ isAr ? 'قم بتحديث حالة كل محطة والتواصل مع العميل أو تتبع الخريطة مباشرة' : 'Manage each delivery stop, call customers, navigate via GPS, and collect cash.' }}
+        </p>
+      </div>
+
+      <!-- Filter Buttons -->
+      <div class="flex items-center gap-1.5 p-1 rounded-xl bg-nubian-sand/30 dark:bg-nubian-dark border border-nubian-gold/20 self-start sm:self-center">
+        <button type="button" (click)="filter.set('all')"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+          [ngClass]="filter() === 'all' ? 'bg-nubian-brown text-white dark:bg-nubian-gold dark:text-nubian-dark shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-nubian-gold'">
+          {{ 'allStops' | t }} ({{ totalAssigned() }})
+        </button>
+        <button type="button" (click)="filter.set('ready')"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+          [ngClass]="filter() === 'ready' ? 'bg-amber-600 text-white shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-amber-500'">
+          {{ 'toStart' | t }} ({{ pending() }})
+        </button>
+        <button type="button" (click)="filter.set('on-the-way')"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+          [ngClass]="filter() === 'on-the-way' ? 'bg-sky-600 text-white shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-sky-500'">
+          {{ 'onTheWay' | t }} ({{ outForDelivery() }})
+        </button>
+        <button type="button" (click)="filter.set('delivered')"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+          [ngClass]="filter() === 'delivered' ? 'bg-emerald-600 text-white shadow' : 'text-nubian-earth dark:text-nubian-sand hover:text-emerald-500'">
+          {{ 'delivered' | t }} ({{ delivered() }})
+        </button>
+      </div>
+    </div>
+
+    <!-- Stops Cards Grid -->
+    @if (filteredOrders().length) {
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6">
+        @for (order of filteredOrders(); track order.id; let idx = $index) {
+          <article class="stop-card p-5 rounded-2xl bg-white dark:bg-nubian-dark/70 border transition-all duration-300 hover:shadow-xl relative flex flex-col justify-between"
+            [ngClass]="{
+              'border-emerald-400/60 dark:border-emerald-600/50 bg-emerald-50/20': order.status === 'Delivered',
+              'border-sky-400/60 dark:border-sky-600/50 bg-sky-50/20': order.status === 'OutForDelivery',
+              'border-nubian-gold/25': order.status !== 'Delivered' && order.status !== 'OutForDelivery'
+            }">
+
+            <!-- Stop Header: Index, Order ID, Status Badge -->
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-7 h-7 rounded-lg bg-nubian-brown text-white dark:bg-nubian-gold dark:text-nubian-dark flex items-center justify-center font-bold text-xs">
+                    #{{ idx + 1 }}
+                  </span>
+                  <strong class="text-sm font-bold text-nubian-brown dark:text-nubian-gold">
+                    {{ order.id }}
+                  </strong>
+                </div>
+
+                <!-- Status Badge -->
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                  [ngClass]="{
+                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300': order.status === 'Delivered',
+                    'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300': order.status === 'OutForDelivery',
+                    'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300': order.status !== 'Delivered' && order.status !== 'OutForDelivery'
+                  }">
+                  {{ statusLabel(order.status) }}
+                </span>
+              </div>
+
+              <!-- Customer Details & Address -->
+              <div class="mb-4">
+                <h4 class="font-bold text-base text-nubian-brown dark:text-nubian-sand flex items-center gap-1.5">
+                  <i class="fas fa-user text-xs text-nubian-gold"></i>
+                  {{ order.shippingAddress.name }}
+                </h4>
+                
+                <div class="mt-1.5 flex items-start gap-2 text-xs text-nubian-earth dark:text-nubian-sand">
+                  <i class="fas fa-location-dot text-rose-500 mt-0.5"></i>
+                  <span>{{ order.shippingAddress.street }}, <strong>{{ order.shippingAddress.city }}</strong></span>
+                </div>
+
+                <!-- Contact Buttons: Call & WhatsApp -->
+                @if (order.shippingAddress.phone) {
+                  <div class="flex items-center gap-2 mt-2.5">
+                    <a [href]="'tel:' + cleanPhone(order.shippingAddress.phone)"
+                      class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300/40 text-xs font-bold hover:bg-emerald-500 hover:text-white transition-colors">
+                      <i class="fas fa-phone-alt"></i>
+                      <span>{{ order.shippingAddress.phone }}</span>
+                    </a>
+
+                    <a [href]="'https://wa.me/' + cleanPhone(order.shippingAddress.phone)"
+                      target="_blank" rel="noopener noreferrer"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors"
+                      title="WhatsApp">
+                      <i class="fab fa-whatsapp"></i>
+                    </a>
+
+                    <button type="button" (click)="openChat(order)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-nubian-sand/40 dark:bg-nubian-dark text-nubian-brown dark:text-nubian-gold border border-nubian-gold/30 text-xs font-bold hover:border-nubian-gold transition-colors"
+                      title="Chat in App">
+                      <i class="fas fa-comments"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Order Items Summary & Pricing -->
+              <div class="p-3 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/40 border border-nubian-gold/15 mb-4 text-xs">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-nubian-earth dark:text-nubian-sand">{{ order.items.length }} {{ isAr ? 'منتج' : 'item(s)' }}:</span>
+                  <strong class="text-base font-black text-nubian-brown dark:text-nubian-gold">{{ order.total | egp }}</strong>
+                </div>
+
+                <!-- Payment Status Pill -->
+                <div class="flex items-center justify-between mt-2 pt-2 border-t border-nubian-gold/15">
+                  <span class="text-[11px] font-semibold text-nubian-earth dark:text-nubian-sand">
+                    {{ isAr ? 'طريقة الدفع:' : 'Payment:' }}
+                  </span>
+                  @if (order.paymentStatus === 'paid' || order.paymentMethod === 'wallet') {
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/40">
+                      ✓ {{ isAr ? 'مدفوع إلكترونياً' : 'Prepaid' }}
+                    </span>
+                  } @else {
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50 flex items-center gap-1">
+                      <i class="fas fa-hand-holding-dollar"></i>
+                      {{ isAr ? 'تحصيل كاش: ' : 'Collect Cash: ' }} {{ order.total | egp }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Stop Bottom Action Buttons -->
+            <div class="flex flex-col gap-2 pt-2 border-t border-nubian-gold/15">
+              <div class="flex items-center gap-2">
+                <!-- Google Maps Nav Button -->
+                <a [href]="getGoogleNavUrl(order)" target="_blank" rel="noopener noreferrer"
+                  class="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  <i class="fas fa-diamond-turn-right text-sky-500"></i>
+                  <span>{{ 'openInGmaps' | t }}</span>
+                </a>
+
+                <!-- View Map Route Modal -->
+                <button type="button" (click)="openMap(order)"
+                  class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Live Route Map">
+                  <i class="fas fa-map-location-dot text-amber-500"></i>
+                </button>
+
+                <!-- PDF Invoice Download -->
+                <button type="button" (click)="downloadInvoice(order, $event)"
+                  class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="PDF Invoice">
+                  <i class="fas fa-file-pdf text-red-500"></i>
+                </button>
+              </div>
+
+              <!-- Status Action Trigger (Start Trip or Mark Delivered) -->
+              @if (order.status !== 'Delivered') {
+                <div class="flex items-center gap-2 mt-1">
+                  @if (order.status !== 'OutForDelivery') {
+                    <button type="button" (click)="updateStatus(order, 'OutForDelivery')"
+                      [disabled]="updatingId() === order.id"
+                      class="flex-1 py-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow hover:shadow-md transition-all flex items-center justify-center gap-2">
+                      <i class="fas" [class.fa-spinner]="updatingId() === order.id" [class.fa-spin]="updatingId() === order.id" [class.fa-truck-fast]="updatingId() !== order.id"></i>
+                      <span>{{ 'startTrip' | t }}</span>
+                    </button>
+                  }
+                  <button type="button" (click)="updateStatus(order, 'Delivered')"
+                    [disabled]="updatingId() === order.id"
+                    class="flex-1 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow hover:shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fas" [class.fa-spinner]="updatingId() === order.id" [class.fa-spin]="updatingId() === order.id" [class.fa-circle-check]="updatingId() !== order.id"></i>
+                    <span>{{ 'markDelivered' | t }}</span>
+                  </button>
+                </div>
+              } @else {
+                <div class="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold text-xs text-center border border-emerald-300/40">
+                  <i class="fas fa-check-double mr-1"></i>
+                  {{ isAr ? 'تم تسليم هذه المحطة بنجاح' : 'This stop has been delivered' }}
+                </div>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="py-16 text-center">
+        <div class="w-16 h-16 rounded-full bg-nubian-gold/10 text-nubian-gold text-2xl flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-clipboard-check"></i>
+        </div>
+        <h3 class="text-lg font-bold text-nubian-brown dark:text-nubian-gold font-cinzel">
+          {{ 'noAssignedOrders' | t }}
+        </h3>
+        <p class="text-sm text-nubian-earth dark:text-nubian-sand mt-1">
+          {{ isAr ? 'لا توجد محطات توصيل تحت الفلتر المختار حالياً.' : 'No stops found matching your current filter selection.' }}
+        </p>
+      </div>
+    }
   </section>
+
+  <!-- Live Map Modal -->
+  @if (activeMapOrder(); as mapOrder) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" (click)="closeMap()">
+      <div class="w-full max-w-4xl bg-white dark:bg-nubian-earth rounded-2xl shadow-2xl overflow-hidden border border-nubian-gold/30" (click)="$event.stopPropagation()">
+        <div class="p-4 bg-nubian-brown text-white flex items-center justify-between">
+          <div>
+            <h3 class="font-bold font-cinzel text-lg">{{ isAr ? 'خريطة التوصيل المباشر' : 'Live Delivery GPS Route' }} - {{ mapOrder.id }}</h3>
+            <p class="text-xs text-amber-200/80">{{ mapOrder.shippingAddress.name }} · {{ mapOrder.shippingAddress.street }}, {{ mapOrder.shippingAddress.city }}</p>
+          </div>
+          <button type="button" (click)="closeMap()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="p-4">
+          <app-order-map [order]="mapOrder" [isDeliveryView]="true" />
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Live Chat Modal -->
+  @if (activeChatOrder(); as chatOrder) {
+    <app-order-chat
+      [order]="chatOrder"
+      [currentRole]="'delivery'"
+      (closeChat)="closeChat()"
+    />
+  }
+
 </section>

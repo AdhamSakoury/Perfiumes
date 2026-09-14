@@ -26,10 +26,10 @@
             }
             @if (auth.currentUser()?.role === 'delivery') {
               <a routerLink="/delivery" routerLinkActive="nav-link-active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">
-                <i class="fas fa-gauge-high nav-link-icon"></i><span>Delivery dashboard</span>
+                <i class="fas fa-gauge-high nav-link-icon"></i><span>{{ i18n.t('deliveryDashboard') }}</span>
               </a>
               <a routerLink="/delivery/orders" routerLinkActive="nav-link-active" class="nav-link">
-                <i class="fas fa-truck-fast nav-link-icon"></i><span>Assigned orders</span>
+                <i class="fas fa-truck-fast nav-link-icon"></i><span>{{ i18n.t('assignedOrders') }}</span>
               </a>
               <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
                 <i class="fas fa-envelope nav-link-icon"></i><span>{{ i18n.t('messages') }}</span>
@@ -113,9 +113,9 @@
                     </div>
                   }
                 </div>
-                <span class="navbar-user-name">
+                <a routerLink="/account" class="navbar-user-name hover:text-nubian-gold transition-colors cursor-pointer" [title]="i18n.t('account')">
                   {{ firstName(user.fullName) }}
-                </span>
+                </a>
                 <button type="button" (click)="auth.logout()" class="logout-button group">
                   <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
                   <span class="relative flex items-center gap-2">
@@ -169,8 +169,8 @@
                 </a>
               }
               @if (auth.currentUser()?.role === 'delivery') {
-                <a routerLink="/delivery" (click)="mobileOpen.set(false)" class="mobile-nav-row"><i class="fas fa-gauge-high"></i><span>Delivery dashboard</span></a>
-                <a routerLink="/delivery/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row"><i class="fas fa-truck-fast"></i><span>Assigned orders</span></a>
+                <a routerLink="/delivery" (click)="mobileOpen.set(false)" class="mobile-nav-row"><i class="fas fa-gauge-high"></i><span>{{ i18n.t('deliveryDashboard') }}</span></a>
+                <a routerLink="/delivery/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row"><i class="fas fa-truck-fast"></i><span>{{ i18n.t('assignedOrders') }}</span></a>
               } @else if (auth.currentUser()?.role !== 'admin') {
                 <a routerLink="/wishlist" (click)="mobileOpen.set(false)" class="mobile-nav-row">
                   <i class="fas fa-heart"></i>

@@ -306,6 +306,17 @@ export interface OrderRatingsStatus {
   productReviews: ProductReview[];
 }
 
+export interface CustomerRating {
+  id: string;
+  orderId: string;
+  deliveryUserId: string;
+  userEmail: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 // ============================================================
 // Finance Models
 // ============================================================

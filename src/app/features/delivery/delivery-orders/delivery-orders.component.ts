@@ -1,20 +1,33 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
+import { ThemeService } from '@core/services/theme.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { InvoiceService } from '@core/services/invoice.service';
 import { OrderMapComponent } from '@shared/components/order-map/order-map.component';
 import { OrderChatComponent } from '@shared/components/order-chat/order-chat.component';
-import { ThemeService } from '@core/services/theme.service';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-delivery-orders',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, OrderMapComponent, OrderChatComponent],
+  imports: [
+    DatePipe,
+    NgClass,
+    FormsModule,
+    RouterLink,
+    EgpPipe,
+    TranslatePipe,
+    OrderMapComponent,
+    OrderChatComponent
+  ],
   templateUrl: './delivery-orders.component.html',
   styleUrls: ['./delivery-orders.component.css']
 })
@@ -25,28 +38,48 @@ export class DeliveryOrdersComponent {
   readonly activeChatOrder = signal<Order | null>(null);
   readonly search = signal('');
   readonly filter = signal<'all' | 'ready' | 'on-the-way' | 'delivered'>('all');
+
+  // Computed counts
+  readonly totalCount = computed(() => this.orders().length);
+  readonly readyCount = computed(() => this.orders().filter((o) => !['OutForDelivery', 'Delivered', 'Cancelled'].includes(o.status)).length);
+  readonly onTheWayCount = computed(() => this.orders().filter((o) => o.status === 'OutForDelivery').length);
+  readonly deliveredCount = computed(() => this.orders().filter((o) => o.status === 'Delivered').length);
+
   readonly filteredOrders = computed(() => {
     const query = this.search().trim().toLowerCase();
     const selectedFilter = this.filter();
 
     return this.orders().filter((order) => {
-      const matchesFilter = selectedFilter === 'all'
-        || (selectedFilter === 'ready' && !['OutForDelivery', 'Delivered', 'Cancelled'].includes(order.status))
-        || (selectedFilter === 'on-the-way' && order.status === 'OutForDelivery')
-        || (selectedFilter === 'delivered' && order.status === 'Delivered');
+      const matchesFilter =
+        selectedFilter === 'all' ||
+        (selectedFilter === 'ready' && !['OutForDelivery', 'Delivered', 'Cancelled'].includes(order.status)) ||
+        (selectedFilter === 'on-the-way' && order.status === 'OutForDelivery') ||
+        (selectedFilter === 'delivered' && order.status === 'Delivered');
+
       const searchableText = [
         order.id,
-        order.shippingAddress.name,
-        order.shippingAddress.phone,
-        order.shippingAddress.city,
-        order.shippingAddress.street
-      ].filter(Boolean).join(' ').toLowerCase();
+        order.shippingAddress?.name,
+        order.shippingAddress?.phone,
+        order.shippingAddress?.city,
+        order.shippingAddress?.street
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
 
       return matchesFilter && (!query || searchableText.includes(query));
     });
   });
+
   updatingId: string | null = null;
   notes: Record<string, string> = {};
+  customerRatings: Record<string, number> = {};
+  customerRatingComments: Record<string, string> = {};
+  ratingId: string | null = null;
+
+  get isAr(): boolean {
+    return this.i18n.language() === 'ar';
+  }
 
   constructor(
     private readonly auth: AuthService,
@@ -54,7 +87,9 @@ export class DeliveryOrdersComponent {
     private readonly router: Router,
     private readonly toast: ToastService,
     private readonly sanitizer: DomSanitizer,
-    readonly theme: ThemeService
+    readonly theme: ThemeService,
+    private readonly i18n: LocalizationService,
+    private readonly invoiceService: InvoiceService
   ) {
     if (this.auth.currentUser()?.role !== 'delivery') {
       void this.router.navigateByUrl('/');
@@ -71,8 +106,14 @@ export class DeliveryOrdersComponent {
         return;
       }
       this.ordersApi.getDeliveryOrders(token).subscribe({
-        next: (orders) => { this.orders.set(orders); this.loading.set(false); },
-        error: () => { this.loading.set(false); this.toast.show('Could not load assigned orders.', 'error'); }
+        next: (orders) => {
+          this.orders.set(orders);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+          this.toast.show(this.isAr ? 'تعذر تحميل الطلبات الموكلة إليك.' : 'Could not load assigned orders.', 'error');
+        }
       });
     });
   }
@@ -82,9 +123,9 @@ export class DeliveryOrdersComponent {
   }
 
   statusLabel(status: Order['status']): string {
-    if (status === 'Delivered') return 'Delivered';
-    if (status === 'OutForDelivery') return 'Out for delivery';
-    return 'Ready to deliver';
+    if (status === 'Delivered') return this.isAr ? 'تم التسليم بنجاح' : 'Delivered';
+    if (status === 'OutForDelivery') return this.isAr ? 'في الطريق للتسليم' : 'Out for delivery';
+    return this.isAr ? 'جاهز للاستلام والتوصيل' : 'Ready to deliver';
   }
 
   statusClass(status: Order['status']): string {
@@ -100,15 +141,46 @@ export class DeliveryOrdersComponent {
       if (!token) return;
       this.ordersApi.updateDeliveryStatus(order.id, status, token, this.notes[order.id] || '').subscribe({
         next: (updated) => {
-          this.orders.update((list) => list.map((item) => item.id === updated.id ? updated : item));
+          this.orders.update((list) => list.map((item) => (item.id === updated.id ? updated : item)));
           if (this.activeMapOrder()?.id === updated.id) {
             this.activeMapOrder.set(updated);
           }
           this.notes[order.id] = '';
           this.updatingId = null;
-          this.toast.show(status === 'Delivered' ? 'Order marked as delivered.' : 'Order marked as out for delivery.', 'success');
+          this.toast.show(
+            status === 'Delivered'
+              ? (this.isAr ? 'تم تأكيد تسليم الشحنة للعميل بنجاح.' : 'Order marked as delivered.')
+              : (this.isAr ? 'تم تغيير الحالة إلى في الطريق للعميل.' : 'Order marked as out for delivery.'),
+            'success'
+          );
         },
-        error: (error) => { this.updatingId = null; this.toast.show(error?.error?.message || 'Could not update order.', 'error'); }
+        error: (error) => {
+          this.updatingId = null;
+          this.toast.show(error?.error?.message || (this.isAr ? 'تعذر تحديث الطلب.' : 'Could not update order.'), 'error');
+        }
+      });
+    });
+  }
+
+  submitCustomerRating(order: Order): void {
+    const rating = this.customerRatings[order.id] || 0;
+    if (this.ratingId || rating < 1) return;
+
+    this.ratingId = order.id;
+    this.auth.ensureAccessToken().subscribe((token) => {
+      if (!token) {
+        this.ratingId = null;
+        return;
+      }
+      this.ordersApi.submitCustomerRating(order.id, rating, this.customerRatingComments[order.id] || '', token).subscribe({
+        next: () => {
+          this.ratingId = null;
+          this.toast.show(this.isAr ? 'تم إرسال تقييم العميل.' : 'Customer rating sent.', 'success');
+        },
+        error: (error) => {
+          this.ratingId = null;
+          this.toast.show(error?.error?.message || (this.isAr ? 'تعذر إرسال التقييم.' : 'Could not send rating.'), 'error');
+        }
       });
     });
   }
@@ -118,10 +190,23 @@ export class DeliveryOrdersComponent {
       if (!token) return;
       this.ordersApi.updateDeliveryLocation(order.id, coords.latitude, coords.longitude, token).subscribe({
         next: (updated) => {
-          this.orders.update((list) => list.map((item) => item.id === updated.id ? updated : item));
+          this.orders.update((list) => list.map((item) => (item.id === updated.id ? updated : item)));
         }
       });
     });
+  }
+
+  downloadInvoice(order: Order, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.invoiceService.downloadInvoice(order, {
+      fullName: order.shippingAddress?.name,
+      email: order.userEmail,
+      phone: order.shippingAddress?.phone
+    });
+    this.toast.show(
+      this.isAr ? 'جارٍ تحضير الفاتورة كـ PDF...' : 'Preparing invoice PDF for customer...',
+      'success'
+    );
   }
 
   openMap(order: Order): void {
@@ -146,24 +231,22 @@ export class DeliveryOrdersComponent {
   }
 
   getGoogleNavUrl(order: Order): string {
-    const lat = order.customerLatitude ?? 30.0444;
-    const lng = order.customerLongitude ?? 31.2357;
-    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    if (order.customerLatitude && order.customerLongitude) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${order.customerLatitude},${order.customerLongitude}`;
+    }
+    const dest = [order.shippingAddress?.street, order.shippingAddress?.city, 'Egypt'].filter(Boolean).join(', ');
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
   }
 
   routeUrl(order: Order): string {
     const address = order.shippingAddress;
-    const destination = [address.street, address.city, address.state, address.country]
-      .filter(Boolean)
-      .join(', ');
+    const destination = [address.street, address.city, address.state, address.country].filter(Boolean).join(', ');
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
   }
 
   mapUrl(order: Order): SafeResourceUrl {
     const address = order.shippingAddress;
-    const destination = [address.street, address.city, address.state, address.country]
-      .filter(Boolean)
-      .join(', ');
+    const destination = [address.street, address.city, address.state, address.country].filter(Boolean).join(', ');
     return this.sanitizer.bypassSecurityTrustResourceUrl(
       `https://www.google.com/maps?q=${encodeURIComponent(destination)}&output=embed`
     );

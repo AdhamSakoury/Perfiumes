@@ -1185,6 +1185,34 @@ app.MapPost("/api/orders/{id}/delivery-rating", async (
     }
 });
 
+app.MapPost("/api/delivery/orders/{id}/customer-rating", async (
+    string id,
+    CreateCustomerRatingRequest request,
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "delivery")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var rating = await orders.CreateCustomerRatingAsync(id, principal.Email, request);
+        return Results.Ok(rating);
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 app.MapGet("/api/products/{id:int}/reviews", async (
     int id,
     OrderService orders) =>

@@ -70,6 +70,10 @@ export class OrdersPageComponent {
     }
   });
 
+  get isAr(): boolean {
+    return this.i18n.language() === 'ar';
+  }
+
   get sortOptions(): CustomDropdownOption[] {
     return [
       { value: 'newest', label: this.i18n.t('newest'), icon: 'fa-arrow-down-wide-short' },

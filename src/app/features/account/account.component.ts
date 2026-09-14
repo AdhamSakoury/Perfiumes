@@ -50,11 +50,17 @@ export class AccountPageComponent implements OnInit {
   }
 
   initials(user: User): string {
-    return user.fullName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'U';
+    if (!user?.fullName) return 'U';
+    return user.fullName.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'U';
   }
 
   firstName(name: string): string {
+    if (!name) return '';
     return name.split(' ')[0] || name;
+  }
+
+  get isAr(): boolean {
+    return this.i18n.language() === 'ar';
   }
 
   @HostListener('document:keydown.escape')

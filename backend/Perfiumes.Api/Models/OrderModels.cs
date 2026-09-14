@@ -102,6 +102,20 @@ public sealed record CreateDeliveryRatingRequest(
     int Rating,
     string? Comment);
 
+public sealed record CustomerRatingDto(
+    string Id,
+    string OrderId,
+    string DeliveryUserId,
+    string UserEmail,
+    string UserName,
+    int Rating,
+    string Comment,
+    DateTimeOffset CreatedAt);
+
+public sealed record CreateCustomerRatingRequest(
+    int Rating,
+    string? Comment);
+
 public sealed record OrderRatingsStatusDto(
     bool HasRatedDelivery,
     int? DeliveryRating,

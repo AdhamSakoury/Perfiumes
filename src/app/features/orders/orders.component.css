@@ -1380,3 +1380,41 @@
 .btn-card-invoice i {
   color: #dc2626;
 }
+
+/* Full-Width Stretch & RTL Styles */
+.orders-page {
+  width: 100%;
+  max-width: 100%;
+}
+
+[dir="rtl"] .orders-hero {
+  text-align: right;
+}
+
+[dir="rtl"] .order-card {
+  text-align: right;
+}
+
+[dir="rtl"] .order-product {
+  text-align: right;
+}
+
+[dir="rtl"] .order-total-block {
+  text-align: left;
+}
+
+[dir="rtl"] .order-filter-btn {
+  text-align: right;
+}
+
+[dir="rtl"] .orders-modal-header {
+  text-align: right;
+}
+
+[dir="rtl"] .tracking-panel {
+  text-align: right;
+}
+
+[dir="rtl"] .orders-modal-summary {
+  text-align: right;
+}
