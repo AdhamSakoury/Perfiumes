@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -35,7 +35,7 @@ const EMPTY_FORM: ProductForm = {
 @Component({
   selector: 'app-admin-products',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
+  imports: [EgpPipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-products.component.html',
   styleUrl: './admin-products.component.css'
 })

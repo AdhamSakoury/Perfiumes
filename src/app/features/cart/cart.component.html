@@ -35,7 +35,7 @@
                       <span class="w-12 text-center font-semibold">{{ line.quantity }}</span>
                       <button type="button" (click)="cart.setQuantity(line.perfumeId, line.quantity + 1)" class="w-8 h-8 rounded-full bg-nubian-sand dark:bg-nubian-surface2 hover:bg-nubian-gold"><i class="fas fa-plus text-xs"></i></button>
                     </div>
-                    <span class="text-xl font-bold text-nubian-brown dark:text-nubian-gold">{{ line.lineTotal | currency }}</span>
+                    <span class="text-xl font-bold text-nubian-brown dark:text-nubian-gold">{{ line.lineTotal | egp }}</span>
                   </div>
                 </div>
               </div>
@@ -45,11 +45,11 @@
           <aside class="bg-white dark:bg-nubian-surface rounded-2xl shadow-lg p-5 border border-nubian-gold/20 h-fit">
             <h2 class="text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-6">{{ 'summary' | t }}</h2>
             <div class="space-y-3 mb-6">
-              <div class="flex justify-between"><span>{{ 'subtotal' | t }}</span><strong>{{ cart.subtotal() | currency }}</strong></div>
+              <div class="flex justify-between"><span>{{ 'subtotal' | t }}</span><strong>{{ cart.subtotal() | egp }}</strong></div>
               @if (cart.promo()) {
-                <div class="flex justify-between text-green-600"><span>{{ 'discount' | t }} ({{ cart.promo()!.code }})</span><strong>-{{ cart.discount() | currency }}</strong></div>
+                <div class="flex justify-between text-green-600"><span>{{ 'discount' | t }} ({{ cart.promo()!.code }})</span><strong>-{{ cart.discount() | egp }}</strong></div>
               }
-              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ cart.total() | currency }}</strong></div>
+              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ cart.total() | egp }}</strong></div>
             </div>
 
             @if (!cart.promo()) {

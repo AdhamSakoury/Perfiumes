@@ -1,0 +1,664 @@
+<section class="page-shell admin-expenses-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="luxury-card empty-state text-center py-16">
+      <i class="fas fa-lock text-4xl text-amber-500 mb-4"></i>
+      <h2 class="text-xl font-bold mb-2">{{ 'loginRequired' | t }}</h2>
+      <a routerLink="/login" class="btn-luxury">{{ 'goToLogin' | t }}</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="luxury-card empty-state text-center py-16">
+      <i class="fas fa-shield-halved text-4xl text-rose-500 mb-4"></i>
+      <h2 class="text-xl font-bold mb-2">{{ 'adminsOnly' | t }}</h2>
+      <a routerLink="/" class="btn-luxury">{{ 'backHome' | t }}</a>
+    </div>
+  } @else {
+    <div class="expenses-wrapper max-w-7xl mx-auto space-y-6">
+
+      <!-- TOP HEADER -->
+      <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-stone-200/70 dark:border-stone-800/80">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1">
+            <a routerLink="/admin/finance" class="hover:underline flex items-center gap-1.5 transition-colors">
+              <i class="fas fa-chart-pie text-xs"></i>
+              <span>{{ 'financeOverview' | t }}</span>
+            </a>
+            <span class="text-stone-300 dark:text-stone-600">/</span>
+            <span class="text-teal-900 dark:text-amber-200">{{ 'expensesManagement' | t }}</span>
+          </div>
+          <h1 class="text-3xl font-black text-teal-950 dark:text-amber-100 tracking-tight flex items-center gap-3">
+            <span>{{ 'expensesLog' | t }}</span>
+            <span class="text-xs font-bold py-0.5 px-2.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+              {{ filteredExpenses().length }} Records
+            </span>
+          </h1>
+          <p class="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1">
+            {{ 'expensesLogSubtitle' | t }}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            (click)="exportPdf()"
+            class="btn-outline-gold text-xs"
+            [title]="'exportPdf' | t"
+          >
+            <i class="fas fa-file-pdf text-rose-500"></i>
+            <span>{{ 'exportPdf' | t }}</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="openAddModal()"
+            class="btn-luxury text-xs"
+          >
+            <i class="fas fa-plus"></i>
+            <span>{{ 'addExpense' | t }}</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- KPI METRIC STRIP (4 CARDS) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: Total Outlay -->
+        <div class="kpi-card tone-red">
+          <div class="kpi-icon-wrap">
+            <i class="fas fa-money-bill-wave text-rose-600"></i>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">{{ 'filteredTotal' | t }}</span>
+            <div class="kpi-number text-rose-600 dark:text-rose-400">
+              {{ formatEgp(totalSum()) }}
+            </div>
+            <span class="kpi-subtext">Across {{ filteredExpenses().length }} active transactions</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Top Expense Category -->
+        <div class="kpi-card tone-amber">
+          <div class="kpi-icon-wrap">
+            <i class="fas fa-chart-pie text-amber-600"></i>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Top Expense Category</span>
+            <div class="kpi-number text-stone-900 dark:text-amber-100 flex items-center justify-between">
+              <span>{{ getCategoryLabel(topCategory().name) }}</span>
+              <span class="text-xs font-bold text-amber-600">({{ topCategory().percentage }}%)</span>
+            </div>
+            <div class="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div class="bg-amber-500 h-full rounded-full transition-all duration-500" [style.width.%]="topCategory().percentage"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Documented Receipts -->
+        <div class="kpi-card tone-teal">
+          <div class="kpi-icon-wrap">
+            <i class="fas fa-file-shield text-teal-600"></i>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Receipts & Invoices</span>
+            <div class="kpi-number text-teal-800 dark:text-teal-300">
+              {{ documentedCount() }} / {{ filteredExpenses().length }}
+            </div>
+            <span class="kpi-subtext">Attached verified proofs</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Currency Standard -->
+        <div class="kpi-card tone-gold">
+          <div class="kpi-icon-wrap">
+            <i class="fas fa-coins text-amber-600"></i>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">{{ 'currencyStandard' | t }}</span>
+            <div class="kpi-number text-stone-900 dark:text-amber-100">
+              Egyptian Pound
+            </div>
+            <span class="kpi-subtext">All calculations strictly in EGP</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE CATEGORY FILTER CHIPS -->
+      <div class="category-chip-container flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        <button
+          type="button"
+          class="category-chip"
+          [class.active]="selectedCategory() === ''"
+          (click)="selectCategoryFilter('')"
+        >
+          <i class="fas fa-layer-group text-xs"></i>
+          <span>{{ 'allCategories' | t }}</span>
+          <span class="chip-count">{{ expenses().length }}</span>
+        </button>
+
+        @for (cat of categoryNames; track cat) {
+          <button
+            type="button"
+            class="category-chip"
+            [class.active]="selectedCategory() === cat"
+            (click)="selectCategoryFilter(cat)"
+          >
+            <i class="fas {{ getCategoryMeta(cat).icon }} text-xs"></i>
+            <span>{{ getCategoryLabel(cat) }}</span>
+          </button>
+        }
+      </div>
+
+      <!-- SEARCH & DATE TOOLBAR -->
+      <div class="luxury-card p-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <!-- Search input with clean modern styling -->
+          <div class="relative flex-1 max-w-lg">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+              <i class="fas fa-search text-xs"></i>
+            </div>
+            <input
+              type="text"
+              [placeholder]="'searchExpensePlaceholder' | t"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              class="luxury-search-input pl-10 pr-9 w-full"
+            />
+            @if (searchQuery()) {
+              <button
+                type="button"
+                (click)="searchQuery.set('')"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600"
+              >
+                <i class="fas fa-times-circle text-xs"></i>
+              </button>
+            }
+          </div>
+
+          <!-- Date Preset Buttons & Custom Pickers -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="date-preset-group">
+              <button
+                type="button"
+                class="preset-btn"
+                [class.active]="activeDatePreset() === 'all'"
+                (click)="setDatePreset('all')"
+              >
+                {{ 'allTime' | t }}
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                [class.active]="activeDatePreset() === 'this-week'"
+                (click)="setDatePreset('this-week')"
+              >
+                {{ 'thisWeek' | t }}
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                [class.active]="activeDatePreset() === 'this-month'"
+                (click)="setDatePreset('this-month')"
+              >
+                {{ 'thisMonth' | t }}
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                [class.active]="activeDatePreset() === 'last-month'"
+                (click)="setDatePreset('last-month')"
+              >
+                {{ 'lastMonth' | t }}
+              </button>
+            </div>
+
+            <!-- Custom date inputs -->
+            <div class="flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800/80 p-1 rounded-lg border border-stone-200 dark:border-stone-700">
+              <input
+                type="date"
+                [ngModel]="startDateFilter()"
+                (ngModelChange)="startDateFilter.set($event); activeDatePreset.set('custom')"
+                class="mini-date-input"
+                [title]="'fromDate' | t"
+              />
+              <span class="text-stone-400 text-xs">&rarr;</span>
+              <input
+                type="date"
+                [ngModel]="endDateFilter()"
+                (ngModelChange)="endDateFilter.set($event); activeDatePreset.set('custom')"
+                class="mini-date-input"
+                [title]="'toDate' | t"
+              />
+            </div>
+
+            <button
+              type="button"
+              (click)="resetFilters()"
+              [title]="'reset' | t"
+              class="reset-btn"
+            >
+              <i class="fas fa-rotate-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPENSES DATA TABLE -->
+      <div class="luxury-card overflow-hidden shadow-md">
+        @if (loading()) {
+          <div class="py-20 text-center text-stone-400">
+            <div class="relative w-12 h-12 mx-auto mb-4">
+              <div class="absolute inset-0 rounded-full border-2 border-amber-500/20"></div>
+              <div class="absolute inset-0 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></div>
+            </div>
+            <p class="text-sm font-semibold text-stone-600 dark:text-stone-300">{{ 'loadingExpensesRegister' | t }}</p>
+          </div>
+        } @else if (filteredExpenses().length === 0) {
+          <!-- DELUXE EMPTY STATE -->
+          <div class="py-16 px-6 text-center max-w-lg mx-auto">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+              <i class="fas fa-receipt"></i>
+            </div>
+            <h3 class="text-lg font-black text-teal-950 dark:text-amber-100 mb-1">
+              {{ 'noExpensesFound' | t }}
+            </h3>
+            <p class="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+              {{ 'noExpensesMatch' | t }}
+            </p>
+
+            <!-- Quick Template Action Buttons -->
+            <div class="flex items-center justify-center gap-2 flex-wrap mb-6">
+              <button
+                type="button"
+                (click)="openAddModal('Marketing', 'Social Media Ads (Meta/Google)')"
+                class="quick-add-chip"
+              >
+                <i class="fas fa-bullhorn text-amber-500"></i>
+                <span>+ Log Marketing Ad</span>
+              </button>
+              <button
+                type="button"
+                (click)="openAddModal('Packaging', 'Bottle Caps & Presentation Boxes')"
+                class="quick-add-chip"
+              >
+                <i class="fas fa-box-open text-rose-500"></i>
+                <span>+ Log Packaging</span>
+              </button>
+              <button
+                type="button"
+                (click)="openAddModal('Logistics', 'Courier Local Delivery Settlement')"
+                class="quick-add-chip"
+              >
+                <i class="fas fa-truck-fast text-blue-500"></i>
+                <span>+ Log Logistics</span>
+              </button>
+            </div>
+
+            <button type="button" (click)="openAddModal()" class="btn-luxury btn-sm">
+              <i class="fas fa-plus"></i>
+              <span>{{ 'addExpense' | t }}</span>
+            </button>
+          </div>
+        } @else {
+          <!-- RICH DATA TABLE -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="table-head-row">
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px]">{{ 'titleAndDetails' | t }}</th>
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px]">{{ 'category' | t }}</th>
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px] text-right">{{ 'amountEgp' | t }}</th>
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px]">{{ 'date' | t }}</th>
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px]">{{ 'createdBy' | t }}</th>
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px] text-center">{{ 'receipt' | t }}</th>
+                  <th class="py-3.5 px-4 font-black tracking-wider uppercase text-[11px] text-right">{{ 'actions' | t }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100 dark:divide-stone-800/60">
+                @for (exp of filteredExpenses(); track exp.id) {
+                  <tr class="table-data-row group">
+                    <!-- Title & Details -->
+                    <td class="py-4 px-4 max-w-sm">
+                      <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs flex-shrink-0 mt-0.5" [ngClass]="getCategoryMeta(exp.category).bgClass">
+                          <i class="fas {{ getCategoryMeta(exp.category).icon }}" [ngClass]="getCategoryMeta(exp.category).colorClass"></i>
+                        </div>
+                        <div>
+                          <div class="font-bold text-sm text-teal-950 dark:text-stone-100 group-hover:text-amber-600 transition-colors">
+                            {{ exp.title }}
+                          </div>
+                          @if (exp.description) {
+                            <p class="text-[11px] font-normal text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-1 leading-relaxed">
+                              {{ exp.description }}
+                            </p>
+                          }
+                          <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] font-mono text-stone-400 bg-stone-100 dark:bg-stone-800/80 px-1.5 py-0.5 rounded">
+                              {{ exp.id }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <!-- Category Pill -->
+                    <td class="py-4 px-4 whitespace-nowrap">
+                      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border" [ngClass]="[getCategoryMeta(exp.category).bgClass, getCategoryMeta(exp.category).colorClass]">
+                        <i class="fas {{ getCategoryMeta(exp.category).icon }} text-[10px]"></i>
+                        <span>{{ getCategoryLabel(exp.category) }}</span>
+                      </span>
+                    </td>
+
+                    <!-- Amount -->
+                    <td class="py-4 px-4 text-right whitespace-nowrap">
+                      <div class="font-black text-sm text-rose-600 dark:text-rose-400">
+                        - {{ formatEgp(exp.amount) }}
+                      </div>
+                      <span class="text-[10px] text-stone-400">Operational Debit</span>
+                    </td>
+
+                    <!-- Date -->
+                    <td class="py-4 px-4 whitespace-nowrap text-stone-600 dark:text-stone-300 font-medium">
+                      <div>{{ exp.date | date:'mediumDate' }}</div>
+                      <span class="text-[10px] text-stone-400">{{ exp.date | date:'shortTime' }}</span>
+                    </td>
+
+                    <!-- Created By (Avatar Chip) -->
+                    <td class="py-4 px-4 whitespace-nowrap">
+                      <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-teal-800 text-amber-300 font-black text-[10px] flex items-center justify-center">
+                          {{ (exp.createdByEmail || 'A').slice(0, 1).toUpperCase() }}
+                        </div>
+                        <span class="text-xs text-stone-600 dark:text-stone-300 truncate max-w-[140px]">
+                          {{ exp.createdByEmail }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Receipt Attachment -->
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
+                      @if (exp.receiptUrl) {
+                        <button
+                          type="button"
+                          (click)="viewReceipt(exp.receiptUrl)"
+                          class="receipt-btn"
+                          title="View Receipt Document"
+                        >
+                          <i class="fas fa-paperclip"></i>
+                          <span>Proof</span>
+                        </button>
+                      } @else {
+                        <span class="text-stone-300 dark:text-stone-600 text-xs">—</span>
+                      }
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="py-4 px-4 text-right whitespace-nowrap">
+                      <div class="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          class="action-icon-btn hover:text-amber-600"
+                          (click)="openEditModal(exp)"
+                          [title]="'edit' | t"
+                        >
+                          <i class="fas fa-pen-to-square"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="action-icon-btn hover:text-rose-600"
+                          (click)="openDeleteModal(exp)"
+                          [title]="'delete' | t"
+                        >
+                          <i class="fas fa-trash-can"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ADD EXPENSE MODAL -->
+  @if (showAddModal()) {
+    <div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+      <div class="modal-card w-full max-w-lg bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
+        <header class="p-5 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50/50 dark:bg-stone-800/40">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center text-sm">
+              <i class="fas fa-plus-circle"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-black text-teal-950 dark:text-amber-100">{{ 'recordNewExpense' | t }}</h3>
+              <p class="text-[11px] text-stone-500">Add operational expenditure with category and receipt</p>
+            </div>
+          </div>
+          <button type="button" (click)="closeAddModal()" class="modal-close-btn">&times;</button>
+        </header>
+
+        <form (ngSubmit)="saveNewExpense()" class="p-6 space-y-4 text-xs">
+          <!-- Title -->
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'expenseTitle' | t }} *</label>
+            <input
+              type="text"
+              name="title"
+              [(ngModel)]="formTitle"
+              placeholder="e.g. Meta Ads, Amber Glass Bottles, Warehouse Rent..."
+              required
+              class="form-luxury-input w-full"
+            />
+          </div>
+
+          <!-- Category Selection Cards -->
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'category' | t }} *</label>
+            <div class="grid grid-cols-3 gap-2">
+              @for (cat of categoryNames; track cat) {
+                <button
+                  type="button"
+                  class="category-select-pill"
+                  [class.selected]="formCategory === cat"
+                  (click)="formCategory = cat"
+                >
+                  <i class="fas {{ getCategoryMeta(cat).icon }} text-xs"></i>
+                  <span class="truncate">{{ getCategoryLabel(cat) }}</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Amount & Date -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'amountEgp' | t }} *</label>
+              <div class="relative">
+                <input
+                  type="number"
+                  name="amount"
+                  [(ngModel)]="formAmount"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  required
+                  class="form-luxury-input w-full font-black text-rose-600 pr-12 text-sm"
+                />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-[11px]">EGP</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'date' | t }} *</label>
+              <input type="date" name="date" [(ngModel)]="formDate" required class="form-luxury-input w-full" />
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'descriptionNotes' | t }}</label>
+            <textarea
+              name="description"
+              [(ngModel)]="formDescription"
+              rows="2"
+              placeholder="Vendor details, invoice numbers, or additional context..."
+              class="form-luxury-input w-full"
+            ></textarea>
+          </div>
+
+          <!-- Receipt Upload -->
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'receiptAttachment' | t }}</label>
+            <div class="file-drop-area">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                (change)="onFileSelected($event)"
+                class="file-hidden-input"
+              />
+              <div class="flex items-center gap-3">
+                <i class="fas fa-cloud-arrow-up text-xl text-amber-500"></i>
+                <div class="text-left">
+                  <div class="font-bold text-stone-700 dark:text-stone-200">Click to upload receipt image or invoice</div>
+                  <div class="text-[10px] text-stone-400">PNG, JPG, or PDF up to 5MB</div>
+                </div>
+              </div>
+            </div>
+            @if (formReceiptUrl) {
+              <div class="flex items-center gap-2 mt-2 text-emerald-600 text-xs font-semibold">
+                <i class="fas fa-check-circle"></i>
+                <span>File attached ready for upload</span>
+              </div>
+            }
+          </div>
+
+          <!-- Footer Buttons -->
+          <div class="pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-end gap-2.5">
+            <button type="button" (click)="closeAddModal()" class="btn-cancel">{{ 'cancel' | t }}</button>
+            <button type="submit" [disabled]="saving || !formTitle || !formAmount" class="btn-luxury">
+              <i class="fas fa-check"></i>
+              <span>{{ saving ? ('recording' | t) : ('recordExpenseBtn' | t) }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- EDIT EXPENSE MODAL -->
+  @if (showEditModal()) {
+    <div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+      <div class="modal-card w-full max-w-lg bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
+        <header class="p-5 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50/50 dark:bg-stone-800/40">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center text-sm">
+              <i class="fas fa-pen-to-square"></i>
+            </div>
+            <h3 class="text-base font-black text-teal-950 dark:text-amber-100">{{ 'editExpense' | t }}</h3>
+          </div>
+          <button type="button" (click)="closeEditModal()" class="modal-close-btn">&times;</button>
+        </header>
+
+        <form (ngSubmit)="updateExpense()" class="p-6 space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'expenseTitle' | t }} *</label>
+            <input type="text" name="edit_title" [(ngModel)]="formTitle" required class="form-luxury-input w-full" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'category' | t }} *</label>
+            <div class="grid grid-cols-3 gap-2">
+              @for (cat of categoryNames; track cat) {
+                <button
+                  type="button"
+                  class="category-select-pill"
+                  [class.selected]="formCategory === cat"
+                  (click)="formCategory = cat"
+                >
+                  <i class="fas {{ getCategoryMeta(cat).icon }} text-xs"></i>
+                  <span class="truncate">{{ getCategoryLabel(cat) }}</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'amountEgp' | t }} *</label>
+              <div class="relative">
+                <input
+                  type="number"
+                  name="edit_amount"
+                  [(ngModel)]="formAmount"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  class="form-luxury-input w-full font-black text-rose-600 pr-12 text-sm"
+                />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-[11px]">EGP</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'date' | t }}</label>
+              <input type="date" name="edit_date" [(ngModel)]="formDate" class="form-luxury-input w-full" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-stone-700 dark:text-stone-300 mb-1.5">{{ 'descriptionNotes' | t }}</label>
+            <textarea name="edit_description" [(ngModel)]="formDescription" rows="2" class="form-luxury-input w-full"></textarea>
+          </div>
+
+          <div class="pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-end gap-2.5">
+            <button type="button" (click)="closeEditModal()" class="btn-cancel">{{ 'cancel' | t }}</button>
+            <button type="submit" [disabled]="saving || !formTitle || !formAmount" class="btn-luxury">
+              <i class="fas fa-check"></i>
+              <span>{{ saving ? ('updating' | t) : ('updateExpenseBtn' | t) }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  @if (showDeleteModal() && deletingExpense) {
+    <div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+      <div class="modal-card w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden p-6 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+          <i class="fas fa-trash-can"></i>
+        </div>
+        <h3 class="text-base font-black text-stone-900 dark:text-stone-100 mb-2">{{ 'deleteExpenseEntry' | t }}</h3>
+        <p class="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+          {{ 'deleteExpenseConfirm' | t }}
+        </p>
+
+        <div class="flex items-center justify-center gap-3">
+          <button type="button" (click)="closeDeleteModal()" class="btn-cancel">{{ 'cancel' | t }}</button>
+          <button type="button" (click)="confirmDelete()" [disabled]="saving" class="btn-danger">
+            {{ saving ? ('updating' | t) : ('yesDelete' | t) }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- RECEIPT PREVIEW MODAL -->
+  @if (previewReceiptUrl()) {
+    <div class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in" (click)="closeReceiptPreview()">
+      <div class="modal-card max-w-2xl bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden p-4" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800 mb-3">
+          <span class="font-bold text-sm text-stone-800 dark:text-stone-200 flex items-center gap-2">
+            <i class="fas fa-paperclip text-amber-500"></i> Receipt Attachment
+          </span>
+          <button type="button" (click)="closeReceiptPreview()" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="max-h-[70vh] overflow-auto rounded-lg flex items-center justify-center bg-stone-100 dark:bg-stone-950 p-2">
+          <img [src]="previewReceiptUrl()" alt="Receipt Preview" class="max-w-full max-h-full rounded object-contain" />
+        </div>
+      </div>
+    </div>
+  }
+
+</section>

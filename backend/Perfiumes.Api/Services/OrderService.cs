@@ -291,6 +291,19 @@ END
         }
 
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
+
+        // Anti-abuse: If the customer has cancelled 3 or more orders in the last 30 days, Cash on Delivery is disabled.
+        if (paymentMethod == "cashOnDelivery")
+        {
+            var thirtyDaysAgo = now.AddDays(-30);
+            var cancellationCount = await db.Orders
+                .CountAsync(o => o.UserEmail == normalizedEmail && o.Status == "Cancelled" && o.Date >= thirtyDaysAgo);
+            if (cancellationCount >= 3)
+            {
+                throw new InvalidOperationException("تم تعطيل خيار الدفع عند الاستلام لحسابك مؤقتاً لتكرار إلغاء الطلبات (3 مرات أو أكثر خلال 30 يوم). يرجى إتمام الدفع عبر البطاقة البنكية أو المحفظة الإلكترونية. / Cash on Delivery is temporarily disabled for your account due to repeated order cancellations (3+ in the last 30 days). Please pay using Card or Wallet.");
+            }
+        }
+
         var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
         var paymentProvider = NormalizePaymentProvider(paymentMethod, request.PaymentProvider);
         var paymentReference = paymentMethod is "wallet" or "card" ? $"PAY-{Guid.NewGuid():N}"[..20].ToUpperInvariant() : string.Empty;
@@ -515,64 +528,120 @@ END
             return null;
         }
 
-        if (order.Status is not "Processing" and not "OnHold" and not "Packed")
+        // Rule 1: Cannot cancel if order is already out with courier or in delivery stage
+        if (!string.IsNullOrWhiteSpace(order.DeliveryUserId)
+            || order.Status is "ReadyForPickup" or "Shipped" or "OutForDelivery" or "Delivered")
         {
-            throw new InvalidOperationException("This order can no longer be cancelled because shipping has started.");
+            var courierInfo = string.IsNullOrWhiteSpace(order.DeliveryName) ? "مندوب التوصيل" : order.DeliveryName;
+            throw new InvalidOperationException($"لا يمكن إلغاء الطلب لأنه خرج بالفعل مع {courierInfo} وهو في الطريق إليك. للتواصل برجاء مراسلة الدعم الفني. / This order cannot be cancelled because it is already with the courier on its way to you.");
         }
 
-        var refundAmount = order.PaymentStatus == "paid" ? order.Total : 0;
-        if (refundAmount > 0)
+        if (order.Status is not "Processing" and not "OnHold" and not "Packed")
         {
-            var wallet = await db.UserWallets
-                .Include(item => item.Transactions)
-                .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
-            if (wallet is null)
-            {
-                var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(item => item.Email == normalizedEmail);
-                if (user is null)
-                {
-                    throw new InvalidOperationException("Customer account was not found.");
-                }
+            throw new InvalidOperationException("This order can no longer be cancelled because order processing has completed.");
+        }
 
-                var now = DateTimeOffset.UtcNow;
-                wallet = new UserWalletEntity
-                {
-                    Id = $"wallet_{Guid.NewGuid():N}",
-                    UserId = user.Id,
-                    UserEmail = user.Email,
-                    Currency = "EGP",
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                db.UserWallets.Add(wallet);
+        // Rule 2: Repeated Cancellation Penalty Policy
+        // If the customer has cancelled 2 or more orders in the last 30 days, apply a cancellation penalty fee (50 EGP).
+        var thirtyDaysAgo = DateTimeOffset.UtcNow.AddDays(-30);
+        var recentCancellationsCount = await db.Orders
+            .CountAsync(item => item.UserEmail == normalizedEmail && item.Status == "Cancelled" && item.Date >= thirtyDaysAgo);
+
+        const int maxFreeCancellations = 2;
+        const decimal cancellationPenaltyFee = 50m;
+        var applyPenalty = recentCancellationsCount >= maxFreeCancellations;
+        var penaltyAmount = applyPenalty ? cancellationPenaltyFee : 0m;
+
+        var refundBase = order.PaymentStatus == "paid" ? order.Total : 0;
+        var netRefund = Math.Max(0, refundBase - penaltyAmount);
+
+        var wallet = await db.UserWallets
+            .Include(item => item.Transactions)
+            .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
+
+        if (wallet is null && (netRefund > 0 || penaltyAmount > 0))
+        {
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(item => item.Email == normalizedEmail);
+            if (user is null)
+            {
+                throw new InvalidOperationException("Customer account was not found.");
             }
 
-            wallet.Balance += refundAmount;
-            wallet.LifetimeCredit += refundAmount;
+            var now = DateTimeOffset.UtcNow;
+            wallet = new UserWalletEntity
+            {
+                Id = $"wallet_{Guid.NewGuid():N}",
+                UserId = user.Id,
+                UserEmail = user.Email,
+                Currency = "EGP",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            db.UserWallets.Add(wallet);
+        }
+
+        // Process refund and penalty in wallet
+        if (order.PaymentStatus == "paid")
+        {
+            if (wallet is not null)
+            {
+                wallet.Balance += netRefund;
+                wallet.LifetimeCredit += netRefund;
+                wallet.UpdatedAt = DateTimeOffset.UtcNow;
+
+                var refundReason = penaltyAmount > 0
+                    ? $"Refund for cancelled order {order.Id} (Deducted {penaltyAmount:0.##} EGP cancellation fee due to {recentCancellationsCount + 1} cancellations in 30 days)"
+                    : $"Refund for cancelled order {order.Id}";
+
+                wallet.Transactions.Add(new WalletTransactionEntity
+                {
+                    Id = $"wtx_{Guid.NewGuid():N}",
+                    WalletId = wallet.Id,
+                    Amount = netRefund,
+                    Type = "credit",
+                    ActorRole = "customer",
+                    Reason = refundReason,
+                    ReferenceId = $"refund_{order.Id}",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
+            order.PaymentStatus = "refunded";
+        }
+        else if (penaltyAmount > 0 && wallet is not null)
+        {
+            // Cash on delivery with repeated cancellation: record penalty debit on wallet
+            wallet.Balance -= penaltyAmount;
+            wallet.LifetimeDebit += penaltyAmount;
             wallet.UpdatedAt = DateTimeOffset.UtcNow;
             wallet.Transactions.Add(new WalletTransactionEntity
             {
                 Id = $"wtx_{Guid.NewGuid():N}",
                 WalletId = wallet.Id,
-                Amount = refundAmount,
-                Type = "credit",
-                ActorRole = "customer",
-                Reason = $"Refund for cancelled order {order.Id}",
-                ReferenceId = $"refund_{order.Id}",
+                Amount = penaltyAmount,
+                Type = "debit",
+                ActorRole = "system",
+                Reason = $"Cancellation penalty fee for repeated order cancellations (Order {order.Id})",
+                ReferenceId = $"penalty_{order.Id}",
                 CreatedAt = DateTimeOffset.UtcNow
             });
-            order.PaymentStatus = "refunded";
         }
 
         await RestoreStockAsync(order);
         order.Status = "Cancelled";
+
+        var cancelTrackingMessage = penaltyAmount > 0
+            ? (order.PaymentStatus == "refunded"
+                ? $"Your order was cancelled. {netRefund:0.##} EGP was returned to your wallet after deducting a {penaltyAmount:0.##} EGP repeated cancellation fee."
+                : $"Your order was cancelled. A {penaltyAmount:0.##} EGP fee was applied due to repeated cancellations.")
+            : (refundBase > 0
+                ? $"Your order was cancelled and {refundBase:0.##} EGP was returned to your wallet."
+                : "Your order was cancelled.");
+
         order.TrackingEvents.Add(CreateTrackingEvent(
             order.Id,
             "Cancelled",
             DateTimeOffset.UtcNow,
-            refundAmount > 0
-                ? $"Your order was cancelled and {refundAmount:0.##} EGP was returned to your wallet."
-                : "Your order was cancelled."));
+            cancelTrackingMessage));
 
         await db.SaveChangesAsync();
         await transaction.CommitAsync();

@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { Component, effect, ElementRef, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -21,7 +21,7 @@ const CHAT_HISTORY_PREFIX = 'gnouby_chat_history_v2';
 @Component({
   selector: 'app-chatbot-widget',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [EgpPipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './chatbot-widget.component.html',
   styleUrl: './chatbot-widget.component.css'
 })

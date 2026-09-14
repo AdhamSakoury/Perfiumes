@@ -10,6 +10,7 @@
         "src/app/shared/*"
       ]
     },
+    "rootDir": "./src",
     "outDir": "./dist/out-tsc",
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0",

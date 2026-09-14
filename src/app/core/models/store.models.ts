@@ -305,3 +305,72 @@ export interface OrderRatingsStatus {
   deliveryComment?: string | null;
   productReviews: ProductReview[];
 }
+
+// ============================================================
+// Finance Models
+// ============================================================
+
+export interface Expense {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  description: string | null;
+  date: string;
+  createdByEmail: string;
+  receiptUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseRequest {
+  title: string;
+  category: string;
+  amount: number;
+  description?: string | null;
+  date?: string | null;
+  receiptUrl?: string | null;
+}
+
+export interface UpdateExpenseRequest {
+  title: string;
+  category: string;
+  amount: number;
+  description?: string | null;
+  date?: string | null;
+  receiptUrl?: string | null;
+}
+
+export interface FinancialSummary {
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  totalTransactions: number;
+  revenueChangePercent: number;
+  expensesChangePercent: number;
+  netProfitChangePercent: number;
+}
+
+export interface FinancialFlowPoint {
+  label: string;
+  revenue: number;
+  expenses: number;
+  netProfit: number;
+}
+
+export interface ExpenseCategory {
+  category: string;
+  amount: number;
+  percentage: number;
+}
+
+export type FinancePeriod =
+  | 'today'
+  | 'yesterday'
+  | 'this-week'
+  | 'last-week'
+  | 'this-month'
+  | 'last-month'
+  | 'this-year'
+  | 'last-year'
+  | 'custom';

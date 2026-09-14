@@ -1144,11 +1144,11 @@ export const filters: FiltersConfig = {
         "White Floral", "Woody Spicy", "Citrus Floral", "Fresh Aquatic"
     ],
     priceRange: [
-        { label: "Under $50", min: 0, max: 50 },
-        { label: "$50 - $100", min: 50, max: 100 },
-        { label: "$100 - $150", min: 100, max: 150 },
-        { label: "$150 - $200", min: 150, max: 200 },
-        { label: "Over $200", min: 200, max: Infinity }
+        { label: "Under 100 EGP", min: 0, max: 100 },
+        { label: "100 - 200 EGP", min: 100, max: 200 },
+        { label: "200 - 300 EGP", min: 200, max: 300 },
+        { label: "300 - 400 EGP", min: 300, max: 400 },
+        { label: "Over 400 EGP", min: 400, max: Infinity }
     ],
     concentration: ["Eau de Cologne", "Eau de Toilette", "Eau de Parfum", "Extrait de Parfum"],
     season: ["Spring", "Summer", "Fall", "Winter", "All Seasons"],

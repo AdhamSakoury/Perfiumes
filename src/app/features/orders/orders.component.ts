@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,6 +10,7 @@ import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { OrderMapComponent } from '@shared/components/order-map/order-map.component';
 import { OrderChatComponent } from '@shared/components/order-chat/order-chat.component';
@@ -19,7 +20,7 @@ import { OrderRatingModalComponent } from '@shared/components/order-rating-modal
   selector: 'app-orders-page',
   standalone: true,
   imports: [
-    CurrencyPipe,
+    EgpPipe,
     DatePipe,
     FormsModule,
     RouterLink,
@@ -120,12 +121,19 @@ export class OrdersPageComponent {
   }
 
   canCancel(order: Order): boolean {
+    if (order.deliveryUserId || order.status === 'Shipped' || order.status === 'OutForDelivery' || order.status === 'ReadyForPickup' || order.status === 'Delivered' || order.status === 'Cancelled') {
+      return false;
+    }
     return order.status === 'Processing' || order.status === 'OnHold' || order.status === 'Packed';
+  }
+
+  isWithDelivery(order: Order): boolean {
+    return (!!order.deliveryUserId || order.status === 'Shipped' || order.status === 'OutForDelivery' || order.status === 'ReadyForPickup') && order.status !== 'Delivered' && order.status !== 'Cancelled';
   }
 
   cancelOrder(order: Order): void {
     if (!this.canCancel(order) || this.cancellingOrderId) return;
-    if (!window.confirm('Cancel this order? Paid orders are refunded to your wallet.')) return;
+    if (!window.confirm('Are you sure you want to cancel this order?\n\nNote: Paid orders are refunded to your wallet. If you have cancelled 2 or more orders in the past 30 days, a 50 EGP repeated cancellation fee will apply.')) return;
 
     this.cancellingOrderId = order.id;
     this.auth.ensureAccessToken().subscribe((token) => {

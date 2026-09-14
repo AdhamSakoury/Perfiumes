@@ -36,7 +36,7 @@
           <span class="ml-2 text-sm text-nubian-earth dark:text-nubian-sand">({{ perfume.rating }})</span>
         </div>
         <div class="flex items-center justify-between gap-3">
-          <span class="text-xl font-bold text-nubian-brown dark:text-nubian-gold">{{ perfume.price | currency }}</span>
+          <span class="text-xl font-bold text-nubian-brown dark:text-nubian-gold">{{ perfume.price | egp }}</span>
           <button
             type="button"
             (click)="addToCart()"

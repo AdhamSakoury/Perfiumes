@@ -64,3 +64,51 @@ public sealed record UserWalletDto(
     string Currency,
     DateTimeOffset UpdatedAt,
     IReadOnlyList<WalletTransactionDto> Transactions);
+
+public sealed record ExpenseDto(
+    string Id,
+    string Title,
+    string Category,
+    decimal Amount,
+    string? Description,
+    DateTimeOffset Date,
+    string CreatedByEmail,
+    string? ReceiptUrl,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record CreateExpenseRequest(
+    string Title,
+    string Category,
+    decimal Amount,
+    string? Description,
+    DateTimeOffset? Date,
+    string? ReceiptUrl);
+
+public sealed record UpdateExpenseRequest(
+    string Title,
+    string Category,
+    decimal Amount,
+    string? Description,
+    DateTimeOffset? Date,
+    string? ReceiptUrl);
+
+public sealed record FinancialSummaryDto(
+    decimal TotalRevenue,
+    decimal TotalExpenses,
+    decimal NetProfit,
+    int TotalTransactions,
+    decimal RevenueChangePercent,
+    decimal ExpensesChangePercent,
+    decimal NetProfitChangePercent);
+
+public sealed record FinancialFlowPointDto(
+    string Label,
+    decimal Revenue,
+    decimal Expenses,
+    decimal NetProfit);
+
+public sealed record ExpenseCategoryDto(
+    string Category,
+    decimal Amount,
+    double Percentage);

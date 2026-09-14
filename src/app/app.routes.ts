@@ -137,6 +137,26 @@ export const routes: Routes = [
     title: 'Admin Users | Gnouby'
   },
   {
+    path: 'admin/finance',
+    loadComponent: () => import('./features/admin/admin-finance/admin-finance.component').then((module) => module.AdminFinanceComponent),
+    title: 'Financial Dashboard | Gnouby'
+  },
+  {
+    path: 'admin/finance/expenses',
+    loadComponent: () => import('./features/admin/admin-expenses/admin-expenses.component').then((module) => module.AdminExpensesComponent),
+    title: 'Expenses Management | Gnouby'
+  },
+  {
+    path: 'finance/expenses',
+    redirectTo: 'admin/finance/expenses',
+    pathMatch: 'full'
+  },
+  {
+    path: 'finance',
+    redirectTo: 'admin/finance',
+    pathMatch: 'full'
+  },
+  {
     path: 'delivery',
     loadComponent: () => import('./features/delivery/delivery-dashboard/delivery-dashboard.component').then((module) => module.DeliveryDashboardComponent),
     title: 'Delivery Dashboard | Gnouby'

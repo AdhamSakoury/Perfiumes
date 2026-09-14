@@ -1,4 +1,5 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ProductReview } from '@core/models/store.models';
@@ -13,7 +14,7 @@ import { TranslatePipe } from '@shared/pipes/translate.pipe';
 @Component({
   selector: 'app-perfume-details-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, PerfumeCardComponent, RouterLink, StarRatingComponent, TranslatePipe],
+  imports: [EgpPipe, DatePipe, PerfumeCardComponent, RouterLink, StarRatingComponent, TranslatePipe],
   templateUrl: './perfume-details.component.html',
   styleUrl: './perfume-details.component.css'
 })

@@ -1,0 +1,352 @@
+<section class="page-shell admin-finance-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="finance-card empty-state text-center py-16">
+      <i class="fas fa-lock text-4xl text-amber-500 mb-4"></i>
+      <h2 class="text-xl font-bold mb-2">{{ 'loginRequired' | t }}</h2>
+      <p class="text-stone-500 mb-6">{{ 'loginAgainAdmin' | t }}</p>
+      <a routerLink="/login" class="btn-primary">{{ 'goToLogin' | t }}</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="finance-card empty-state text-center py-16">
+      <i class="fas fa-shield-halved text-4xl text-rose-500 mb-4"></i>
+      <h2 class="text-xl font-bold mb-2">{{ 'adminsOnly' | t }}</h2>
+      <a routerLink="/" class="btn-primary">{{ 'backHome' | t }}</a>
+    </div>
+  } @else {
+    <div class="finance-container">
+      <!-- HEADER -->
+      <header class="finance-header mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
+            <i class="fas fa-chart-pie"></i>
+            <span>{{ 'financialIntelligence' | t }}</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black text-teal-950 dark:text-amber-100">{{ 'adminDashboardTitle' | t }}</h1>
+          <p class="text-sm text-stone-600 dark:text-stone-300 mt-1">
+            {{ 'financialDashboardSubtitle' | t }}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="currency-badge">
+            <i class="fas fa-coins text-amber-500"></i>
+            <span>{{ 'currencyStandard' | t }}</span>
+          </div>
+          <a routerLink="/admin/finance/expenses" class="btn-secondary">
+            <i class="fas fa-receipt"></i>
+            <span>{{ 'manageExpenses' | t }}</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- SECTION 2: GLOBAL TIME FILTER -->
+      <div class="time-filter-bar mb-6">
+        <div class="filter-scroll-wrapper">
+          @for (p of periods; track p.value) {
+            <button
+              type="button"
+              class="period-pill"
+              [class.active]="selectedPeriod() === p.value"
+              (click)="setPeriod(p.value)"
+            >
+              {{ p.key | t }}
+            </button>
+          }
+        </div>
+
+        @if (selectedPeriod() === 'custom') {
+          <div class="custom-range-inputs mt-3 flex flex-wrap items-center gap-3 p-3 bg-stone-100 dark:bg-stone-800 rounded-lg">
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-semibold text-stone-600 dark:text-stone-300">{{ 'startDate' | t }}:</label>
+              <input
+                type="date"
+                [ngModel]="customStart()"
+                (ngModelChange)="customStart.set($event)"
+                class="filter-date-input"
+              />
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-semibold text-stone-600 dark:text-stone-300">{{ 'endDate' | t }}:</label>
+              <input
+                type="date"
+                [ngModel]="customEnd()"
+                (ngModelChange)="customEnd.set($event)"
+                class="filter-date-input"
+              />
+            </div>
+            <button
+              type="button"
+              (click)="applyCustomRange()"
+              [disabled]="!customStart() || !customEnd()"
+              class="btn-primary btn-sm"
+            >
+              {{ 'applyFilter' | t }}
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- SECTION 1: SUMMARY CARDS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- 1. Total Revenue / Money In -->
+        <div class="metric-card tone-green" [class.skeleton]="skeletonVisible">
+          <div class="metric-icon-wrap">
+            <i class="fas fa-arrow-trend-up text-emerald-600 dark:text-emerald-400"></i>
+          </div>
+          <div class="metric-content">
+            <span class="metric-title">{{ 'totalRevenueMoneyIn' | t }}</span>
+            <div class="metric-value">
+              @if (skeletonVisible && !summary) {
+                <div class="skeleton-line w-28 h-7"></div>
+              } @else {
+                {{ formatEgp(summary?.totalRevenue ?? 0) }}
+              }
+            </div>
+            <div class="metric-trend" [class.trend-up]="(summary?.revenueChangePercent ?? 0) >= 0" [class.trend-down]="(summary?.revenueChangePercent ?? 0) < 0">
+              <span class="trend-badge">
+                {{ changeSign(summary?.revenueChangePercent ?? 0) }}
+              </span>
+              <span class="trend-text">{{ 'vsPreviousPeriod' | t }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Total Expenses / Money Out -->
+        <div class="metric-card tone-red" [class.skeleton]="skeletonVisible">
+          <div class="metric-icon-wrap">
+            <i class="fas fa-arrow-trend-down text-rose-600 dark:text-rose-400"></i>
+          </div>
+          <div class="metric-content">
+            <span class="metric-title">{{ 'totalExpensesMoneyOut' | t }}</span>
+            <div class="metric-value">
+              @if (skeletonVisible && !summary) {
+                <div class="skeleton-line w-28 h-7"></div>
+              } @else {
+                {{ formatEgp(summary?.totalExpenses ?? 0) }}
+              }
+            </div>
+            <div class="metric-trend" [class.trend-up]="(summary?.expensesChangePercent ?? 0) < 0" [class.trend-down]="(summary?.expensesChangePercent ?? 0) >= 0">
+              <span class="trend-badge">
+                {{ changeSign(summary?.expensesChangePercent ?? 0) }}
+              </span>
+              <span class="trend-text">{{ 'vsPreviousPeriod' | t }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Net Profit -->
+        <div class="metric-card" [ngClass]="netProfitPositive ? 'tone-teal' : 'tone-warning'" [class.skeleton]="skeletonVisible">
+          <div class="metric-icon-wrap">
+            @if (netProfitPositive) {
+              <i class="fas fa-coins text-teal-600 dark:text-teal-400"></i>
+            } @else {
+              <i class="fas fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
+            }
+          </div>
+          <div class="metric-content">
+            <div class="flex items-center justify-between">
+              <span class="metric-title">{{ 'netProfit' | t }}</span>
+              @if (!netProfitPositive && !skeletonVisible) {
+                <span class="loss-warning-pill">{{ 'lossWarning' | t }}</span>
+              }
+            </div>
+            <div class="metric-value" [class.text-rose-600]="!netProfitPositive" [class.text-emerald-700]="netProfitPositive">
+              @if (skeletonVisible && !summary) {
+                <div class="skeleton-line w-28 h-7"></div>
+              } @else {
+                {{ formatEgp(summary?.netProfit ?? 0) }}
+              }
+            </div>
+            <div class="metric-trend" [class.trend-up]="(summary?.netProfitChangePercent ?? 0) >= 0" [class.trend-down]="(summary?.netProfitChangePercent ?? 0) < 0">
+              <span class="trend-badge">
+                {{ changeSign(summary?.netProfitChangePercent ?? 0) }}
+              </span>
+              <span class="trend-text">{{ 'vsPreviousPeriod' | t }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Total Transactions -->
+        <div class="metric-card tone-gold" [class.skeleton]="skeletonVisible">
+          <div class="metric-icon-wrap">
+            <i class="fas fa-repeat text-amber-600 dark:text-amber-400"></i>
+          </div>
+          <div class="metric-content">
+            <span class="metric-title">{{ 'totalTransactions' | t }}</span>
+            <div class="metric-value">
+              @if (skeletonVisible && !summary) {
+                <div class="skeleton-line w-20 h-7"></div>
+              } @else {
+                {{ summary?.totalTransactions ?? 0 | number }}
+              }
+            </div>
+            <div class="metric-trend text-stone-500 text-xs mt-1">
+              <span>{{ 'transactionsVolume' | t }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN FINANCIAL FLOW GRAPH -->
+      <div class="finance-card mb-6">
+        <div class="card-header flex items-center justify-between pb-4 border-b border-stone-200 dark:border-stone-800">
+          <div>
+            <h2 class="text-lg font-bold text-teal-950 dark:text-amber-100 flex items-center gap-2">
+              <i class="fas fa-chart-area text-amber-500"></i>
+              <span>{{ 'financialFlowAnalysis' | t }}</span>
+            </h2>
+            <p class="text-xs text-stone-500 mt-0.5">{{ 'financialFlowSubtitle' | t }}</p>
+          </div>
+
+          <div class="flex items-center gap-3 text-xs font-semibold">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> {{ 'moneyIn' | t }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> {{ 'moneyOut' | t }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span> {{ 'netProfit' | t }}</span>
+          </div>
+        </div>
+
+        <div class="chart-container relative mt-4" style="height: 340px;">
+          @if (skeletonVisible && flowPoints.length === 0) {
+            <div class="chart-skeleton-overlay flex flex-col items-center justify-center gap-3 h-full">
+              <i class="fas fa-spinner fa-spin text-3xl text-amber-500"></i>
+              <p class="text-sm font-medium text-stone-500">{{ 'recalculatingAnalytics' | t }}</p>
+            </div>
+          }
+          @if (!skeletonVisible && flowPoints.length === 0) {
+            <div class="flex flex-col items-center justify-center h-full text-stone-400">
+              <i class="fas fa-chart-line text-4xl mb-2"></i>
+              <p>{{ 'noTransactionsPeriod' | t }}</p>
+            </div>
+          }
+          <canvas #flowCanvas></canvas>
+        </div>
+      </div>
+
+      <!-- LOWER DASHBOARD WIDGETS -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- LEFT: Expense Distribution (Donut Chart) -->
+        <div class="finance-card lg:col-span-5 flex flex-col">
+          <div class="card-header pb-4 border-b border-stone-200 dark:border-stone-800">
+            <h3 class="text-base font-bold text-teal-950 dark:text-amber-100 flex items-center gap-2">
+              <i class="fas fa-chart-pie text-amber-500"></i>
+              <span>{{ 'expenseDistribution' | t }}</span>
+            </h3>
+            <p class="text-xs text-stone-500 mt-0.5">{{ 'expenseDistributionSubtitle' | t }}</p>
+          </div>
+
+          <div class="card-body flex-1 flex flex-col justify-center items-center py-4 relative min-h-[300px]">
+            @if (skeletonVisible && categories.length === 0) {
+              <div class="chart-skeleton-overlay flex flex-col items-center justify-center gap-2">
+                <i class="fas fa-spinner fa-spin text-2xl text-amber-500"></i>
+                <span class="text-xs text-stone-500">{{ 'aggregatingCategories' | t }}</span>
+              </div>
+            } @else if (categories.length === 0) {
+              <div class="empty-pie text-center text-stone-400 py-10">
+                <i class="fas fa-folder-open text-3xl mb-2 text-stone-300"></i>
+                <p class="text-sm">{{ 'noExpensesPeriod' | t }}</p>
+                <a routerLink="/admin/finance/expenses" class="text-xs text-amber-600 font-bold mt-2 inline-block hover:underline">
+                  {{ 'addFirstExpense' | t }}
+                </a>
+              </div>
+            }
+            <div class="w-full relative" style="height: 240px;" [class.hidden]="categories.length === 0">
+              <canvas #donutCanvas></canvas>
+            </div>
+
+            @if (categories.length > 0) {
+              <div class="category-breakdown-list w-full mt-4 space-y-1.5 border-t border-stone-100 dark:border-stone-800 pt-3">
+                @for (cat of categories; track cat.category; let idx = $index) {
+                  <div class="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-stone-50 dark:hover:bg-stone-800/50">
+                    <div class="flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-full" [style.background-color]="categoryColors[idx % categoryColors.length]"></span>
+                      <span class="font-medium text-stone-700 dark:text-stone-300">{{ getCategoryLabel(cat.category) }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="font-bold text-teal-950 dark:text-amber-100">{{ formatEgp(cat.amount) }}</span>
+                      <span class="text-stone-400 font-mono text-[11px] w-12 text-right">({{ cat.percentage }}%)</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- RIGHT: Recent Expenses Table -->
+        <div class="finance-card lg:col-span-7 flex flex-col">
+          <div class="card-header pb-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-bold text-teal-950 dark:text-amber-100 flex items-center gap-2">
+                <i class="fas fa-list-check text-amber-500"></i>
+                <span>{{ 'recentExpenses' | t }}</span>
+              </h3>
+              <p class="text-xs text-stone-500 mt-0.5">{{ 'recentExpensesSubtitle' | t }}</p>
+            </div>
+            <a routerLink="/admin/finance/expenses" class="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400 flex items-center gap-1">
+              <span>{{ 'manageAll' | t }}</span>
+              <i class="fas fa-arrow-right text-[10px]"></i>
+            </a>
+          </div>
+
+          <div class="card-body flex-1 overflow-x-auto py-2">
+            @if (skeletonVisible && recentExpenses.length === 0) {
+              <div class="space-y-3 py-4">
+                <div class="skeleton-line h-10 w-full"></div>
+                <div class="skeleton-line h-10 w-full"></div>
+                <div class="skeleton-line h-10 w-full"></div>
+              </div>
+            } @else if (recentExpenses.length === 0) {
+              <div class="text-center py-12 text-stone-400">
+                <i class="fas fa-receipt text-3xl mb-2 text-stone-300"></i>
+                <p class="text-sm">{{ 'noExpensesPeriod' | t }}</p>
+                <a routerLink="/admin/finance/expenses" class="btn-secondary btn-sm mt-3 inline-flex">
+                  <i class="fas fa-plus mr-1"></i> {{ 'addExpense' | t }}
+                </a>
+              </div>
+            } @else {
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-stone-200 dark:border-stone-800 text-stone-400 uppercase tracking-wider font-semibold">
+                    <th class="py-2.5 px-3">{{ 'expenseTitle' | t }}</th>
+                    <th class="py-2.5 px-3">{{ 'category' | t }}</th>
+                    <th class="py-2.5 px-3 text-right">{{ 'amountEgp' | t }}</th>
+                    <th class="py-2.5 px-3 text-right">{{ 'date' | t }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100 dark:divide-stone-800/60">
+                  @for (exp of recentExpenses; track exp.id) {
+                    <tr class="hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
+                      <td class="py-3 px-3 font-semibold text-teal-950 dark:text-stone-200">
+                        {{ exp.title }}
+                        @if (exp.description) {
+                          <span class="block text-[11px] font-normal text-stone-400 truncate max-w-xs">{{ exp.description }}</span>
+                        }
+                      </td>
+                      <td class="py-3 px-3">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                          {{ getCategoryLabel(exp.category) }}
+                        </span>
+                      </td>
+                      <td class="py-3 px-3 text-right font-black text-rose-600 dark:text-rose-400">
+                        {{ formatEgp(exp.amount) }}
+                      </td>
+                      <td class="py-3 px-3 text-right text-stone-400 whitespace-nowrap">
+                        {{ exp.date | date:'mediumDate' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+
+          <div class="card-footer pt-3 mt-auto border-t border-stone-100 dark:border-stone-800 text-right">
+            <a routerLink="/admin/finance/expenses" class="text-xs font-semibold text-teal-700 dark:text-amber-400 hover:underline">
+              {{ 'viewAllExpenses' | t }} &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</section>

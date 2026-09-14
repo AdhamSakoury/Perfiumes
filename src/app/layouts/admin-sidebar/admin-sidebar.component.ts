@@ -12,8 +12,13 @@ import { TranslatePipe } from '@shared/pipes/translate.pipe';
 })
 export class AdminSidebarComponent {
   readonly open = signal(false);
+  readonly financeOpen = signal(true);
 
   constructor(readonly auth: AuthService) {}
+
+  toggleFinance(): void {
+    this.financeOpen.set(!this.financeOpen());
+  }
 
   close(): void {
     this.open.set(false);

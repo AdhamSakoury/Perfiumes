@@ -1,3 +1,4 @@
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -13,7 +14,7 @@ import { finalize, of, switchMap, throwError, timeout } from 'rxjs';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, RouterLink, TranslatePipe],
+  imports: [EgpPipe, CurrencyPipe, DatePipe, RouterLink, TranslatePipe],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css'
 })

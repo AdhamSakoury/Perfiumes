@@ -30,7 +30,7 @@
                       <img [src]="product.image" [alt]="product.name" (error)="useFallback($event)">
                       <div class="min-w-0">
                         <p class="font-semibold truncate">{{ product.name }}</p>
-                        <p class="text-xs opacity-80 truncate">{{ product.brand }} · {{ product.price | currency }}</p>
+                        <p class="text-xs opacity-80 truncate">{{ product.brand }} · {{ product.price | egp }}</p>
                       </div>
                     </a>
                   }

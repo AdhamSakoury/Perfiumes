@@ -62,7 +62,7 @@
                       <span>{{ order.userEmail }}</span>
                     </div>
                     <div>
-                      <b>{{ order.total | currency }}</b>
+                      <b>{{ order.total | egp }}</b>
                       <small>{{ statusLabel(order.status) }} · {{ order.date | date:'short' }}</small>
                     </div>
                   </article>

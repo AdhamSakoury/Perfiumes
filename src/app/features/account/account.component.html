@@ -164,7 +164,7 @@
               <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ wishlist.count() }} items</p>
             </div>
           </div>
-          <a routerLink="/wishlist" class="block w-full py-2.5 border-2 border-nubian-gold text-nubian-gold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark font-semibold transition-all duration-300 text-center flex items-center justify-center gap-2 group-hover:gap-3">
+          <a routerLink="/wishlist" class="w-full py-2.5 border-2 border-nubian-gold text-nubian-gold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark font-semibold transition-all duration-300 text-center flex items-center justify-center gap-2 group-hover:gap-3">
             <span>{{ 'viewWishlist' | t }}</span>
             <i class="fas fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
           </a>
@@ -222,7 +222,7 @@
                 <p class="font-semibold text-nubian-brown dark:text-nubian-gold">{{ 'orderNumber' | t:{ id: order.id } }}</p>
                 <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ order.date | date:'mediumDate' }} - {{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</p>
               </div>
-              <strong class="text-nubian-gold">{{ order.total | currency }}</strong>
+              <strong class="text-nubian-gold">{{ order.total | egp }}</strong>
             </div>
           } @empty {
             <p class="text-nubian-earth dark:text-nubian-sand text-center py-8">{{ 'recentActivityEmpty' | t }}</p>
@@ -342,7 +342,7 @@
                   </div>
                   <div class="flex items-center gap-3">
                     <span class="order-status status-{{ order.status.toLowerCase() }}">{{ order.status }}</span>
-                    <strong class="text-nubian-gold">{{ order.total | currency }}</strong>
+                    <strong class="text-nubian-gold">{{ order.total | egp }}</strong>
                   </div>
                 </div>
               </div>

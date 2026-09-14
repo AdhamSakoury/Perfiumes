@@ -1580,4 +1580,142 @@ app.MapPost("/api/notifications", async (
     return Results.Created($"/api/notifications/{notification.Id}", notification);
 });
 
+// ============================================================
+// Finance API Routes
+// ============================================================
+
+app.MapGet("/api/admin/dashboard/financial-summary", async (
+    string? period,
+    string? startDate,
+    string? endDate,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var p = period ?? "this-month";
+    DateTimeOffset? start = DateTimeOffset.TryParse(startDate, out var s) ? s : null;
+    DateTimeOffset? end = DateTimeOffset.TryParse(endDate, out var e) ? e : null;
+    return Results.Ok(await dashboard.GetFinancialSummaryAsync(p, start, end));
+});
+
+app.MapGet("/api/admin/dashboard/financial-flow", async (
+    string? period,
+    string? startDate,
+    string? endDate,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var p = period ?? "this-month";
+    DateTimeOffset? start = DateTimeOffset.TryParse(startDate, out var s) ? s : null;
+    DateTimeOffset? end = DateTimeOffset.TryParse(endDate, out var e) ? e : null;
+    return Results.Ok(await dashboard.GetFinancialFlowAsync(p, start, end));
+});
+
+app.MapGet("/api/admin/dashboard/expense-categories", async (
+    string? period,
+    string? startDate,
+    string? endDate,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    var p = period ?? "this-month";
+    DateTimeOffset? start = DateTimeOffset.TryParse(startDate, out var s) ? s : null;
+    DateTimeOffset? end = DateTimeOffset.TryParse(endDate, out var e) ? e : null;
+    return Results.Ok(await dashboard.GetExpenseCategoriesAsync(p, start, end));
+});
+
+app.MapGet("/api/admin/expenses", async (
+    string? search,
+    string? category,
+    string? startDate,
+    string? endDate,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    if (!auth.IsAuthorized(context))
+    {
+        return Results.Unauthorized();
+    }
+
+    DateTimeOffset? start = DateTimeOffset.TryParse(startDate, out var s) ? s : null;
+    DateTimeOffset? end = DateTimeOffset.TryParse(endDate, out var e) ? e : null;
+    return Results.Ok(await dashboard.GetExpensesAsync(search, category, start, end));
+});
+
+app.MapPost("/api/admin/expenses", async (
+    CreateExpenseRequest request,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Category) || request.Amount <= 0)
+    {
+        return Results.BadRequest(new { message = "Title, category and a positive amount are required." });
+    }
+
+    var expense = await dashboard.CreateExpenseAsync(request, principal.Email);
+    return Results.Created($"/api/admin/expenses/{expense.Id}", expense);
+});
+
+app.MapPut("/api/admin/expenses/{id}", async (
+    string id,
+    UpdateExpenseRequest request,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Category) || request.Amount <= 0)
+    {
+        return Results.BadRequest(new { message = "Title, category and a positive amount are required." });
+    }
+
+    var expense = await dashboard.UpdateExpenseAsync(id, request);
+    return expense is null ? Results.NotFound() : Results.Ok(expense);
+});
+
+app.MapDelete("/api/admin/expenses/{id}", async (
+    string id,
+    AdminDashboardService dashboard,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    return await dashboard.DeleteExpenseAsync(id) ? Results.NoContent() : Results.NotFound();
+});
+
 app.Run();

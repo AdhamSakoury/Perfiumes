@@ -45,7 +45,7 @@
               </div>
               <div class="order-total-block">
                 <span>{{ 'total' | t }}</span>
-                <strong>{{ order.total | currency }}</strong>
+                <strong>{{ order.total | egp }}</strong>
               </div>
             </div>
             <div class="tracking-mini">
@@ -155,7 +155,7 @@
               <h4>{{ item.name }}</h4>
               <p>{{ 'qty' | t }}: {{ item.quantity }}</p>
             </div>
-            <strong>{{ item.price * item.quantity | currency }}</strong>
+            <strong>{{ item.price * item.quantity | egp }}</strong>
           </div>
         }
       </div>
@@ -193,14 +193,20 @@
 
       <div class="orders-modal-footer">
         <div class="orders-modal-summary">
-          <div><span>{{ 'subtotal' | t }}</span><strong>{{ order.subtotal | currency }}</strong></div>
+          <div><span>{{ 'subtotal' | t }}</span><strong>{{ order.subtotal | egp }}</strong></div>
           @if (order.discount > 0) {
-            <div class="discount-row"><span>{{ 'discount' | t }}</span><strong>-{{ order.discount | currency }}</strong></div>
+            <div class="discount-row"><span>{{ 'discount' | t }}</span><strong>-{{ order.discount | egp }}</strong></div>
           }
-          <div><span>Shipping</span><strong>{{ (order.shippingFee || 0) | currency:'EGP':'symbol-narrow' }}</strong></div>
-          <div class="total-row"><span>{{ 'total' | t }}</span><strong>{{ order.total | currency }}</strong></div>
+          <div><span>Shipping</span><strong>{{ (order.shippingFee || 0) | egp }}</strong></div>
+          <div class="total-row"><span>{{ 'total' | t }}</span><strong>{{ order.total | egp }}</strong></div>
         </div>
         <div class="orders-modal-actions">
+          @if (isWithDelivery(order)) {
+            <div class="text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2 flex items-center gap-2">
+              <i class="fas fa-truck-fast text-amber-600"></i>
+              <span>Out for delivery with courier ({{ order.deliveryName || 'Courier' }}). Order cannot be cancelled.</span>
+            </div>
+          }
           @if (canCancel(order)) {
             <button type="button" (click)="cancelOrder(order)" class="orders-cancel-btn" [disabled]="cancellingOrderId === order.id">
               <i class="fas" [class.fa-spinner]="cancellingOrderId === order.id" [class.fa-spin]="cancellingOrderId === order.id" [class.fa-ban]="cancellingOrderId !== order.id"></i>

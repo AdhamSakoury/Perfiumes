@@ -11,7 +11,7 @@
           <app-star-rating [rating]="item.rating" />
           <span class="text-nubian-earth dark:text-nubian-sand">{{ 'ratingOutOfFive' | t:{ rating: item.rating } }}</span>
         </div>
-        <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-6">{{ item.price | currency }}</p>
+        <p class="text-2xl font-bold text-nubian-brown dark:text-nubian-gold mb-6">{{ item.price | egp }}</p>
         <p class="mb-4 font-semibold" [class.text-green-600]="(item.stockQuantity || 0) > 5" [class.text-nubian-terracotta]="(item.stockQuantity || 0) <= 5">
           {{ (item.stockQuantity || 0) > 0 ? ((item.stockQuantity || 0) + ' available now') : 'Out of stock' }}
         </p>

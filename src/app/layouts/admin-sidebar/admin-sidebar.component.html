@@ -35,6 +35,29 @@
     <a routerLink="/admin/messages" routerLinkActive="active" (click)="close()">
       <i class="fas fa-headset"></i><span>{{ 'supportInbox' | t }}</span>
     </a>
+
+    <!-- Collapsible Finance Section -->
+    <div class="admin-nav-group">
+      <button type="button" class="admin-nav-group-header" (click)="toggleFinance()">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-wallet text-amber-500"></i>
+          <span>{{ 'finance' | t }}</span>
+        </div>
+        <i class="fas fa-chevron-down chevron" [class.rotated]="!financeOpen()"></i>
+      </button>
+
+      @if (financeOpen()) {
+        <div class="admin-nav-subitems">
+          <a routerLink="/admin/finance" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="close()">
+            <i class="fas fa-chart-line"></i><span>{{ 'financeOverview' | t }}</span>
+          </a>
+          <a routerLink="/admin/finance/expenses" routerLinkActive="active" (click)="close()">
+            <i class="fas fa-receipt"></i><span>{{ 'expensesManagement' | t }}</span>
+          </a>
+        </div>
+      }
+    </div>
+
     <a routerLink="/account" routerLinkActive="active" (click)="close()">
       <i class="fas fa-user"></i><span>{{ 'account' | t }}</span>
     </a>

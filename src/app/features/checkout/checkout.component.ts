@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +16,7 @@ import { catchError, map, switchMap, throwError, TimeoutError } from 'rxjs';
 @Component({
   selector: 'app-checkout-page',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [EgpPipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.css'
 })

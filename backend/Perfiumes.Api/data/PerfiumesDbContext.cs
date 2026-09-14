@@ -19,6 +19,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
     public DbSet<OrderMessageEntity> OrderMessages => Set<OrderMessageEntity>();
     public DbSet<ProductReviewEntity> ProductReviews => Set<ProductReviewEntity>();
     public DbSet<DeliveryRatingEntity> DeliveryRatings => Set<DeliveryRatingEntity>();
+    public DbSet<AdminExpenseEntity> AdminExpenses => Set<AdminExpenseEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

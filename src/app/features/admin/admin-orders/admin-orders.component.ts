@@ -1,4 +1,5 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +17,7 @@ import { catchError, finalize, Observable, switchMap, throwError, timeout } from
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
+  imports: [EgpPipe, DatePipe, FormsModule, RouterLink, CustomDropdownComponent, TranslatePipe],
   templateUrl: './admin-orders.component.html',
   styleUrl: './admin-orders.component.css'
 })

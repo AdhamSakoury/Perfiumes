@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { Component, Input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Perfume } from '@core/models/store.models';
@@ -10,7 +10,7 @@ import { TranslatePipe } from '@shared/pipes/translate.pipe';
 @Component({
   selector: 'app-perfume-card',
   standalone: true,
-  imports: [CurrencyPipe, RouterLink, StarRatingComponent, TranslatePipe],
+  imports: [EgpPipe, RouterLink, StarRatingComponent, TranslatePipe],
   templateUrl: './perfume-card.component.html',
   styleUrl: './perfume-card.component.css'
 })

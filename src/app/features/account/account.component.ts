@@ -1,3 +1,4 @@
+import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { CurrencyPipe, DatePipe, DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, Inject, OnInit, computed, signal } from '@angular/core';
@@ -17,7 +18,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 @Component({
   selector: 'app-account-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [EgpPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './account.component.html',
   styleUrl: './account.component.css'
 })

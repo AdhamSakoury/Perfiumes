@@ -14,7 +14,7 @@
       <div>
         <p>{{ 'adminDashboard' | t }}</p>
         <h1>{{ 'orders' | t }}</h1>
-        <span>{{ displayedOrders.length }} shown - {{ totalRevenueVisible | currency:'EGP':'symbol-narrow' }} visible revenue</span>
+        <span>{{ displayedOrders.length }} shown - {{ totalRevenueVisible | egp }} visible revenue</span>
       </div>
       <button type="button" (click)="load()" [disabled]="loading">
         <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
@@ -64,7 +64,7 @@
               </div>
 
               <div class="order-summary">
-                <b>{{ order.total | currency }}</b>
+                <b>{{ order.total | egp }}</b>
                 <span class="status-pill">{{ statusLabel(order.status) }}</span>
                 <span class="payment-pill" [class.paid]="order.paymentStatus === 'paid'">
                   {{ paymentMethodLabel(order.paymentMethod) }} - {{ order.paymentStatus || ('pending' | t) }}
@@ -79,7 +79,7 @@
             </div>
 
             <div class="order-items">
-              <span>{{ order.shippingAddress.city }} - Shipping {{ (order.shippingFee || 0) | currency:'EGP':'symbol-narrow' }}</span>
+              <span>{{ order.shippingAddress.city }} - Shipping {{ (order.shippingFee || 0) | egp }}</span>
               <span>{{ order.courierName || 'Courier pending' }}</span>
               <span>{{ order.trackingNumber || 'No tracking number yet' }}</span>
               @if (order.estimatedDelivery) {
