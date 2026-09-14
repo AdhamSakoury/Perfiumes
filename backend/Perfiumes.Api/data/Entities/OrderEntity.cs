@@ -39,5 +39,4 @@ public sealed class OrderEntity
     public List<OrderMessageEntity> Messages { get; set; } = [];
     public List<ProductReviewEntity> ProductReviews { get; set; } = [];
     public DeliveryRatingEntity? DeliveryRating { get; set; }
-    public CustomerRatingEntity? CustomerRating { get; set; }
 }
