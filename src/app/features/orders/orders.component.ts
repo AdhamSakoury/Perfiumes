@@ -9,6 +9,7 @@ import { OrderService } from '@core/services/order.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { InvoiceService } from '@core/services/invoice.service';
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
@@ -84,7 +85,8 @@ export class OrdersPageComponent {
     private readonly orderService: OrderService,
     private readonly toast: ToastService,
     private readonly scrollLock: ScrollLockService,
-    private readonly i18n: LocalizationService
+    private readonly i18n: LocalizationService,
+    private readonly invoiceService: InvoiceService
   ) {
     effect((onCleanup) => {
       if (!this.selectedOrder()) return;
@@ -225,6 +227,18 @@ export class OrdersPageComponent {
 
   closeRating(): void {
     this.activeRatingOrder.set(null);
+  }
+
+  downloadInvoice(order: Order, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    const user = this.auth.currentUser();
+    this.invoiceService.downloadInvoice(order, user);
+    this.toast.show(
+      this.i18n.language() === 'ar' ? 'جارٍ تجهيز الفاتورة للطباعة / الحفظ كـ PDF' : 'Preparing invoice for print / PDF save',
+      'success'
+    );
   }
 
   private loadOrders(userEmail: string, showBusy: boolean): void {

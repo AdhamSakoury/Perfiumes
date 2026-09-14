@@ -222,7 +222,13 @@
                 <p class="font-semibold text-nubian-brown dark:text-nubian-gold">{{ 'orderNumber' | t:{ id: order.id } }}</p>
                 <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ order.date | date:'mediumDate' }} - {{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</p>
               </div>
-              <strong class="text-nubian-gold">{{ order.total | egp }}</strong>
+              <div class="flex items-center gap-3">
+                <strong class="text-nubian-gold">{{ order.total | egp }}</strong>
+                <button type="button" (click)="downloadInvoice(order, $event)" class="px-3 py-1.5 rounded-lg border border-nubian-gold/30 bg-nubian-gold/10 hover:bg-nubian-gold hover:text-nubian-dark text-nubian-brown dark:text-nubian-sand text-xs font-bold transition-colors flex items-center gap-1.5" [title]="'downloadInvoice' | t">
+                  <i class="fas fa-file-pdf text-red-500"></i>
+                  <span>{{ 'invoice' | t }}</span>
+                </button>
+              </div>
             </div>
           } @empty {
             <p class="text-nubian-earth dark:text-nubian-sand text-center py-8">{{ 'recentActivityEmpty' | t }}</p>
@@ -343,6 +349,10 @@
                   <div class="flex items-center gap-3">
                     <span class="order-status status-{{ order.status.toLowerCase() }}">{{ order.status }}</span>
                     <strong class="text-nubian-gold">{{ order.total | egp }}</strong>
+                    <button type="button" (click)="downloadInvoice(order, $event)" class="px-3 py-1.5 rounded-lg border border-nubian-gold/30 bg-nubian-gold/10 hover:bg-nubian-gold hover:text-nubian-dark text-nubian-brown dark:text-nubian-sand text-xs font-bold transition-colors flex items-center gap-1.5" [title]="'downloadInvoice' | t">
+                      <i class="fas fa-file-pdf text-red-500"></i>
+                      <span>{{ 'invoice' | t }}</span>
+                    </button>
                   </div>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, Inject, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { User, UserWallet } from '@core/models/store.models';
+import { Order, User, UserWallet } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
 import { ScrollLockService } from '@core/services/scroll-lock.service';
@@ -12,6 +12,7 @@ import { ToastService } from '@core/services/toast.service';
 import { WishlistService } from '@core/services/wishlist.service';
 import { WalletService } from '@core/services/wallet.service';
 import { LocalizationService } from '@core/services/localization.service';
+import { InvoiceService } from '@core/services/invoice.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { catchError, switchMap, throwError } from 'rxjs';
 
@@ -40,6 +41,7 @@ export class AccountPageComponent implements OnInit {
     readonly toast: ToastService,
     private readonly scrollLock: ScrollLockService,
     private readonly i18n: LocalizationService,
+    private readonly invoiceService: InvoiceService,
     @Inject(DOCUMENT) private readonly document: Document
   ) {}
 
@@ -191,6 +193,18 @@ export class AccountPageComponent implements OnInit {
 
     return this.auth.ensureAccessToken(true).pipe(
       switchMap((token) => token ? this.walletService.getCurrentWallet(token) : throwError(() => error))
+    );
+  }
+
+  downloadInvoice(order: Order, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    const user = this.auth.currentUser();
+    this.invoiceService.downloadInvoice(order, user);
+    this.toast.show(
+      this.i18n.language() === 'ar' ? 'جارٍ تجهيز الفاتورة للطباعة / الحفظ كـ PDF' : 'Preparing invoice for print / PDF save',
+      'success'
     );
   }
 

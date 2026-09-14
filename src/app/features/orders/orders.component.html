@@ -46,6 +46,10 @@
               <div class="order-total-block">
                 <span>{{ 'total' | t }}</span>
                 <strong>{{ order.total | egp }}</strong>
+                <button type="button" (click)="downloadInvoice(order, $event)" class="btn-card-invoice" [title]="'downloadInvoice' | t">
+                  <i class="fas fa-file-pdf text-red-500"></i>
+                  <span>{{ 'invoice' | t }}</span>
+                </button>
               </div>
             </div>
             <div class="tracking-mini">
@@ -89,7 +93,13 @@
             <p>Estimated delivery: {{ order.estimatedDelivery | date:'mediumDate' }}</p>
           }
         </div>
-        <button type="button" (click)="selectedOrder.set(null)" class="orders-modal-close" aria-label="Close order details"><i class="fas fa-times"></i></button>
+        <div class="flex items-center gap-3">
+          <button type="button" (click)="downloadInvoice(order)" class="orders-invoice-download-btn" [title]="'downloadInvoice' | t">
+            <i class="fas fa-file-pdf"></i>
+            <span>{{ 'downloadInvoice' | t }}</span>
+          </button>
+          <button type="button" (click)="selectedOrder.set(null)" class="orders-modal-close" aria-label="Close order details"><i class="fas fa-times"></i></button>
+        </div>
       </div>
 
       <!-- Rating Prompt Banner if Order is Delivered -->
@@ -213,6 +223,10 @@
               {{ cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel order' }}
             </button>
           }
+          <button type="button" (click)="downloadInvoice(order)" class="orders-invoice-btn">
+            <i class="fas fa-file-pdf"></i>
+            <span>{{ 'downloadInvoice' | t }}</span>
+          </button>
           <button type="button" (click)="reorder(order)" class="orders-reorder-btn">{{ 'reorder' | t }}</button>
         </div>
       </div>

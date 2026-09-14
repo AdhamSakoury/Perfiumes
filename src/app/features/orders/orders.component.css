@@ -1291,3 +1291,92 @@
 .delivery-modal-body {
   padding: 16px;
 }
+
+.orders-invoice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.4rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  background: linear-gradient(135deg, #153f3f, #1e5a5a);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(21, 63, 63, 0.2);
+  transition: all 0.2s ease;
+}
+
+.orders-invoice-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(21, 63, 63, 0.3);
+  background: linear-gradient(135deg, #184949, #236969);
+  border-color: #F5A623;
+}
+
+.orders-invoice-btn i {
+  color: #F5A623;
+  font-size: 1.1rem;
+}
+
+.orders-invoice-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(245, 166, 35, 0.45);
+  background: rgba(245, 166, 35, 0.12);
+  color: #92400e;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+:host-context(.dark) .orders-invoice-download-btn {
+  color: #fde68a;
+  background: rgba(245, 166, 35, 0.18);
+}
+
+.orders-invoice-download-btn:hover {
+  background: #F5A623;
+  color: #1a1510 !important;
+}
+
+.orders-invoice-download-btn i {
+  color: #dc2626;
+}
+
+.btn-card-invoice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  background: rgba(245, 166, 35, 0.1);
+  color: #153f3f;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.4rem;
+}
+
+:host-context(.dark) .btn-card-invoice {
+  color: #fde68a;
+  background: rgba(245, 166, 35, 0.15);
+}
+
+.btn-card-invoice:hover {
+  background: #153f3f;
+  color: #fff !important;
+  border-color: #153f3f;
+}
+
+.btn-card-invoice i {
+  color: #dc2626;
+}

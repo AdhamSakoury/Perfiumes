@@ -10,6 +10,7 @@ import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
+import { InvoiceService } from '@core/services/invoice.service';
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { catchError, finalize, Observable, switchMap, throwError, timeout } from 'rxjs';
@@ -48,7 +49,8 @@ export class AdminOrdersComponent implements OnDestroy {
     private readonly dashboard: AdminDashboardService,
     private readonly router: Router,
     private readonly toast: ToastService,
-    private readonly i18n: LocalizationService
+    private readonly i18n: LocalizationService,
+    private readonly invoiceService: InvoiceService
   ) {
     if (!this.auth.currentUser()) {
       void this.router.navigate(['/login'], { queryParams: { redirect: '/admin/orders' } });
@@ -188,6 +190,10 @@ export class AdminOrdersComponent implements OnDestroy {
     if (method === 'card') return 'Card';
     if (method === 'instapay') return 'InstaPay';
     return this.i18n.t('cash');
+  }
+
+  downloadInvoice(order: Order): void {
+    this.invoiceService.downloadInvoice(order, { fullName: order.shippingAddress.name, email: order.userEmail, phone: order.shippingAddress.phone });
   }
 
   printPackingSlip(order: Order): void {
