@@ -230,7 +230,7 @@ END
             .OrderByDescending(order => order.Date)
             .ToListAsync();
 
-        return orders.Select(ToDto).ToList();
+        return await AddRatingsAsync(orders.Select(ToDto).ToList());
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetAllAsync()
@@ -243,7 +243,7 @@ END
             .OrderByDescending(order => order.Date)
             .ToListAsync();
 
-        return orders.Select(ToDto).ToList();
+        return await AddRatingsAsync(orders.Select(ToDto).ToList());
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetForDeliveryAsync(string deliveryEmail)
@@ -265,7 +265,7 @@ END
             .OrderByDescending(order => order.Date)
             .ToListAsync();
 
-        return orders.Select(ToDto).ToList();
+        return await AddRatingsAsync(orders.Select(ToDto).ToList());
     }
 
     public async Task<OrderDto?> GetByIdAsync(string id)
@@ -277,7 +277,7 @@ END
             .Include(item => item.TrackingEvents)
             .FirstOrDefaultAsync(item => item.Id == id);
 
-        return order is null ? null : ToDto(order);
+        return order is null ? null : (await AddRatingsAsync([ToDto(order)])).Single();
     }
 
     public async Task<OrderDto> CreateAsync(CreateOrderRequest request, string? authenticatedEmail = null)
@@ -782,7 +782,7 @@ END
                 "Order delivered",
                 $"Your order {order.Id} has been delivered. You can now rate the delivery experience.",
                 "order",
-                "/orders");
+                $"/orders?ratingOrderId={Uri.EscapeDataString(order.Id)}");
             await PublishAdminNotificationAsync(
                 "Order delivered",
                 $"Order {order.Id} was delivered to {order.UserEmail}.",
@@ -921,13 +921,22 @@ END
     public async Task<OrderRatingsStatusDto> GetOrderRatingsStatusAsync(string orderId, string userEmail)
     {
         var normalizedEmail = userEmail.Trim().ToLowerInvariant();
-        var order = await db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId && o.UserEmail == normalizedEmail);
+        var order = await db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
         if (order is null)
         {
-            return new OrderRatingsStatusDto(false, null, null, []);
+            return new OrderRatingsStatusDto(false, null, null, [], false, null, null);
+        }
+
+        var isCustomer = order.UserEmail == normalizedEmail;
+        var isDelivery = order.DeliveryUserId is not null &&
+            await db.Users.AnyAsync(u => u.Id == order.DeliveryUserId && u.Email == normalizedEmail && u.Role == "delivery");
+        if (!isCustomer && !isDelivery)
+        {
+            return new OrderRatingsStatusDto(false, null, null, [], false, null, null);
         }
 
         var deliveryRating = await db.DeliveryRatings.AsNoTracking().FirstOrDefaultAsync(r => r.OrderId == orderId);
+        var customerRating = await db.CustomerRatings.AsNoTracking().FirstOrDefaultAsync(r => r.OrderId == orderId);
         var productReviews = await db.ProductReviews.AsNoTracking()
             .Where(r => r.OrderId == orderId)
             .Select(r => new ProductReviewDto(r.Id, r.ProductId, r.OrderId, r.UserEmail, r.UserName, r.Rating, r.Comment, r.CreatedAt))
@@ -937,7 +946,10 @@ END
             deliveryRating is not null,
             deliveryRating?.Rating,
             deliveryRating?.Comment,
-            productReviews);
+            productReviews,
+            customerRating is not null,
+            customerRating?.Rating,
+            customerRating?.Comment);
     }
 
     public async Task<ProductReviewDto> CreateProductReviewAsync(string orderId, string userEmail, CreateProductReviewRequest request)
@@ -1069,7 +1081,7 @@ END
                 "New delivery rating",
                 $"{userName} rated your delivery for order {order.Id} {existing.Rating}/5.",
                 "rating",
-                "/delivery/orders");
+                $"/delivery/orders?ratingOrderId={Uri.EscapeDataString(order.Id)}");
         }
 
         return new DeliveryRatingDto(existing.Id, existing.OrderId, existing.DeliveryUserId, existing.UserEmail, existing.UserName, existing.Rating, existing.Comment, existing.CreatedAt);
@@ -1131,7 +1143,7 @@ END
             "New delivery feedback",
             $"Your delivery partner rated your order {order.Id} {existing.Rating}/5.",
             "rating",
-            "/orders");
+            $"/orders?ratingOrderId={Uri.EscapeDataString(order.Id)}");
 
         return new CustomerRatingDto(existing.Id, existing.OrderId, existing.DeliveryUserId, existing.UserEmail, existing.UserName, existing.Rating, existing.Comment, existing.CreatedAt);
     }
@@ -1377,5 +1389,34 @@ END
                 .OrderBy(item => item.CreatedAt)
                 .Select(item => new OrderTrackingEventDto(item.Id, item.Status, item.Title, item.Description, item.CreatedAt))
                 .ToList());
+    }
+
+    private async Task<IReadOnlyList<OrderDto>> AddRatingsAsync(IReadOnlyList<OrderDto> orders)
+    {
+        if (orders.Count == 0)
+        {
+            return orders;
+        }
+
+        var orderIds = orders.Select(order => order.Id).ToList();
+        var deliveryRatings = await db.DeliveryRatings.AsNoTracking()
+            .Where(rating => orderIds.Contains(rating.OrderId))
+            .ToDictionaryAsync(rating => rating.OrderId);
+        var customerRatings = await db.CustomerRatings.AsNoTracking()
+            .Where(rating => orderIds.Contains(rating.OrderId))
+            .ToDictionaryAsync(rating => rating.OrderId);
+
+        return orders.Select(order =>
+        {
+            deliveryRatings.TryGetValue(order.Id, out var deliveryRating);
+            customerRatings.TryGetValue(order.Id, out var customerRating);
+            return order with
+            {
+                DeliveryRating = deliveryRating?.Rating,
+                DeliveryRatingComment = deliveryRating?.Comment,
+                CustomerRating = customerRating?.Rating,
+                CustomerRatingComment = customerRating?.Comment
+            };
+        }).ToList();
     }
 }

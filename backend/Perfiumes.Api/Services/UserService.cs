@@ -484,6 +484,27 @@ IF COL_LENGTH(N'[Users]', N'BlockedAt') IS NULL
             0);
     }
 
+    public async Task<bool> ChangeDeliveryPasswordAsync(string userId, string newPassword)
+    {
+        if (!passwords.MeetsComplexityRequirements(newPassword))
+        {
+            throw new InvalidOperationException("Password must be at least 8 characters and include upper-case, lower-case, number, and special character.");
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(item => item.Id == userId && item.Role == "delivery");
+        if (user is null)
+        {
+            return false;
+        }
+
+        user.PasswordHash = passwords.Hash(newPassword);
+        user.AuthProvider = "local";
+        user.IsEmailConfirmed = true;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<bool> DeleteUserAsync(string userId, string adminEmail)
     {
         var user = await db.Users.FirstOrDefaultAsync(item => item.Id == userId);

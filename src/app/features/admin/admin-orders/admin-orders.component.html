@@ -90,6 +90,23 @@
               }
             </div>
 
+            @if (order.deliveryRating || order.customerRating) {
+              <div class="admin-order-ratings">
+                @if (order.deliveryRating) {
+                  <div>
+                    <strong><i class="fas fa-truck-fast"></i> Customer → Delivery: {{ order.deliveryRating }}/5</strong>
+                    @if (order.deliveryRatingComment) { <span>"{{ order.deliveryRatingComment }}"</span> }
+                  </div>
+                }
+                @if (order.customerRating) {
+                  <div>
+                    <strong><i class="fas fa-user"></i> Delivery → Customer: {{ order.customerRating }}/5</strong>
+                    @if (order.customerRatingComment) { <span>"{{ order.customerRatingComment }}"</span> }
+                  </div>
+                }
+              </div>
+            }
+
             <div class="status-controls">
               <label>
                 <span>Delivery partner</span>

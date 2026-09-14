@@ -121,6 +121,10 @@ deliveryName?: string | null;
   shippingAddress: ShippingAddress;
   promoCode: string | null;
   trackingEvents?: OrderTrackingEvent[];
+  deliveryRating?: number | null;
+  deliveryRatingComment?: string | null;
+  customerRating?: number | null;
+  customerRatingComment?: string | null;
 }
 
 export interface User {
@@ -304,6 +308,9 @@ export interface OrderRatingsStatus {
   deliveryRating?: number | null;
   deliveryComment?: string | null;
   productReviews: ProductReview[];
+  hasRatedCustomer: boolean;
+  customerRating?: number | null;
+  customerComment?: string | null;
 }
 
 export interface CustomerRating {

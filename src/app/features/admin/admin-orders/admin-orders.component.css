@@ -3,6 +3,52 @@
   padding-top: 6rem;
 }
 
+.admin-order-ratings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0.7rem;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  border-radius: 0.7rem;
+  background: rgba(245, 166, 35, 0.08);
+  color: #5D4E37;
+  font-size: 0.78rem;
+}
+
+.admin-order-ratings strong,
+.admin-order-ratings span {
+  display: block;
+}
+
+.admin-order-ratings strong {
+  color: #1B4D4D;
+}
+
+.admin-order-ratings i {
+  color: #F5A623;
+}
+
+.admin-order-ratings span {
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+:host-context(.dark) .admin-order-ratings {
+  color: #E6D5B8;
+  background: rgba(245, 166, 35, 0.1);
+}
+
+:host-context(.dark) .admin-order-ratings strong {
+  color: #F5A623;
+}
+
+@media (max-width: 720px) {
+  .admin-order-ratings {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-orders-header {
   width: 100%;
   margin: 0 0 1rem;

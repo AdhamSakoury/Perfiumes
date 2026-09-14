@@ -67,6 +67,14 @@ export class AdminDashboardService {
     });
   }
 
+  changeDeliveryPassword(userId: string, newPassword: string, token: string): Observable<void> {
+    return this.http.post<void>(
+      `${environment.apiBaseUrl}/api/admin/users/${userId}/change-password`,
+      { newPassword },
+      { headers: this.authHeaders(token) }
+    );
+  }
+
   private authHeaders(token: string): HttpHeaders {
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }

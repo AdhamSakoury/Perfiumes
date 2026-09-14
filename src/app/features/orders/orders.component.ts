@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
@@ -49,6 +49,7 @@ export class OrdersPageComponent {
 
   readonly trackingSteps = ['Processing', 'Packed', 'ReadyForPickup', 'Shipped', 'OutForDelivery', 'Delivered'];
   private requestedEmail: string | null = null;
+  private readonly ratingOrderId: string | null;
 
   readonly orders = computed(() => {
     const all = [...this.userOrders()];
@@ -90,8 +91,10 @@ export class OrdersPageComponent {
     private readonly toast: ToastService,
     private readonly scrollLock: ScrollLockService,
     private readonly i18n: LocalizationService,
-    private readonly invoiceService: InvoiceService
+    private readonly invoiceService: InvoiceService,
+    route: ActivatedRoute
   ) {
+    this.ratingOrderId = route.snapshot.queryParamMap.get('ratingOrderId');
     effect((onCleanup) => {
       if (!this.selectedOrder()) return;
       this.scrollLock.lock();
@@ -253,6 +256,11 @@ export class OrdersPageComponent {
         const user = this.auth.currentUser();
         if (user) this.auth.updateCurrentUser({ ...user, orders });
         this.loading.set(false);
+        const ratingOrder = this.ratingOrderId ? orders.find((order) => order.id === this.ratingOrderId) : undefined;
+        if (ratingOrder) {
+          this.selectedOrder.set(ratingOrder);
+          setTimeout(() => this.openRating(ratingOrder), 0);
+        }
       },
       error: () => {
         this.loading.set(false);

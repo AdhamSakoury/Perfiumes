@@ -1,7 +1,7 @@
 import { DatePipe, NgClass } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
@@ -14,6 +14,7 @@ import { OrderMapComponent } from '@shared/components/order-map/order-map.compon
 import { OrderChatComponent } from '@shared/components/order-chat/order-chat.component';
 import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { forkJoin, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-delivery-orders',
@@ -38,6 +39,7 @@ export class DeliveryOrdersComponent {
   readonly activeChatOrder = signal<Order | null>(null);
   readonly search = signal('');
   readonly filter = signal<'all' | 'ready' | 'on-the-way' | 'delivered'>('all');
+  private readonly ratingOrderId: string | null;
 
   // Computed counts
   readonly totalCount = computed(() => this.orders().length);
@@ -76,6 +78,9 @@ export class DeliveryOrdersComponent {
   customerRatings: Record<string, number> = {};
   customerRatingComments: Record<string, string> = {};
   ratingId: string | null = null;
+  readonly ratedCustomerOrders = new Set<string>();
+  customerRatingStatuses: Record<string, { rating: number; comment: string }> = {};
+  deliveryRatingStatuses: Record<string, { rating: number; comment: string }> = {};
 
   get isAr(): boolean {
     return this.i18n.language() === 'ar';
@@ -89,8 +94,10 @@ export class DeliveryOrdersComponent {
     private readonly sanitizer: DomSanitizer,
     readonly theme: ThemeService,
     private readonly i18n: LocalizationService,
-    private readonly invoiceService: InvoiceService
+    private readonly invoiceService: InvoiceService,
+    route: ActivatedRoute
   ) {
+    this.ratingOrderId = route.snapshot.queryParamMap.get('ratingOrderId');
     if (this.auth.currentUser()?.role !== 'delivery') {
       void this.router.navigateByUrl('/');
       return;
@@ -100,7 +107,7 @@ export class DeliveryOrdersComponent {
 
   load(): void {
     this.loading.set(true);
-    this.auth.ensureAccessToken().subscribe((token) => {
+    this.auth.ensureAccessToken().pipe(timeout({ first: 10000 })).subscribe((token) => {
       if (!token) {
         void this.router.navigate(['/login'], { queryParams: { redirect: '/delivery/orders' } });
         return;
@@ -108,13 +115,44 @@ export class DeliveryOrdersComponent {
       this.ordersApi.getDeliveryOrders(token).subscribe({
         next: (orders) => {
           this.orders.set(orders);
+          const ratingOrder = this.ratingOrderId ? orders.find((order) => order.id === this.ratingOrderId) : undefined;
+          if (ratingOrder) {
+            this.filter.set('delivered');
+            setTimeout(() => document.getElementById(`delivery-order-${ratingOrder.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+          }
           this.loading.set(false);
+          this.loadCustomerRatings(orders, token);
         },
         error: () => {
           this.loading.set(false);
           this.toast.show(this.isAr ? 'تعذر تحميل الطلبات الموكلة إليك.' : 'Could not load assigned orders.', 'error');
         }
       });
+    });
+  }
+
+  private loadCustomerRatings(orders: Order[], token: string): void {
+    const delivered = orders.filter((order) => order.status === 'Delivered');
+    if (!delivered.length) return;
+
+    forkJoin(delivered.map((order) => this.ordersApi.getOrderRatings(order.id, token))).subscribe({
+      next: (statuses) => {
+        statuses.forEach((status, index) => {
+          if (status.hasRatedDelivery && status.deliveryRating) {
+            this.deliveryRatingStatuses[delivered[index].id] = {
+              rating: status.deliveryRating,
+              comment: status.deliveryComment || ''
+            };
+          }
+          if (status.hasRatedCustomer && status.customerRating) {
+            this.customerRatingStatuses[delivered[index].id] = {
+              rating: status.customerRating,
+              comment: status.customerComment || ''
+            };
+            this.ratedCustomerOrders.add(delivered[index].id);
+          }
+        });
+      }
     });
   }
 
@@ -137,7 +175,7 @@ export class DeliveryOrdersComponent {
   updateStatus(order: Order, status: 'OutForDelivery' | 'Delivered'): void {
     if (this.updatingId || order.status === status) return;
     this.updatingId = order.id;
-    this.auth.ensureAccessToken().subscribe((token) => {
+    this.auth.ensureAccessToken().pipe(timeout({ first: 10000 })).subscribe((token) => {
       if (!token) return;
       this.ordersApi.updateDeliveryStatus(order.id, status, token, this.notes[order.id] || '').subscribe({
         next: (updated) => {
@@ -167,22 +205,39 @@ export class DeliveryOrdersComponent {
     if (this.ratingId || rating < 1) return;
 
     this.ratingId = order.id;
-    this.auth.ensureAccessToken().subscribe((token) => {
+    this.auth.ensureAccessToken().pipe(timeout({ first: 10000 })).subscribe((token) => {
       if (!token) {
         this.ratingId = null;
+        this.toast.show(this.isAr ? 'انتهت الجلسة. سجل الدخول مرة أخرى.' : 'Your session expired. Please sign in again.', 'error');
         return;
       }
-      this.ordersApi.submitCustomerRating(order.id, rating, this.customerRatingComments[order.id] || '', token).subscribe({
+      this.ordersApi.submitCustomerRating(order.id, rating, this.customerRatingComments[order.id] || '', token)
+        .pipe(timeout({ first: 10000 }))
+        .subscribe({
         next: () => {
           this.ratingId = null;
+          this.ratedCustomerOrders.add(order.id);
+          this.customerRatingStatuses[order.id] = {
+            rating,
+            comment: this.customerRatingComments[order.id] || ''
+          };
           this.toast.show(this.isAr ? 'تم إرسال تقييم العميل.' : 'Customer rating sent.', 'success');
         },
         error: (error) => {
           this.ratingId = null;
           this.toast.show(error?.error?.message || (this.isAr ? 'تعذر إرسال التقييم.' : 'Could not send rating.'), 'error');
         }
-      });
+        });
+    }, () => {
+      this.ratingId = null;
+      this.toast.show(this.isAr ? 'تعذر التحقق من تسجيل الدخول.' : 'Could not verify your session.', 'error');
     });
+  }
+
+  selectCustomerRating(orderId: string, rating: number): void {
+    if (this.ratingId !== orderId) {
+      this.customerRatings[orderId] = rating;
+    }
   }
 
   onLocationUpdated(order: Order, coords: { latitude: number; longitude: number }): void {

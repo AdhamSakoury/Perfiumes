@@ -10,6 +10,15 @@ html.scroll-locked {
   overscroll-behavior: none;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
+app-root {
+  display: block;
+}
+
 body {
   margin: 0;
   background: #F5F0E6;
@@ -98,6 +107,13 @@ html.dark .nubian-pattern {
 @media (max-width: 980px) {
   .admin-sidebar-mode > main {
     padding-inline-start: 0;
+  }
+}
+
+@media (min-width: 981px) and (max-width: 1366px) {
+  /* Keep authentication pages at native size; compact only the application shell. */
+  app-root > .compact-layout {
+    zoom: 0.9;
   }
 }
 

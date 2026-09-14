@@ -64,3 +64,92 @@
 [dir="rtl"] .delivery-order-card {
   text-align: right;
 }
+
+.customer-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+}
+
+.customer-rating-stars button {
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 0.75rem;
+  color: #b9aaa0;
+  background: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.customer-rating-stars button:hover:not(:disabled),
+.customer-rating-stars button.selected {
+  color: #f5a623;
+  background: #fff7e8;
+  transform: translateY(-2px);
+}
+
+.customer-rating-stars button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.customer-rating-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.7rem;
+  width: 100%;
+  border: 1px solid #153f3f;
+  border-radius: 0.8rem;
+  background: #153f3f;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+}
+
+.customer-rating-submit:hover:not(:disabled) {
+  background: #245d5d;
+  transform: translateY(-1px);
+}
+
+.customer-rating-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.customer-rating-submit.is-loading {
+  cursor: wait;
+  background: #6f8f8f;
+}
+
+:host-context(.dark) .customer-rating-stars button {
+  background: #23201a;
+  border-color: rgba(245, 166, 35, 0.35);
+  color: #796f65;
+}
+
+:host-context(.dark) .customer-rating-stars button:hover:not(:disabled),
+:host-context(.dark) .customer-rating-stars button.selected {
+  background: #3b2e17;
+  color: #f5b942;
+}
+
+:host-context(.dark) .customer-rating-submit {
+  border-color: #f5a623;
+  background: #f5a623;
+  color: #1e1b16;
+}
+
+:host-context(.dark) .customer-rating-submit:hover:not(:disabled) {
+  background: #ffc35a;
+}
+
+:host-context(.dark) .customer-rating-submit.is-loading {
+  background: #8da5a5;
+  color: #1e1b16;
+}

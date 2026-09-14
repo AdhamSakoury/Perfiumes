@@ -42,7 +42,11 @@ public sealed record OrderDto(
     DateTimeOffset? EstimatedDelivery,
     ShippingAddressDto ShippingAddress,
     string? PromoCode,
-    IReadOnlyList<OrderTrackingEventDto> TrackingEvents);
+    IReadOnlyList<OrderTrackingEventDto> TrackingEvents,
+    int? DeliveryRating = null,
+    string? DeliveryRatingComment = null,
+    int? CustomerRating = null,
+    string? CustomerRatingComment = null);
 
 public sealed record CreateOrderRequest(
     string UserEmail,
@@ -120,4 +124,7 @@ public sealed record OrderRatingsStatusDto(
     bool HasRatedDelivery,
     int? DeliveryRating,
     string? DeliveryComment,
-    IReadOnlyList<ProductReviewDto> ProductReviews);
+    IReadOnlyList<ProductReviewDto> ProductReviews,
+    bool HasRatedCustomer,
+    int? CustomerRating,
+    string? CustomerComment);

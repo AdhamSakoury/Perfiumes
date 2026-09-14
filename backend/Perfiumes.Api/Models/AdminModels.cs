@@ -50,3 +50,4 @@ public sealed record CreateDeliveryUserRequest(
     string? Phone,
     string? Address);
 
+public sealed record ChangeDeliveryPasswordRequest(string NewPassword);

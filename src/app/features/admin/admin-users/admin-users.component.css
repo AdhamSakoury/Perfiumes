@@ -313,7 +313,7 @@
   gap: 0.5rem;
 }
 
-.btn-block, .btn-unblock, .btn-remove {
+.btn-block, .btn-unblock, .btn-remove, .btn-change-password {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -321,22 +321,24 @@
   border-radius: 0.5rem;
   font-size: 0.8rem;
   font-weight: 700;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: opacity .2s;
+  transition: background-color .2s, color .2s, border-color .2s, transform .2s, opacity .2s;
   white-space: nowrap;
 }
 
-.btn-block { background: #fee2e2; color: #991b1b; }
-.btn-block:hover:not(:disabled) { background: #fca5a5; }
+.btn-block { background: #fff7ed; color: #b45309; border-color: #fed7aa; }
+.btn-block:hover:not(:disabled) { background: #ffedd5; }
 
-.btn-unblock { background: #dcfce7; color: #166534; }
-.btn-unblock:hover:not(:disabled) { background: #86efac; }
+.btn-unblock { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.btn-unblock:hover:not(:disabled) { background: #d1fae5; }
 
-.btn-remove { background: #fff1f2; color: #be123c; }
-.btn-remove:hover:not(:disabled) { background: #fecdd3; }
+.btn-remove { background: #f8fafc; color: #64748b; border-color: #cbd5e1; }
+.btn-remove:hover:not(:disabled) { background: #f1f5f9; color: #475569; }
+.btn-change-password { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.btn-change-password:hover:not(:disabled) { background: #dbeafe; }
 
-.btn-block:disabled, .btn-unblock:disabled, .btn-remove:disabled { opacity: .55; cursor: not-allowed; }
+.btn-block:disabled, .btn-unblock:disabled, .btn-remove:disabled, .btn-change-password:disabled { opacity: .55; cursor: not-allowed; }
 
 .admin-user-protected {
   font-size: 0.78rem;
@@ -533,6 +535,14 @@
 :host-context(.dark) .btn-cancel { background: #2A2418; color: #D4A96A; }
 :host-context(.dark) .delivery-form-grid label { color: #F5E6C8; }
 :host-context(.dark) .delivery-form-grid input { background: #2A2418; border-color: #4A3F30; color: #F5E6C8; }
+:host-context(.dark) .btn-block { background: #3b2a13; color: #fbbf24; border-color: #854d0e; }
+:host-context(.dark) .btn-block:hover:not(:disabled) { background: #4a3415; }
+:host-context(.dark) .btn-unblock { background: #12352c; color: #6ee7b7; border-color: #166534; }
+:host-context(.dark) .btn-unblock:hover:not(:disabled) { background: #164e3b; }
+:host-context(.dark) .btn-remove { background: #292524; color: #cbd5e1; border-color: #57534e; }
+:host-context(.dark) .btn-remove:hover:not(:disabled) { background: #3f3f46; }
+:host-context(.dark) .btn-change-password { background: #172554; color: #93c5fd; border-color: #1d4ed8; }
+:host-context(.dark) .btn-change-password:hover:not(:disabled) { background: #1e3a8a; }
 
 /* Responsive */
 @media (max-width: 900px) {

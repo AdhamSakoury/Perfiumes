@@ -1345,6 +1345,32 @@ app.MapPost("/api/admin/users/{id}/toggle-block", async (
     }
 });
 
+app.MapPost("/api/admin/users/{id}/change-password", async (
+    string id,
+    ChangeDeliveryPasswordRequest request,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal?.Role != "admin")
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var changed = await users.ChangeDeliveryPasswordAsync(id, request.NewPassword);
+        return changed
+            ? Results.NoContent()
+            : Results.NotFound(new { message = "Delivery user not found." });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 app.MapDelete("/api/admin/users/{id}", async (
     string id,
     UserService users,

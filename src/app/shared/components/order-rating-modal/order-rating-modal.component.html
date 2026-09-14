@@ -98,6 +98,28 @@
                     <p class="submitted-comment">"{{ form.comment }}"</p>
                   }
                 }
+
+                @if (!loading() && existingRatings; as ratings) {
+                  @if (ratings.hasRatedDelivery) {
+                    <section class="ratings-summary" aria-label="Saved ratings">
+                      <h3><i class="fas fa-star"></i> Saved ratings for this order</h3>
+                      <div class="ratings-summary-grid">
+                        <div class="ratings-summary-card">
+                          <span class="ratings-summary-label">Your delivery rating</span>
+                          <div class="summary-stars">
+                            @for (star of [1, 2, 3, 4, 5]; track star) {
+                              <i class="fas fa-star" [class.muted]="star > (ratings.deliveryRating || 0)"></i>
+                            }
+                            <strong>{{ ratings.deliveryRating }}/5</strong>
+                          </div>
+                          @if (ratings.deliveryComment) {
+                            <p>"{{ ratings.deliveryComment }}"</p>
+                          }
+                        </div>
+                      </div>
+                    </section>
+                  }
+                }
               </div>
             }
           </div>

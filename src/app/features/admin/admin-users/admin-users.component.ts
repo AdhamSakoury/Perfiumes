@@ -10,7 +10,7 @@ import { LocalizationService } from '@core/services/localization.service';
 import { ToastService } from '@core/services/toast.service';
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { Observable, catchError, switchMap, throwError } from 'rxjs';
+import { Observable, Subscription, catchError, switchMap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-admin-users',
@@ -55,10 +55,15 @@ export class AdminUsersComponent {
 
   selectedUserForBlock: AdminUser | null = null;
   selectedUserForDelete: AdminUser | null = null;
+  selectedDeliveryForPassword: AdminUser | null = null;
   blockReason = '';
   showCreateDelivery = false;
   creatingDelivery = false;
   deletingUserId: string | null = null;
+  changingPasswordUserId: string | null = null;
+  private changePasswordRequest: Subscription | null = null;
+  deliveryPassword = '';
+  deliveryPasswordConfirmation = '';
   deliveryForm = { fullName: '', email: '', password: '', confirmPassword: '', phone: '', address: '' };
 
   constructor(
@@ -171,6 +176,54 @@ export class AdminUsersComponent {
 
   closeDeleteModal(): void {
     if (!this.deletingUserId) this.selectedUserForDelete = null;
+  }
+
+  openChangePasswordModal(user: AdminUser): void {
+    if (user.role !== 'delivery') return;
+    this.selectedDeliveryForPassword = user;
+    this.deliveryPassword = '';
+    this.deliveryPasswordConfirmation = '';
+  }
+
+  closeChangePasswordModal(): void {
+    this.changePasswordRequest?.unsubscribe();
+    this.changePasswordRequest = null;
+    this.changingPasswordUserId = null;
+    this.selectedDeliveryForPassword = null;
+    this.deliveryPassword = '';
+    this.deliveryPasswordConfirmation = '';
+  }
+
+  changeDeliveryPassword(): void {
+    const user = this.selectedDeliveryForPassword;
+    if (!user) return;
+    if (this.deliveryPassword !== this.deliveryPasswordConfirmation) {
+      this.toast.show(this.i18n.t('passwordsDoNotMatch'), 'error');
+      return;
+    }
+    if (this.deliveryPassword.length < 8 || !/[a-z]/.test(this.deliveryPassword) ||
+        !/[A-Z]/.test(this.deliveryPassword) || !/[0-9]/.test(this.deliveryPassword) ||
+        !/[^a-zA-Z0-9]/.test(this.deliveryPassword)) {
+      this.toast.show(this.i18n.t('deliveryPasswordRequirements'), 'error');
+      return;
+    }
+
+    this.changingPasswordUserId = user.id;
+    this.changePasswordRequest = this.fetchWithAuth((token) => this.dashboard.changeDeliveryPassword(user.id, this.deliveryPassword, token)).subscribe({
+      next: () => {
+        this.changePasswordRequest = null;
+        this.changingPasswordUserId = null;
+        this.selectedDeliveryForPassword = null;
+        this.deliveryPassword = '';
+        this.deliveryPasswordConfirmation = '';
+        this.toast.show(this.i18n.t('passwordChangedSuccess'), 'success');
+      },
+      error: (err: unknown) => {
+        this.changePasswordRequest = null;
+        this.changingPasswordUserId = null;
+        this.toast.show(err instanceof HttpErrorResponse ? err.error?.message || this.i18n.t('actionFailed') : this.i18n.t('actionFailed'), 'error');
+      }
+    });
   }
 
   confirmDelete(): void {

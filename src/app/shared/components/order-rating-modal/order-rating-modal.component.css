@@ -30,6 +30,91 @@
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.ratings-summary {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(245, 166, 35, 0.24);
+  border-radius: 0.9rem;
+  background: rgba(245, 166, 35, 0.07);
+}
+
+.ratings-summary h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.7rem;
+  color: #1B4D4D;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.ratings-summary h3 i,
+.summary-stars i {
+  color: #F5A623;
+}
+
+.ratings-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.ratings-summary-card {
+  padding: 0.7rem;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ratings-summary-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #5D4E37;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.summary-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.summary-stars i.muted {
+  color: rgba(93, 78, 55, 0.2);
+}
+
+.summary-stars strong {
+  margin-left: 0.35rem;
+  color: #1B4D4D;
+}
+
+.ratings-summary-card p {
+  margin: 0.45rem 0 0;
+  color: #5D4E37;
+  font-size: 0.75rem;
+}
+
+:host-context(.dark) .ratings-summary h3,
+:host-context(.dark) .summary-stars strong {
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .ratings-summary-card {
+  background: rgba(29, 43, 43, 0.72);
+}
+
+:host-context(.dark) .ratings-summary-label,
+:host-context(.dark) .ratings-summary-card p {
+  color: rgba(230, 213, 184, 0.78);
+}
+
+@media (max-width: 600px) {
+  .ratings-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 :host-context(.dark) .rating-modal-panel {
   background: #181512;
   border-color: rgba(212, 175, 55, 0.2);

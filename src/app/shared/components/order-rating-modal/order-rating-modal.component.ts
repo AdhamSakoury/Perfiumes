@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Order } from '@core/models/store.models';
+import { OrderRatingsStatus } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService } from '@core/services/order.service';
 import { ToastService } from '@core/services/toast.service';
@@ -32,6 +33,7 @@ export class OrderRatingModalComponent implements OnInit {
   loading = signal(true);
 
   productForms: ProductRatingForm[] = [];
+  existingRatings: OrderRatingsStatus | null = null;
 
   deliveryForm = {
     rating: 5,
@@ -75,6 +77,7 @@ export class OrderRatingModalComponent implements OnInit {
 
       this.ordersApi.getOrderRatings(this.order.id, token).subscribe({
         next: (status) => {
+          this.existingRatings = status;
           if (status.hasRatedDelivery) {
             this.deliveryForm.submitted = true;
             this.deliveryForm.rating = status.deliveryRating || 5;
@@ -150,6 +153,12 @@ export class OrderRatingModalComponent implements OnInit {
         next: () => {
           this.deliveryForm.submitting = false;
           this.deliveryForm.submitted = true;
+          this.existingRatings = {
+            ...(this.existingRatings || { productReviews: [], hasRatedCustomer: false }),
+            hasRatedDelivery: true,
+            deliveryRating: this.deliveryForm.rating,
+            deliveryComment: this.deliveryForm.comment
+          };
           this.toast.show('Delivery rating submitted successfully!', 'success');
         },
         error: (err) => {

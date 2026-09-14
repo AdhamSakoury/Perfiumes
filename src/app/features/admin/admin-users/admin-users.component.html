@@ -141,6 +141,16 @@
 
                 <div class="admin-user-actions">
                   @if (user.role !== 'admin') {
+                    @if (user.role === 'delivery') {
+                      <button
+                        type="button"
+                        class="btn-change-password"
+                        (click)="openChangePasswordModal(user)"
+                        [disabled]="changingPasswordUserId === user.id">
+                        <i class="fas fa-key"></i>
+                        {{ 'changePassword' | t }}
+                      </button>
+                    }
                     @if (user.isBlocked) {
                       <button
                         type="button"
@@ -178,7 +188,7 @@
                       } @else {
                         <i class="fas fa-trash"></i>
                       }
-                      Remove
+                      {{ 'remove' | t }}
                     </button>
                   } @else {
                     <span class="admin-user-protected">
@@ -270,5 +280,32 @@
         </button>
       </div>
     </div>
+  </div>
+}
+
+@if (selectedDeliveryForPassword) {
+  <div class="admin-users-modal-backdrop" (click)="closeChangePasswordModal()">
+    <form class="admin-users-modal delivery-form" (ngSubmit)="changeDeliveryPassword()" (click)="$event.stopPropagation()">
+      <div class="admin-users-modal-header">
+        <i class="fas fa-key"></i>
+        <h3>{{ 'changeDeliveryPassword' | t }}</h3>
+      </div>
+      <p class="admin-users-modal-msg">{{ ('setPasswordFor' | t).replace('{name}', selectedDeliveryForPassword.fullName) }}</p>
+      <div class="delivery-form-grid">
+        <label>{{ 'newPassword' | t }}
+          <input type="password" name="newDeliveryPassword" [(ngModel)]="deliveryPassword" minlength="8" required>
+        </label>
+        <label>{{ 'confirmPassword' | t }}
+          <input type="password" name="confirmDeliveryPassword" [(ngModel)]="deliveryPasswordConfirmation" minlength="8" required>
+        </label>
+      </div>
+      <div class="admin-users-modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeChangePasswordModal()">{{ 'cancel' | t }}</button>
+        <button type="submit" class="btn-create-delivery" [disabled]="changingPasswordUserId === selectedDeliveryForPassword.id">
+          <i class="fas" [class.fa-spinner]="changingPasswordUserId === selectedDeliveryForPassword.id" [class.fa-spin]="changingPasswordUserId === selectedDeliveryForPassword.id" [class.fa-key]="changingPasswordUserId !== selectedDeliveryForPassword.id"></i>
+          {{ changingPasswordUserId === selectedDeliveryForPassword.id ? ('saving' | t) : ('savePassword' | t) }}
+        </button>
+      </div>
+    </form>
   </div>
 }

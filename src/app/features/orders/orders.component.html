@@ -115,6 +115,14 @@
           </button>
         </div>
       }
+      @if (order.deliveryRating) {
+        <div class="order-saved-rating">
+          <span><i class="fas fa-star"></i> Your delivery rating: {{ order.deliveryRating }}/5</span>
+          @if (order.deliveryRatingComment) {
+            <small>"{{ order.deliveryRatingComment }}"</small>
+          }
+        </div>
+      }
 
       <!-- Assigned Delivery Partner Card -->
       @if (order.deliveryName) {
@@ -212,7 +220,7 @@
         </div>
         <div class="orders-modal-actions">
           @if (isWithDelivery(order)) {
-            <div class="text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2 flex items-center gap-2">
+            <div class="orders-delivery-notice text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg px-3 py-2 flex items-center gap-2">
               <i class="fas fa-truck-fast text-amber-600"></i>
               <span>Out for delivery with courier ({{ order.deliveryName || 'Courier' }}). Order cannot be cancelled.</span>
             </div>

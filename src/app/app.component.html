@@ -1,4 +1,4 @@
-<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen flex flex-col" [class.admin-sidebar-mode]="showAdminSidebar()" [class.auth-fullscreen-mode]="authFullscreen()">
+<div class="bg-nubian-cream dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand transition-colors duration-300 nubian-pattern min-h-screen flex flex-col" [class.admin-sidebar-mode]="showAdminSidebar()" [class.auth-fullscreen-mode]="authFullscreen()" [class.compact-layout]="!authFullscreen()">
       @if (showGlobalChrome()) {
         <app-navbar />
       }
@@ -20,7 +20,6 @@
         </div>
       }
     </div>
-
 
 
 

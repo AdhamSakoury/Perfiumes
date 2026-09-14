@@ -5,3 +5,12 @@
 .auth-fullscreen-main {
   min-height: 100vh;
 }
+
+@media (min-width: 981px) and (max-width: 1366px) {
+  .auth-fullscreen-mode,
+  .auth-fullscreen-main {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+}
