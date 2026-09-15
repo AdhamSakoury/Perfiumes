@@ -13,7 +13,8 @@ public sealed class OrderService(
     IHubContext<OrderTrackingHub> trackingHub,
     IHubContext<NotificationHub> notificationHub,
     NotificationService notifications,
-    UserService users)
+    UserService users,
+    IWebHostEnvironment environment)
 {
     private static readonly IReadOnlyDictionary<string, (string Title, string Description)> TrackingCopy =
         new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
@@ -158,11 +159,29 @@ BEGIN
         [SenderName] nvarchar(160) NOT NULL,
         [SenderEmail] nvarchar(256) NOT NULL,
         [Message] nvarchar(2000) NOT NULL,
+        [MessageType] nvarchar(16) NOT NULL CONSTRAINT [DF_OrderMessages_MessageType] DEFAULT N'text',
+        [MediaUrl] nvarchar(1000) NULL,
+        [FileName] nvarchar(255) NULL,
         [CreatedAt] datetimeoffset NOT NULL,
         CONSTRAINT [FK_OrderMessages_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE CASCADE
     );
     CREATE INDEX [IX_OrderMessages_OrderId_CreatedAt] ON [OrderMessages] ([OrderId], [CreatedAt]);
 END
+
+IF COL_LENGTH(N'[OrderMessages]', N'MessageType') IS NULL
+    ALTER TABLE [OrderMessages] ADD [MessageType] nvarchar(16) NOT NULL CONSTRAINT [DF_OrderMessages_MessageType_Existing] DEFAULT N'text';
+
+IF COL_LENGTH(N'[OrderMessages]', N'MediaUrl') IS NULL
+    ALTER TABLE [OrderMessages] ADD [MediaUrl] nvarchar(1000) NULL;
+
+IF COL_LENGTH(N'[OrderMessages]', N'FileName') IS NULL
+    ALTER TABLE [OrderMessages] ADD [FileName] nvarchar(255) NULL;
+
+IF COL_LENGTH(N'[OrderMessages]', N'MediaContentType') IS NULL
+    ALTER TABLE [OrderMessages] ADD [MediaContentType] nvarchar(128) NULL;
+
+IF COL_LENGTH(N'[OrderMessages]', N'MediaData') IS NULL
+    ALTER TABLE [OrderMessages] ADD [MediaData] varbinary(max) NULL;
 
 IF OBJECT_ID(N'[ProductReviews]', N'U') IS NULL
 BEGIN
@@ -216,6 +235,57 @@ BEGIN
     CREATE INDEX [IX_CustomerRatings_DeliveryUserId] ON [CustomerRatings] ([DeliveryUserId]);
 END
 """);
+        await MigrateLegacyMediaAsync();
+    }
+
+    private async Task MigrateLegacyMediaAsync()
+    {
+        var legacyMessages = await db.OrderMessages
+            .Where(message => message.MediaData == null
+                && message.MediaUrl != null
+                && message.MediaUrl.StartsWith("/uploads/messages/"))
+            .ToListAsync();
+        if (legacyMessages.Count == 0) return;
+
+        var webRoot = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
+        var changed = false;
+        foreach (var message in legacyMessages)
+        {
+            var fileName = Path.GetFileName(message.MediaUrl ?? string.Empty);
+            var path = Path.Combine(webRoot, "uploads", "messages", fileName);
+            if (!File.Exists(path)) continue;
+
+            message.MediaData = await File.ReadAllBytesAsync(path);
+            message.MediaContentType = GetMediaContentType(Path.GetExtension(path), message.MessageType);
+            message.MediaUrl = $"/api/order-messages/media/{Guid.NewGuid():N}";
+            changed = true;
+        }
+
+        if (changed) await db.SaveChangesAsync();
+    }
+
+    private static string GetMediaContentType(string extension, string messageType)
+    {
+        return messageType.Equals("image", StringComparison.OrdinalIgnoreCase)
+            ? extension.ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            }
+            : messageType.Equals("audio", StringComparison.OrdinalIgnoreCase)
+            ? extension.ToLowerInvariant() switch
+            {
+                ".webm" => "audio/webm",
+                ".mp3" => "audio/mpeg",
+                ".wav" => "audio/wav",
+                ".m4a" => "audio/mp4",
+                ".ogg" => "audio/ogg",
+                _ => "application/octet-stream"
+            }
+            : "application/octet-stream";
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetForUserAsync(string userEmail)
@@ -861,7 +931,59 @@ END
             m.SenderName,
             m.SenderEmail,
             m.Message,
-            m.CreatedAt)).ToList();
+            m.CreatedAt,
+            m.MessageType,
+            m.MediaUrl,
+            m.FileName)).ToList();
+    }
+
+    public async Task<IReadOnlyList<OrderConversationDto>> GetOrderConversationsAsync(string userEmail, string role)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var deliveryUserId = role.Equals("delivery", StringComparison.OrdinalIgnoreCase)
+            ? await db.Users
+                .Where(user => user.Email.ToLower() == normalizedEmail)
+                .Select(user => user.Id)
+                .FirstOrDefaultAsync()
+            : null;
+
+        var orders = await db.Orders
+            .AsNoTracking()
+            .Include(order => order.Messages)
+            .Where(order => order.UserEmail.ToLower() == normalizedEmail
+                || (deliveryUserId != null && order.DeliveryUserId == deliveryUserId))
+            .OrderByDescending(order => order.Date)
+            .ToListAsync();
+
+        return orders
+            .Where(order => order.Messages.Count > 0)
+            .Select(order =>
+            {
+                var messages = order.Messages
+                    .OrderBy(message => message.CreatedAt)
+                    .Select(message => new OrderMessageDto(
+                        message.Id,
+                        message.OrderId,
+                        message.SenderRole,
+                        message.SenderName,
+                        message.SenderEmail,
+                        message.Message,
+                        message.CreatedAt,
+                        message.MessageType,
+                        message.MediaUrl,
+                        message.FileName))
+                    .ToList();
+                var updatedAt = messages[^1].CreatedAt;
+                return new OrderConversationDto(
+                    $"order_{order.Id}",
+                    order.Id,
+                    $"Order #{order.Id}",
+                    order.Status,
+                    order.Date,
+                    updatedAt,
+                    messages);
+            })
+            .ToList();
     }
 
     public async Task<OrderMessageDto> SendOrderMessageAsync(string orderId, string senderEmail, string senderRole, string senderName, string text)
@@ -915,7 +1037,131 @@ END
             .Group(OrderTrackingHub.OrderGroup(orderId))
             .SendAsync(OrderTrackingHub.OrderMessageReceivedEvent, dto);
 
+        var recipientEmail = effectiveRole == "customer"
+            ? await db.Users
+                .Where(user => user.Id == order.DeliveryUserId)
+                .Select(user => user.Email)
+                .FirstOrDefaultAsync()
+            : order.UserEmail;
+        if (!string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            var notification = notifications.Create(
+                recipientEmail,
+                $"New message from {effectiveName}",
+                message.Message,
+                "info",
+                $"/messages?orderId={Uri.EscapeDataString(orderId)}");
+            await notificationHub.Clients
+                .Group(NotificationHub.GroupName(notification.UserEmail))
+                .SendAsync(NotificationHub.NotificationCreatedEvent, notification);
+        }
+
         return dto;
+    }
+
+    public async Task<OrderMessageDto> SendOrderAttachmentAsync(
+        string orderId,
+        string senderEmail,
+        string senderRole,
+        string senderName,
+        IFormFile file,
+        string messageType)
+    {
+        if (file.Length <= 0 || file.Length > 10 * 1024 * 1024)
+        {
+            throw new InvalidOperationException("File must be between 1 byte and 10 MB.");
+        }
+
+        var normalizedType = messageType.Trim().ToLowerInvariant();
+        var isImage = normalizedType == "image";
+        var isAudio = normalizedType == "audio";
+        var isDocument = normalizedType == "document";
+        if (!isImage && !isAudio && !isDocument)
+        {
+            throw new InvalidOperationException("Unsupported media type.");
+        }
+
+        var allowedExtensions = isImage
+            ? new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" }
+            : isAudio
+                ? new[] { ".webm", ".mp3", ".wav", ".m4a", ".ogg" }
+                : new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(extension))
+        {
+            throw new InvalidOperationException("Unsupported file format.");
+        }
+
+        var normalizedEmail = senderEmail.Trim().ToLowerInvariant();
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order is null) throw new InvalidOperationException("Order not found.");
+
+        var isCustomer = order.UserEmail.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase);
+        var isDelivery = !string.IsNullOrWhiteSpace(order.DeliveryUserId) &&
+            await db.Users.AnyAsync(u => u.Id == order.DeliveryUserId && u.Email == normalizedEmail);
+        var isAdmin = senderRole.Equals("admin", StringComparison.OrdinalIgnoreCase);
+        if (!isCustomer && !isDelivery && !isAdmin)
+        {
+            throw new UnauthorizedAccessException("Not authorized to chat on this order.");
+        }
+
+        await using var uploadStream = file.OpenReadStream();
+        using var mediaBuffer = new MemoryStream();
+        await uploadStream.CopyToAsync(mediaBuffer);
+        var mediaData = mediaBuffer.ToArray();
+        var mediaContentType = GetMediaContentType(extension, normalizedType);
+
+        var effectiveRole = isDelivery ? "delivery" : (isCustomer ? "customer" : "admin");
+        var effectiveName = string.IsNullOrWhiteSpace(senderName) ? "User" : senderName.Trim();
+        var entity = new OrderMessageEntity
+        {
+            Id = $"msg_{Guid.NewGuid():N}",
+            OrderId = orderId,
+            SenderRole = effectiveRole,
+            SenderName = effectiveName,
+            SenderEmail = normalizedEmail,
+            Message = isImage ? "📷 Image" : isAudio ? "🎤 Voice note" : "📄 Document",
+            MessageType = normalizedType,
+            MediaUrl = $"/api/order-messages/media/{Guid.NewGuid():N}",
+            FileName = Path.GetFileName(file.FileName),
+            MediaContentType = mediaContentType,
+            MediaData = mediaData,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.OrderMessages.Add(entity);
+        await db.SaveChangesAsync();
+
+        var dto = new OrderMessageDto(entity.Id, entity.OrderId, entity.SenderRole, entity.SenderName, entity.SenderEmail, entity.Message, entity.CreatedAt, entity.MessageType, entity.MediaUrl, entity.FileName);
+        await trackingHub.Clients.Group(OrderTrackingHub.OrderGroup(orderId)).SendAsync(OrderTrackingHub.OrderMessageReceivedEvent, dto);
+
+        var recipientEmail = effectiveRole == "customer"
+            ? await db.Users.Where(user => user.Id == order.DeliveryUserId).Select(user => user.Email).FirstOrDefaultAsync()
+            : order.UserEmail;
+        if (!string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            var notification = notifications.Create(recipientEmail, $"New message from {effectiveName}", entity.Message, "info", $"/messages?orderId={Uri.EscapeDataString(orderId)}");
+            await notificationHub.Clients.Group(NotificationHub.GroupName(notification.UserEmail)).SendAsync(NotificationHub.NotificationCreatedEvent, notification);
+        }
+
+        return dto;
+    }
+
+    public async Task<(byte[] Data, string ContentType, string FileName)?> GetOrderMessageMediaAsync(string mediaUrl)
+    {
+        var message = await db.OrderMessages
+            .AsNoTracking()
+            .Where(item => item.MediaUrl == mediaUrl && item.MediaData != null)
+            .Select(item => new
+            {
+                item.MediaData,
+                item.MediaContentType,
+                item.FileName
+            })
+            .FirstOrDefaultAsync();
+
+        return message?.MediaData is null
+            ? null
+            : (message.MediaData, message.MediaContentType ?? "application/octet-stream", message.FileName ?? "media");
     }
 
     public async Task<OrderRatingsStatusDto> GetOrderRatingsStatusAsync(string orderId, string userEmail)

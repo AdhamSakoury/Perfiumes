@@ -92,6 +92,17 @@ export class SupportMessageService {
     }).pipe(tap((conversation) => this.upsertConversation(conversation)));
   }
 
+  sendCustomerMedia(conversationId: string, file: File, messageType: 'image' | 'audio' | 'document', token: string): Observable<SupportConversation> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('messageType', messageType);
+    return this.http.post<SupportConversation>(
+      `${environment.apiBaseUrl}/api/support/conversations/${conversationId}/messages/media`,
+      form,
+      { headers: this.authHeaders(token) }
+    ).pipe(tap((conversation) => this.upsertConversation(conversation)));
+  }
+
   getAdminConversations(token: string): Observable<SupportConversation[]> {
     return this.http.get<SupportConversation[]>(`${environment.apiBaseUrl}/api/admin/support/conversations`, {
       headers: this.authHeaders(token)

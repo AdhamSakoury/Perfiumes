@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { CustomerRating, DeliveryRating, Order, OrderMessage, OrderRatingsStatus, OrderStatus, ProductReview } from '@core/models/store.models';
+import { CustomerRating, DeliveryRating, Order, OrderConversation, OrderMessage, OrderRatingsStatus, OrderStatus, ProductReview } from '@core/models/store.models';
 import { Observable, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -87,6 +87,24 @@ export class OrderService {
       `${environment.apiBaseUrl}/api/orders/${orderId}/messages`,
       { message },
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
+    );
+  }
+
+  sendOrderMedia(orderId: string, file: File, messageType: 'image' | 'audio' | 'document', token: string): Observable<OrderMessage> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    body.append('messageType', messageType);
+    return this.http.post<OrderMessage>(
+      `${environment.apiBaseUrl}/api/orders/${orderId}/messages/media`,
+      body,
+      { headers: new HttpHeaders({ Authorization: 'Bearer ' + token }) }
+    );
+  }
+
+  getOrderConversations(token: string): Observable<OrderConversation[]> {
+    return this.http.get<OrderConversation[]>(
+      `${environment.apiBaseUrl}/api/messages/orders`,
+      { headers: new HttpHeaders({ Authorization: 'Bearer ' + token }) }
     );
   }
 

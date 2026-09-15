@@ -19,6 +19,7 @@ export interface OrderStatusEvent {
 @Injectable({ providedIn: 'root' })
 export class OrderTrackingService {
   private hubConnection: HubConnection | null = null;
+  private connectionPromise?: Promise<void>;
   private readonly locationSubject = new Subject<DeliveryLocationEvent>();
   private readonly messageSubject = new Subject<OrderMessage>();
   private readonly statusSubject = new Subject<OrderStatusEvent>();
@@ -34,11 +35,19 @@ export class OrderTrackingService {
       this.activeOrders.add(orderId);
     }
 
-    if (this.hubConnection && this.hubConnection.state === HubConnectionState.Connected) {
-      if (orderId) {
+    if (this.hubConnection && this.hubConnection.state !== HubConnectionState.Disconnected) {
+      if (this.hubConnection.state === HubConnectionState.Connected && orderId) {
         return this.hubConnection.invoke('JoinOrderGroup', orderId).catch(() => {});
       }
-      return Promise.resolve();
+      const pending = this.connectionPromise || Promise.resolve();
+      return orderId
+        ? pending.then(() => {
+            if (this.hubConnection) {
+              return this.hubConnection.invoke('JoinOrderGroup', orderId).catch(() => {});
+            }
+            return Promise.resolve();
+          })
+        : pending;
     }
 
     const hubUrl = `${environment.apiBaseUrl}/orderTrackingHub` + (orderId ? `?orderId=${encodeURIComponent(orderId)}` : '');
@@ -74,9 +83,10 @@ export class OrderTrackingService {
       }
     });
 
-    return this.hubConnection.start().catch((err) => {
+    this.connectionPromise = this.hubConnection.start().catch((err) => {
       console.warn('OrderTrackingHub connection warning:', err);
     });
+    return this.connectionPromise;
   }
 
   joinOrder(orderId: string): void {
@@ -100,6 +110,7 @@ export class OrderTrackingService {
       void this.hubConnection.stop();
       this.hubConnection = null;
     }
+    this.connectionPromise = undefined;
     this.activeOrders.clear();
   }
 }

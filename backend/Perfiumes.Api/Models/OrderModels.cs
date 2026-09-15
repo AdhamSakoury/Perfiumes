@@ -73,7 +73,19 @@ public sealed record OrderMessageDto(
     string SenderName,
     string SenderEmail,
     string Message,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string MessageType = "text",
+    string? MediaUrl = null,
+    string? FileName = null);
+
+public sealed record OrderConversationDto(
+    string Id,
+    string OrderId,
+    string Subject,
+    string Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<OrderMessageDto> Messages);
 
 public sealed record SendOrderMessageRequest(string Message);
 

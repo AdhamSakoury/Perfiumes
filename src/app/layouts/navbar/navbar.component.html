@@ -34,6 +34,9 @@
               <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
                 <i class="fas fa-envelope nav-link-icon"></i><span>{{ i18n.t('messages') }}</span>
               </a>
+              <a routerLink="/support" routerLinkActive="nav-link-active" class="nav-link">
+                <i class="fas fa-headset nav-link-icon"></i><span>{{ i18n.t('support') }}</span>
+              </a>
               <a routerLink="/account" routerLinkActive="nav-link-active" class="nav-link">
                 <i class="fas fa-user nav-link-icon"></i><span>{{ i18n.t('account') }}</span>
               </a>
@@ -51,6 +54,9 @@
               @if (auth.currentUser()) {
                 <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
                   <i class="fas fa-envelope nav-link-icon"></i><span>{{ i18n.t('messages') }}</span>
+                </a>
+                <a routerLink="/support" routerLinkActive="nav-link-active" class="nav-link">
+                  <i class="fas fa-headset nav-link-icon"></i><span>{{ i18n.t('support') }}</span>
                 </a>
                 <a routerLink="/orders" routerLinkActive="nav-link-active" class="nav-link">
                   <i class="fas fa-truck-fast nav-link-icon"></i><span>{{ i18n.t('orders') }}</span>
@@ -235,8 +241,6 @@
         </div>
       }
     </nav>
-
-
 
 
 

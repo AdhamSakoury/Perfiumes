@@ -21,6 +21,17 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportConversations_
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportMessages_ConversationId' AND object_id = OBJECT_ID(N'[SupportMessages]'))
     CREATE INDEX [IX_SupportMessages_ConversationId] ON [SupportMessages] ([ConversationId]);
+
+IF COL_LENGTH(N'[SupportMessages]', N'MessageType') IS NULL
+    ALTER TABLE [SupportMessages] ADD [MessageType] nvarchar(16) NOT NULL CONSTRAINT [DF_SupportMessages_MessageType] DEFAULT N'text';
+IF COL_LENGTH(N'[SupportMessages]', N'MediaUrl') IS NULL
+    ALTER TABLE [SupportMessages] ADD [MediaUrl] nvarchar(1000) NULL;
+IF COL_LENGTH(N'[SupportMessages]', N'FileName') IS NULL
+    ALTER TABLE [SupportMessages] ADD [FileName] nvarchar(255) NULL;
+IF COL_LENGTH(N'[SupportMessages]', N'MediaContentType') IS NULL
+    ALTER TABLE [SupportMessages] ADD [MediaContentType] nvarchar(128) NULL;
+IF COL_LENGTH(N'[SupportMessages]', N'MediaData') IS NULL
+    ALTER TABLE [SupportMessages] ADD [MediaData] varbinary(max) NULL;
 """);
     }
 
@@ -101,6 +112,65 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportMessages_Conve
         return AddMessageAsync(conversationId, "admin", "Gnouby Admin", adminEmail, Clean(body, string.Empty), "answered");
     }
 
+    public async Task<SupportConversation?> AddCustomerAttachmentAsync(
+        string conversationId,
+        string senderName,
+        string senderEmail,
+        IFormFile file,
+        string messageType)
+    {
+        if (file.Length <= 0 || file.Length > 10 * 1024 * 1024) throw new InvalidOperationException("File must be between 1 byte and 10 MB.");
+        var type = messageType.Trim().ToLowerInvariant();
+        var isImage = type == "image";
+        var isAudio = type == "audio";
+        var isDocument = type == "document";
+        if (!isImage && !isAudio && !isDocument) throw new InvalidOperationException("Unsupported media type.");
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowed = isImage
+        ? new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" }
+        : isAudio
+            ? new[] { ".webm", ".mp3", ".wav", ".m4a", ".ogg" }
+            : new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip" };
+        if (!allowed.Contains(extension)) throw new InvalidOperationException("Unsupported file format.");
+
+        var current = await db.SupportConversations.Include(item => item.Messages).FirstOrDefaultAsync(item => item.Id == conversationId);
+        if (current is null) return null;
+
+        await using var input = file.OpenReadStream();
+        using var buffer = new MemoryStream();
+        await input.CopyToAsync(buffer);
+        var message = new SupportMessageEntity
+        {
+        Id = $"msg_{Guid.NewGuid():N}",
+        ConversationId = conversationId,
+        SenderRole = "customer",
+        SenderName = Clean(senderName, "Customer"),
+        SenderEmail = Clean(senderEmail, "unknown@local").ToLowerInvariant(),
+        Body = isImage ? "📷 Image" : isAudio ? "🎤 Voice note" : "📄 Document",
+        MessageType = type,
+        MediaUrl = $"/api/support-messages/media/{Guid.NewGuid():N}",
+        FileName = Path.GetFileName(file.FileName),
+        MediaContentType = GetMediaContentType(extension, type),
+        MediaData = buffer.ToArray(),
+        CreatedAt = DateTimeOffset.UtcNow
+        };
+        current.Status = "open";
+        current.UpdatedAt = message.CreatedAt;
+        current.Messages.Add(message);
+        await db.SaveChangesAsync();
+        return ToModel(current);
+    }
+
+    public async Task<(byte[] Data, string ContentType, string FileName)?> GetMediaAsync(string mediaUrl)
+    {
+        var media = await db.SupportMessages.AsNoTracking()
+        .Where(message => message.MediaUrl == mediaUrl && message.MediaData != null)
+        .Select(message => new { message.MediaData, message.MediaContentType, message.FileName })
+        .FirstOrDefaultAsync();
+        return media?.MediaData is null ? null : (media.MediaData, media.MediaContentType ?? "application/octet-stream", media.FileName ?? "media");
+    }
+
     public async Task<SupportConversation?> CloseAsync(string conversationId)
     {
         var current = await db.SupportConversations.Include(item => item.Messages).FirstOrDefaultAsync(item => item.Id == conversationId);
@@ -172,7 +242,34 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SupportMessages_Conve
                     message.SenderName,
                     message.SenderEmail,
                     message.Body,
-                    message.CreatedAt))
+                    message.CreatedAt,
+                    message.MessageType,
+                    message.MediaUrl,
+                    message.FileName))
                 .ToList());
+    }
+
+    private static string GetMediaContentType(string extension, string messageType)
+    {
+        return messageType == "image"
+            ? extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            }
+            : messageType == "audio"
+            ? extension switch
+            {
+                ".webm" => "audio/webm",
+                ".mp3" => "audio/mpeg",
+                ".wav" => "audio/wav",
+                ".m4a" => "audio/mp4",
+                ".ogg" => "audio/ogg",
+                _ => "application/octet-stream"
+            }
+            : "application/octet-stream";
     }
 }

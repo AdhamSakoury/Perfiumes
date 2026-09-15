@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -110,6 +111,7 @@ builder.Services.AddHttpClient<PaymobService>(client =>
 });
 
 var app = builder.Build();
+app.UseStaticFiles();
 
 var emailOptions = app.Services.GetRequiredService<IOptions<EmailOptions>>().Value;
 var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
@@ -1121,6 +1123,62 @@ app.MapPost("/api/orders/{id}/messages", async (
     }
 });
 
+app.MapPost("/api/orders/{id}/messages/media", async (
+    string id,
+    [FromForm] IFormFile file,
+    [FromForm] string messageType,
+    OrderService orders,
+    UserService users,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null || file is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    try
+    {
+        var user = await users.GetByEmailAsync(principal.Email);
+        var message = await orders.SendOrderAttachmentAsync(id, principal.Email, principal.Role, user?.FullName ?? principal.Email, file, messageType);
+        return Results.Ok(message);
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Results.Unauthorized();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+}).DisableAntiforgery();
+
+app.MapGet("/api/messages/orders", async (
+    OrderService orders,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(await orders.GetOrderConversationsAsync(principal.Email, principal.Role));
+});
+
+app.MapGet("/api/order-messages/media/{id}", async (
+    string id,
+    OrderService orders) =>
+{
+    var mediaUrl = $"/api/order-messages/media/{id}";
+    var media = await orders.GetOrderMessageMediaAsync(mediaUrl);
+    return media is null
+        ? Results.NotFound()
+        : Results.File(media.Value.Data, media.Value.ContentType, media.Value.FileName);
+});
+
 app.MapGet("/api/orders/{id}/ratings", async (
     string id,
     OrderService orders,
@@ -1505,6 +1563,45 @@ app.MapPost("/api/support/conversations/{id}/messages", async (
     }
 
     return conversation is null ? Results.NotFound() : Results.Ok(conversation);
+});
+
+app.MapPost("/api/support/conversations/{id}/messages/media", async (
+    string id,
+    [FromForm] IFormFile file,
+    [FromForm] string messageType,
+    SupportMessageService support,
+    UserService users,
+    IHubContext<SupportMessageHub> hub,
+    NotificationService notifications,
+    IHubContext<NotificationHub> notificationHub,
+    AdminAuthService auth,
+    HttpContext context) =>
+{
+    var principal = auth.ValidateRequest(context);
+    if (principal is null || file is null) return Results.Unauthorized();
+
+    try
+    {
+        var user = await users.GetByEmailAsync(principal.Email);
+        var conversation = await support.AddCustomerAttachmentAsync(id, user?.FullName ?? principal.Email, principal.Email, file, messageType);
+        if (conversation is null) return Results.NotFound();
+        await hub.Clients.Group(SupportMessageHub.AdminGroup).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail)).SendAsync(SupportMessageHub.ConversationUpdatedEvent, conversation);
+        await PublishAdminNotificationAsync(users, notifications, notificationHub, "New support message", $"{conversation.UserName} sent a media message.", "info", "/admin/messages");
+        return Results.Ok(conversation);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+}).DisableAntiforgery();
+
+app.MapGet("/api/support-messages/media/{id}", async (string id, SupportMessageService support) =>
+{
+    var media = await support.GetMediaAsync($"/api/support-messages/media/{id}");
+    return media is null
+        ? Results.NotFound()
+        : Results.File(media.Value.Data, media.Value.ContentType, media.Value.FileName);
 });
 
 app.MapGet("/api/admin/support/conversations", async (

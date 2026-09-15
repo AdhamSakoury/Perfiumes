@@ -7,7 +7,10 @@ public sealed record SupportMessage(
     string SenderName,
     string SenderEmail,
     string Body,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string MessageType = "text",
+    string? MediaUrl = null,
+    string? FileName = null);
 
 public sealed record SupportConversation(
     string Id,

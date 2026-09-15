@@ -54,7 +54,17 @@
                     {{ msg.senderRole === 'delivery' ? 'Courier' : 'Customer' }}
                   </span>
                 </div>
-                <p class="msg-text">{{ msg.message }}</p>
+                @if (msg.messageType === 'image' && msg.mediaUrl) {
+                  <img class="msg-image" [src]="mediaUrl(msg.mediaUrl)" [alt]="msg.fileName || 'Shared image'">
+                } @else if (msg.messageType === 'audio' && msg.mediaUrl) {
+                  <audio class="msg-audio" controls [src]="mediaUrl(msg.mediaUrl)"></audio>
+                } @else if (msg.messageType === 'document' && msg.mediaUrl) {
+                  <a class="msg-document" [href]="mediaUrl(msg.mediaUrl)" target="_blank" rel="noopener noreferrer">
+                    <i class="fas fa-file-lines"></i>{{ msg.fileName || 'Download document' }}
+                  </a>
+                } @else {
+                  <p class="msg-text">{{ msg.message }}</p>
+                }
                 <span class="msg-time">{{ msg.createdAt | date:'shortTime' }}</span>
               </div>
             </div>
@@ -65,22 +75,59 @@
 
     <!-- Input Footer -->
     <footer class="chat-input-bar">
-      <input
-        type="text"
-        [(ngModel)]="newMessage"
-        (keydown.enter)="sendMessage()"
-        placeholder="Type a message here..."
-        [disabled]="sending()"
-        class="chat-text-input"
-      />
-      <button
-        type="button"
-        (click)="sendMessage()"
-        [disabled]="!newMessage.trim() || sending()"
-        class="chat-send-btn"
-      >
-        <i class="fas" [class.fa-paper-plane]="!sending()" [class.fa-spinner]="sending()" [class.fa-spin]="sending()"></i>
-      </button>
+      <div class="chat-tools">
+        <div class="emoji-tool">
+          <button type="button" class="chat-tool-btn" (click)="emojiPickerOpen.set(!emojiPickerOpen())" [disabled]="sending()" aria-label="Add emoji">😊</button>
+          @if (emojiPickerOpen()) {
+            <div class="emoji-picker">
+              @for (emoji of chatEmojis; track emoji) {
+                <button type="button" (click)="appendEmoji(emoji)">{{ emoji }}</button>
+              }
+            </div>
+          }
+        </div>
+        <label class="chat-tool-btn" title="Upload image">
+          <i class="fas fa-image"></i>
+          <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" hidden>
+        </label>
+        <label class="chat-tool-btn" title="Take a photo">
+          <i class="fas fa-camera"></i>
+          <input type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" hidden>
+        </label>
+        <label class="chat-tool-btn" title="Upload document">
+          <i class="fas fa-file-lines"></i>
+          <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" (change)="onMediaSelected($event, 'document')" hidden>
+        </label>
+        @if (recording() || pendingVoiceFile) {
+          <div class="voice-preview" [class.ready]="pendingVoiceFile">
+            <i class="fas fa-microphone"></i>
+            <span class="voice-wave" aria-hidden="true"></span>
+            <strong>{{ recording() ? 'Recording...' : 'Voice note ready' }}</strong>
+          </div>
+        } @else {
+          <button type="button" class="chat-tool-btn voice-record-btn" (click)="toggleRecording()" [disabled]="sending()" aria-label="Record voice note">
+            <i class="fas fa-microphone"></i>
+          </button>
+        }
+      </div>
+      <div class="chat-compose">
+        <input
+          type="text"
+          [(ngModel)]="newMessage"
+          (keydown.enter)="sendMessage()"
+          placeholder="Type a message here..."
+          [disabled]="sending()"
+          class="chat-text-input"
+        />
+        <button
+          type="button"
+          (click)="sendMessage()"
+          [disabled]="(!newMessage.trim() && !pendingVoiceFile && !recording()) || sending()"
+          class="chat-send-btn"
+        >
+          <i class="fas" [class.fa-paper-plane]="!sending()" [class.fa-spinner]="sending()" [class.fa-spin]="sending()"></i>
+        </button>
+      </div>
     </footer>
   </div>
 </div>

@@ -93,7 +93,17 @@
               @for (message of conversation.messages; track message.id) {
                 <article class="message-bubble" [class.admin]="message.senderRole === 'admin'">
                   <strong>{{ message.senderRole === 'admin' ? ('gnoubySupport' | t) : message.senderName }}</strong>
-                  <p>{{ message.body }}</p>
+                  @if (message.messageType === 'image' && message.mediaUrl) {
+                    <img class="support-media-image" [src]="mediaUrl(message.mediaUrl)" [alt]="message.fileName || 'Shared image'">
+                  } @else if (message.messageType === 'audio' && message.mediaUrl) {
+                    <audio controls [src]="mediaUrl(message.mediaUrl)"></audio>
+                  } @else if (message.messageType === 'document' && message.mediaUrl) {
+                    <a class="support-media-document" [href]="mediaUrl(message.mediaUrl)" target="_blank" rel="noopener noreferrer">
+                      <i class="fas fa-file-lines"></i>{{ message.fileName || 'Download document' }}
+                    </a>
+                  } @else {
+                    <p>{{ message.body }}</p>
+                  }
                   <time>{{ message.createdAt | date:'shortTime' }}</time>
                 </article>
               }

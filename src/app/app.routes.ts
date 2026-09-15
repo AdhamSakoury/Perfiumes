@@ -97,6 +97,11 @@ export const routes: Routes = [
     title: 'Messages | Gnouby'
   },
   {
+    path: 'support',
+    loadComponent: () => import('./features/support-messages/support-messages.component').then((module) => module.SupportMessagesComponent),
+    title: 'Live Support | Gnouby'
+  },
+  {
     path: 'wallet',
     loadComponent: () => import('./features/wallet/wallet.component').then((module) => module.WalletPageComponent),
     title: 'Wallet | Gnouby'

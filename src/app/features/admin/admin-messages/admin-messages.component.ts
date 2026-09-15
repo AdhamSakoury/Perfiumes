@@ -9,6 +9,7 @@ import { LocalizationService } from '@core/services/localization.service';
 import { SupportMessageService } from '@core/services/support-message.service';
 import { ToastService } from '@core/services/toast.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { environment } from '../../../../environments/environment';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize, switchMap, timeout } from 'rxjs/operators';
 
@@ -20,6 +21,7 @@ import { catchError, finalize, switchMap, timeout } from 'rxjs/operators';
   styleUrl: './admin-messages.component.css'
 })
 export class AdminMessagesComponent {
+  readonly apiBaseUrl = environment.apiBaseUrl;
   conversations: SupportConversation[] = [];
   selectedId: string | null = null;
   replyText = '';
@@ -202,5 +204,9 @@ export class AdminMessagesComponent {
     const key = `conversationStatus_${status}`;
     const translated = this.i18n.t(key);
     return translated === key ? status : translated;
+  }
+
+  mediaUrl(url?: string | null): string {
+    return url?.startsWith('http') ? url : `${this.apiBaseUrl}${url || ''}`;
   }
 }

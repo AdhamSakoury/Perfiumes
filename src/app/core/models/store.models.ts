@@ -161,6 +161,9 @@ export interface SupportMessage {
   senderEmail: string;
   body: string;
   createdAt: string;
+  messageType?: 'text' | 'image' | 'audio' | string;
+  mediaUrl?: string | null;
+  fileName?: string | null;
 }
 
 export interface SupportConversation {
@@ -173,6 +176,16 @@ export interface SupportConversation {
   createdAt: string;
   updatedAt: string;
   messages: SupportMessage[];
+}
+
+export interface OrderConversation {
+  id: string;
+  orderId: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: OrderMessage[];
 }
 
 export interface ProductFilters {
@@ -279,6 +292,9 @@ export interface OrderMessage {
   senderEmail: string;
   message: string;
   createdAt: string;
+  messageType?: 'text' | 'image' | 'audio' | string;
+  mediaUrl?: string | null;
+  fileName?: string | null;
 }
 
 export interface ProductReview {

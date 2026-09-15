@@ -165,6 +165,11 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(message => message.SenderName).HasMaxLength(160);
             entity.Property(message => message.SenderEmail).HasMaxLength(256);
             entity.Property(message => message.Message).HasMaxLength(2000);
+            entity.Property(message => message.MessageType).HasMaxLength(16);
+            entity.Property(message => message.MediaUrl).HasMaxLength(1000);
+            entity.Property(message => message.FileName).HasMaxLength(255);
+            entity.Property(message => message.MediaContentType).HasMaxLength(128);
+            entity.Property(message => message.MediaData).HasColumnType("varbinary(max)");
         });
 
         modelBuilder.Entity<ProductReviewEntity>(entity =>
@@ -230,6 +235,11 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(message => message.SenderName).HasMaxLength(160);
             entity.Property(message => message.SenderEmail).HasMaxLength(256);
             entity.Property(message => message.Body).HasMaxLength(4000);
+            entity.Property(message => message.MessageType).HasMaxLength(16);
+            entity.Property(message => message.MediaUrl).HasMaxLength(1000);
+            entity.Property(message => message.FileName).HasMaxLength(255);
+            entity.Property(message => message.MediaContentType).HasMaxLength(128);
+            entity.Property(message => message.MediaData).HasColumnType("varbinary(max)");
         });
 
         modelBuilder.Entity<UserWalletEntity>(entity =>

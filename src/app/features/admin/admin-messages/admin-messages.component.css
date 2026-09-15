@@ -421,6 +421,29 @@
 
 .message-bubble p {
   white-space: pre-wrap;
+}
+
+.support-media-image {
+  display: block;
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.message-bubble audio {
+  max-width: 240px;
+}
+
+.support-media-document {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(212, 175, 55, 0.15);
+  overflow-wrap: anywhere;
   line-height: 1.55;
   unicode-bidi: plaintext;
 }
