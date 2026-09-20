@@ -116,17 +116,26 @@ public sealed class OrdersController(
     public async Task<IResult> SendAttachment(
         string id,
         [FromForm] IFormFile file,
-        [FromForm] string messageType)
+        [FromForm] string messageType,
+        [FromForm] string? senderEmail = null,
+        [FromForm] string? senderRole = null,
+        [FromForm] string? senderName = null)
     {
+        if (file is null)
+            return Results.BadRequest(new { message = "File is required." });
+
         var principal = auth.ValidateRequest(HttpContext);
-        if (principal is null || file is null)
+        var email = principal?.Email ?? senderEmail;
+        var role = principal?.Role ?? senderRole ?? "customer";
+
+        if (string.IsNullOrWhiteSpace(email))
             return Results.Unauthorized();
 
         try
         {
-            var user = await users.GetByEmailAsync(principal.Email);
+            var user = await users.GetByEmailAsync(email);
             return Results.Ok(await orders.SendOrderAttachmentAsync(
-                id, principal.Email, principal.Role, user?.FullName ?? principal.Email, file, messageType));
+                id, email, role, senderName ?? user?.FullName ?? email, file, messageType));
         }
         catch (UnauthorizedAccessException)
         {

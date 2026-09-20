@@ -81,28 +81,37 @@
           @if (emojiPickerOpen()) {
             <div class="emoji-picker">
               @for (emoji of chatEmojis; track emoji) {
-                <button type="button" (click)="appendEmoji(emoji)">{{ emoji }}</button>
+                <button type="button" (click)="appendEmoji(emoji, chatTextInput)">{{ emoji }}</button>
               }
             </div>
           }
         </div>
         <label class="chat-tool-btn" title="Upload image">
           <i class="fas fa-image"></i>
-          <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" hidden>
+          <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
         </label>
-        <label class="chat-tool-btn" title="Take a photo">
+        <button type="button" class="chat-tool-btn" title="Take a photo" (click)="openCamera()" [disabled]="sending()">
           <i class="fas fa-camera"></i>
-          <input type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" hidden>
-        </label>
+        </button>
+        <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
         <label class="chat-tool-btn" title="Upload document">
           <i class="fas fa-file-lines"></i>
-          <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" (change)="onMediaSelected($event, 'document')" hidden>
+          <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z" (change)="onMediaSelected($event, 'document')" class="visually-hidden-input">
         </label>
         @if (recording() || pendingVoiceFile) {
-          <div class="voice-preview" [class.ready]="pendingVoiceFile">
-            <i class="fas fa-microphone"></i>
-            <span class="voice-wave" aria-hidden="true"></span>
-            <strong>{{ recording() ? 'Recording...' : 'Voice note ready' }}</strong>
+          <div class="voice-bar" [class.voice-bar--ready]="!!pendingVoiceFile && !recording()" (click)="pendingVoiceFile && !recording() ? sendPendingVoice() : toggleRecording()">
+            <div class="voice-bar__mic">
+              <i class="fas fa-microphone"></i>
+            </div>
+            <div class="voice-bar__waves">
+              @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track i) {
+                <span class="voice-bar__bar" [style.animation-delay]="(i * 0.05) + 's'"></span>
+              }
+            </div>
+            <span class="voice-bar__label">{{ recording() ? 'Recording...' : 'Tap to send' }}</span>
+            <button type="button" class="voice-bar__cancel" (click)="$event.stopPropagation(); recording() ? toggleRecording() : (pendingVoiceFile = undefined)" title="Cancel">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
         } @else {
           <button type="button" class="chat-tool-btn voice-record-btn" (click)="toggleRecording()" [disabled]="sending()" aria-label="Record voice note">
@@ -112,6 +121,7 @@
       </div>
       <div class="chat-compose">
         <input
+          #chatTextInput
           type="text"
           [(ngModel)]="newMessage"
           (keydown.enter)="sendMessage()"
@@ -130,4 +140,29 @@
       </div>
     </footer>
   </div>
+
+  <!-- Live Camera Modal -->
+  @if (cameraOpen()) {
+    <div class="camera-modal-backdrop" (click)="closeCamera()">
+      <div class="camera-modal-panel" (click)="$event.stopPropagation()">
+        <div class="camera-modal-header">
+          <h4><i class="fas fa-camera"></i> Take Photo</h4>
+          <button type="button" class="close-btn" (click)="closeCamera()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="camera-video-wrap">
+          <video #cameraVideo autoplay playsinline muted class="camera-video"></video>
+          <canvas #cameraCanvas style="display: none;"></canvas>
+        </div>
+        <div class="camera-modal-actions">
+          <button type="button" class="camera-snap-btn" (click)="capturePhoto()">
+            <i class="fas fa-circle-dot"></i>
+            <span>Snap Photo</span>
+          </button>
+          <button type="button" class="camera-cancel-btn" (click)="closeCamera()">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

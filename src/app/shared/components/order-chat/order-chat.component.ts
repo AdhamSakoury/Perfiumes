@@ -1,4 +1,4 @@
-import { AfterViewChecked, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, signal, ViewChild } from '@angular/core';
+import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Order, OrderMessage } from '@core/models/store.models';
@@ -23,10 +23,22 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
   @Output() closeChat = new EventEmitter<void>();
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('cameraCanvas') cameraCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('cameraFallbackInput') cameraFallbackInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('cameraVideo') set cameraVideoRef(ref: ElementRef<HTMLVideoElement> | undefined) {
+    this.cameraVideo = ref;
+    if (ref?.nativeElement && this.cameraStream) {
+      ref.nativeElement.srcObject = this.cameraStream;
+      ref.nativeElement.play().catch(() => {});
+    }
+  }
+  cameraVideo?: ElementRef<HTMLVideoElement>;
 
   readonly messages = signal<OrderMessage[]>([]);
   readonly loading = signal(true);
   readonly sending = signal(false);
+  readonly cameraOpen = signal(false);
+  private cameraStream?: MediaStream;
   newMessage = '';
   readonly emojiPickerOpen = signal(false);
   readonly chatEmojis = CHAT_EMOJIS;
@@ -46,8 +58,26 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
     private readonly ordersApi: OrderService,
     private readonly trackingService: OrderTrackingService,
     private readonly auth: AuthService,
-    private readonly toast: ToastService
+    private readonly toast: ToastService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.emojiPickerOpen()) {
+      this.emojiPickerOpen.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (this.emojiPickerOpen() && target && !target.closest('.emoji-tool')) {
+      this.emojiPickerOpen.set(false);
+      this.cdr.markForCheck();
+    }
+  }
 
   ngOnInit(): void {
     this.trackingService.joinOrder(this.order.id);
@@ -70,6 +100,65 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   ngOnDestroy(): void {
     this.messageSub?.unsubscribe();
+    this.closeCamera();
+  }
+
+  async openCamera(): Promise<void> {
+    if (this.sending()) return;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.cameraFallbackInput?.nativeElement?.click();
+      return;
+    }
+
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
+      this.cameraStream = stream;
+      this.cameraOpen.set(true);
+      if (this.cameraVideo?.nativeElement) {
+        this.cameraVideo.nativeElement.srcObject = stream;
+        void this.cameraVideo.nativeElement.play().catch(() => {});
+      }
+    } catch (err) {
+      console.warn('getUserMedia failed:', err);
+      this.toast.show('Could not access camera. Please allow camera access in browser settings.', 'error');
+    }
+  }
+
+  closeCamera(): void {
+    if (this.cameraStream) {
+      this.cameraStream.getTracks().forEach((track) => track.stop());
+      this.cameraStream = undefined;
+    }
+    this.cameraOpen.set(false);
+  }
+
+  capturePhoto(): void {
+    const video = this.cameraVideo?.nativeElement;
+    const canvas = this.cameraCanvas?.nativeElement;
+    if (!video || !canvas) return;
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        this.closeCamera();
+        this.sendMedia(file, 'image');
+      }
+    }, 'image/jpeg', 0.85);
   }
 
   loadMessages(): void {
@@ -130,9 +219,20 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
     });
   }
 
-  appendEmoji(emoji: string): void {
-    this.newMessage += emoji;
-    this.emojiPickerOpen.set(false);
+  appendEmoji(emoji: string, inputEl?: HTMLInputElement): void {
+    if (inputEl) {
+      const start = inputEl.selectionStart ?? inputEl.value.length;
+      const end = inputEl.selectionEnd ?? inputEl.value.length;
+      const val = inputEl.value;
+      inputEl.value = val.slice(0, start) + emoji + val.slice(end);
+      inputEl.selectionStart = inputEl.selectionEnd = start + emoji.length;
+      inputEl.focus();
+      this.newMessage = inputEl.value;
+    } else {
+      this.newMessage = (this.newMessage || '') + emoji;
+    }
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   onMediaSelected(event: Event, type: 'image' | 'audio' | 'document'): void {
@@ -160,18 +260,23 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.recordedChunks = [];
-      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav']
         .find((candidate) => MediaRecorder.isTypeSupported(candidate));
       this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       this.mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size) this.recordedChunks.push(event.data);
+        if (event.data && event.data.size > 0) this.recordedChunks.push(event.data);
       };
       this.mediaRecorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         if (this.recordedChunks.length > 0) {
+          let ext = 'webm';
+          const mime = this.mediaRecorder?.mimeType?.toLowerCase() || '';
+          if (mime.includes('mp4') || mime.includes('m4a') || mime.includes('aac')) ext = 'm4a';
+          else if (mime.includes('ogg') || mime.includes('opus')) ext = 'ogg';
+          else if (mime.includes('wav')) ext = 'wav';
+
           const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType || 'audio/webm' });
-          const extension = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : 'webm';
-          this.pendingVoiceFile = new File([blob], `voice-${Date.now()}.${extension}`, { type: blob.type });
+          this.pendingVoiceFile = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' });
         }
         this.recording.set(false);
         if (this.sendVoiceAfterStop && this.pendingVoiceFile) {
@@ -179,7 +284,7 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
           this.sendPendingVoice();
         }
       };
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(250);
       this.recording.set(true);
     } catch {
       this.voicePointerActive = false;
@@ -201,23 +306,28 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
   private sendMedia(file: File, type: 'image' | 'audio' | 'document'): void {
     if (this.sending()) return;
     this.sending.set(true);
-    this.auth.ensureAccessToken().subscribe((token) => {
-      if (!token) {
+    const token = this.auth.currentAccessToken();
+    const user = this.auth.currentUser();
+    this.ordersApi.sendOrderMedia(
+      this.order.id,
+      file,
+      type,
+      token,
+      user?.email,
+      this.currentRole,
+      user?.fullName
+    ).subscribe({
+      next: (message) => {
+        this.appendMessage(message);
         this.sending.set(false);
-        this.toast.show('Please log in again to send files.', 'error');
-        return;
+        this.shouldScrollToBottom = true;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.sending.set(false);
+        this.toast.show(err?.error?.message || 'Failed to send file.', 'error');
+        this.cdr.markForCheck();
       }
-      this.ordersApi.sendOrderMedia(this.order.id, file, type, token).subscribe({
-        next: (message) => {
-          this.appendMessage(message);
-          this.sending.set(false);
-          this.shouldScrollToBottom = true;
-        },
-        error: (err) => {
-          this.sending.set(false);
-          this.toast.show(err?.error?.message || 'Failed to send file.', 'error');
-        }
-      });
     });
   }
 

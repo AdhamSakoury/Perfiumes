@@ -269,10 +269,13 @@ END
         return messageType.Equals("image", StringComparison.OrdinalIgnoreCase)
             ? extension.ToLowerInvariant() switch
             {
-                ".jpg" or ".jpeg" => "image/jpeg",
+                ".jpg" or ".jpeg" or ".jfif" => "image/jpeg",
                 ".png" => "image/png",
                 ".webp" => "image/webp",
                 ".gif" => "image/gif",
+                ".heic" or ".heif" => "image/heic",
+                ".bmp" => "image/bmp",
+                ".svg" => "image/svg+xml",
                 _ => "application/octet-stream"
             }
             : messageType.Equals("audio", StringComparison.OrdinalIgnoreCase)
@@ -281,8 +284,9 @@ END
                 ".webm" => "audio/webm",
                 ".mp3" => "audio/mpeg",
                 ".wav" => "audio/wav",
-                ".m4a" => "audio/mp4",
-                ".ogg" => "audio/ogg",
+                ".m4a" or ".mp4" => "audio/mp4",
+                ".ogg" or ".opus" => "audio/ogg",
+                ".aac" => "audio/aac",
                 _ => "application/octet-stream"
             }
             : "application/octet-stream";
@@ -918,23 +922,22 @@ END
             throw new UnauthorizedAccessException("You are not authorized to view messages for this order.");
         }
 
-        var messages = await db.OrderMessages
+        return await db.OrderMessages
             .AsNoTracking()
             .Where(m => m.OrderId == orderId)
             .OrderBy(m => m.CreatedAt)
+            .Select(m => new OrderMessageDto(
+                m.Id,
+                m.OrderId,
+                m.SenderRole,
+                m.SenderName,
+                m.SenderEmail,
+                m.Message,
+                m.CreatedAt,
+                m.MessageType,
+                m.MediaUrl,
+                m.FileName))
             .ToListAsync();
-
-        return messages.Select(m => new OrderMessageDto(
-            m.Id,
-            m.OrderId,
-            m.SenderRole,
-            m.SenderName,
-            m.SenderEmail,
-            m.Message,
-            m.CreatedAt,
-            m.MessageType,
-            m.MediaUrl,
-            m.FileName)).ToList();
     }
 
     public async Task<IReadOnlyList<OrderConversationDto>> GetOrderConversationsAsync(string userEmail, string role)
@@ -1067,9 +1070,9 @@ END
         IFormFile file,
         string messageType)
     {
-        if (file.Length <= 0 || file.Length > 10 * 1024 * 1024)
+        if (file.Length <= 0 || file.Length > 15 * 1024 * 1024)
         {
-            throw new InvalidOperationException("File must be between 1 byte and 10 MB.");
+            throw new InvalidOperationException("File must be between 1 byte and 15 MB.");
         }
 
         var normalizedType = messageType.Trim().ToLowerInvariant();
@@ -1081,12 +1084,32 @@ END
             throw new InvalidOperationException("Unsupported media type.");
         }
 
-        var allowedExtensions = isImage
-            ? new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" }
-            : isAudio
-                ? new[] { ".webm", ".mp3", ".wav", ".m4a", ".ogg" }
-                : new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip" };
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(extension))
+        {
+            var ct = (file.ContentType ?? string.Empty).ToLowerInvariant();
+            extension = ct switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                "image/gif" => ".gif",
+                "image/heic" => ".heic",
+                "audio/webm" => ".webm",
+                "audio/ogg" => ".ogg",
+                "audio/mp4" or "audio/m4a" => ".m4a",
+                "audio/mpeg" or "audio/mp3" => ".mp3",
+                "audio/wav" => ".wav",
+                "application/pdf" => ".pdf",
+                _ => isImage ? ".jpg" : isAudio ? ".webm" : ".bin"
+            };
+        }
+
+        var allowedExtensions = isImage
+            ? new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif", ".jfif", ".bmp", ".svg" }
+            : isAudio
+                ? new[] { ".webm", ".mp3", ".wav", ".m4a", ".ogg", ".aac", ".flac", ".opus" }
+                : new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip", ".rar", ".7z" };
         if (!allowedExtensions.Contains(extension))
         {
             throw new InvalidOperationException("Unsupported file format.");

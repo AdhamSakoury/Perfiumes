@@ -31,9 +31,6 @@
               <a routerLink="/delivery/orders" routerLinkActive="nav-link-active" class="nav-link">
                 <i class="fas fa-truck-fast nav-link-icon"></i><span>{{ i18n.t('assignedOrders') }}</span>
               </a>
-              <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
-                <i class="fas fa-envelope nav-link-icon"></i><span>{{ i18n.t('messages') }}</span>
-              </a>
               <a routerLink="/support" routerLinkActive="nav-link-active" class="nav-link">
                 <i class="fas fa-headset nav-link-icon"></i><span>{{ i18n.t('support') }}</span>
               </a>
@@ -52,9 +49,6 @@
                 <span>{{ i18n.t('cart') }}</span>
               </a>
               @if (auth.currentUser()) {
-                <a routerLink="/messages" routerLinkActive="nav-link-active" class="nav-link">
-                  <i class="fas fa-envelope nav-link-icon"></i><span>{{ i18n.t('messages') }}</span>
-                </a>
                 <a routerLink="/support" routerLinkActive="nav-link-active" class="nav-link">
                   <i class="fas fa-headset nav-link-icon"></i><span>{{ i18n.t('support') }}</span>
                 </a>
@@ -204,15 +198,12 @@
                 </div>
                 @if (user.role === 'delivery') {
                   <div class="mobile-account-links">
-                    <a routerLink="/messages" (click)="mobileOpen.set(false)" class="mobile-nav-row compact"><i class="fas fa-envelope"></i><span>{{ i18n.t('messages') }}</span></a>
+                    <a routerLink="/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row compact"><i class="fas fa-truck-fast"></i><span>{{ i18n.t('orders') }}</span></a>
                     <a routerLink="/account" (click)="mobileOpen.set(false)" class="mobile-nav-row compact"><i class="fas fa-user-circle"></i><span>{{ i18n.t('account') }}</span></a>
                   </div>
                 } @else if (user.role !== 'admin') {
                   <div class="mobile-account-links">
-                    <a routerLink="/messages" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
-                      <i class="fas fa-envelope"></i>
-                      <span>{{ i18n.t('messages') }}</span>
-                    </a>
+                    <a routerLink="/support" (click)="mobileOpen.set(false)" class="mobile-nav-row compact"><i class="fas fa-headset"></i><span>{{ i18n.t('support') }}</span></a>
                     <a routerLink="/orders" (click)="mobileOpen.set(false)" class="mobile-nav-row compact">
                       <i class="fas fa-truck-fast"></i>
                       <span>{{ i18n.t('orders') }}</span>

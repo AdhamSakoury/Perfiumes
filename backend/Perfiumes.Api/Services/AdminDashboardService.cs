@@ -82,6 +82,25 @@ BEGIN
     CREATE INDEX [IX_AdminExpenses_Date] ON [AdminExpenses] ([Date]);
     CREATE INDEX [IX_AdminExpenses_Category] ON [AdminExpenses] ([Category]);
 END
+
+IF OBJECT_ID(N'[WalletTopUpRequests]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [WalletTopUpRequests] (
+        [Id] nvarchar(64) NOT NULL CONSTRAINT [PK_WalletTopUpRequests] PRIMARY KEY,
+        [UserId] nvarchar(64) NOT NULL,
+        [UserEmail] nvarchar(256) NOT NULL,
+        [Amount] decimal(18,2) NOT NULL,
+        [Currency] nvarchar(8) NOT NULL,
+        [Status] nvarchar(32) NOT NULL,
+        [PaymentProvider] nvarchar(64) NOT NULL,
+        [ProviderTransactionId] nvarchar(128) NULL,
+        [ClientSecret] nvarchar(256) NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        [CompletedAt] datetimeoffset NULL
+    );
+    CREATE INDEX [IX_WalletTopUpRequests_UserEmail] ON [WalletTopUpRequests] ([UserEmail]);
+    CREATE INDEX [IX_WalletTopUpRequests_Status] ON [WalletTopUpRequests] ([Status]);
+END
 """);
 
         await EnsureWalletsForUsersAsync();
@@ -223,6 +242,97 @@ END
 
         await db.SaveChangesAsync();
         return ToUserWalletDto(wallet);
+    }
+
+    public async Task<WalletTopUpEntity?> CreateTopUpRequestAsync(string userEmail, decimal amount)
+    {
+        if (amount <= 0) return null;
+
+        await EnsureWalletsForUsersAsync();
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        if (user is null) return null;
+
+        var topUp = new WalletTopUpEntity
+        {
+            Id = $"wtop_{Guid.NewGuid():N}",
+            UserId = user.Id,
+            UserEmail = normalizedEmail,
+            Amount = Math.Round(amount, 2),
+            Currency = "EGP",
+            Status = "pending",
+            PaymentProvider = "Paymob",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        db.WalletTopUpRequests.Add(topUp);
+        await db.SaveChangesAsync();
+        return topUp;
+    }
+
+    public async Task<WalletTopUpEntity?> GetTopUpRequestByIdAsync(string id)
+    {
+        return await db.WalletTopUpRequests.FirstOrDefaultAsync(t => t.Id == id);
+    }
+
+    public async Task<(WalletTopUpEntity TopUp, UserWalletDto? Wallet)?> CompleteTopUpAsync(string id, string? transactionId)
+    {
+        var topUp = await db.WalletTopUpRequests.FirstOrDefaultAsync(t => t.Id == id);
+        if (topUp is null) return null;
+
+        var wallet = await db.UserWallets
+            .Include(w => w.Transactions)
+            .FirstOrDefaultAsync(w => w.UserEmail == topUp.UserEmail);
+
+        if (wallet is null) return null;
+
+        if (topUp.Status == "paid")
+        {
+            return (topUp, ToUserWalletDto(wallet));
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        topUp.Status = "paid";
+        topUp.CompletedAt = now;
+        if (!string.IsNullOrWhiteSpace(transactionId))
+        {
+            topUp.ProviderTransactionId = transactionId.Trim();
+        }
+
+        wallet.Balance += topUp.Amount;
+        wallet.LifetimeCredit += topUp.Amount;
+        wallet.UpdatedAt = now;
+
+        wallet.Transactions.Add(new WalletTransactionEntity
+        {
+            Id = $"wtx_{Guid.NewGuid():N}",
+            WalletId = wallet.Id,
+            Amount = topUp.Amount,
+            Type = "credit",
+            ActorRole = "customer",
+            Reason = "Wallet top up via Card (Paymob)",
+            ReferenceId = string.IsNullOrWhiteSpace(transactionId) ? topUp.Id : transactionId.Trim(),
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync();
+        return (topUp, ToUserWalletDto(wallet));
+    }
+
+    public async Task<WalletTopUpEntity?> FailTopUpAsync(string id, string? transactionId)
+    {
+        var topUp = await db.WalletTopUpRequests.FirstOrDefaultAsync(t => t.Id == id);
+        if (topUp is null || topUp.Status == "paid") return topUp;
+
+        topUp.Status = "failed";
+        topUp.CompletedAt = DateTimeOffset.UtcNow;
+        if (!string.IsNullOrWhiteSpace(transactionId))
+        {
+            topUp.ProviderTransactionId = transactionId.Trim();
+        }
+
+        await db.SaveChangesAsync();
+        return topUp;
     }
 
     public async Task<AdminWalletDto?> AdjustWalletAsync(string walletId, AdjustWalletRequest request)

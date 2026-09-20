@@ -7,8 +7,9 @@ import { AuthService } from '@core/services/auth.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { PromoCodeService } from '@core/services/promo-code.service';
 import { ToastService } from '@core/services/toast.service';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { finalize, switchMap, throwError, timeout } from 'rxjs';
+import { Observable, catchError, finalize, switchMap, throwError, timeout } from 'rxjs';
 
 type PromoCalendarDay = {
   key: string;
@@ -37,7 +38,6 @@ export class AdminPromosComponent {
     expiresAt: this.defaultExpiry()
   };
   calendarMonth = this.startOfMonth(new Date(this.form.expiresAt));
-  promos: PromoCode[] = [];
   loading = false;
   saving = false;
   loadError = '';
@@ -168,22 +168,30 @@ export class AdminPromosComponent {
     this.calendarMonth = this.startOfMonth(base);
   }
 
+  get promos(): PromoCode[] {
+    return this.promoService.promos();
+  }
+
   load(): void {
-    if (!this.isAdmin || this.loading) return;
+    if (!this.isAdmin) return;
     this.loading = true;
     this.loadError = '';
-    this.auth.ensureAccessToken(true).pipe(
-      switchMap((token) => token ? this.promoService.getAdminPromos(token) : throwError(() => new Error('No admin token'))),
-      timeout(12000),
+
+    this.fetchWithAuth((token) => this.promoService.getAdminPromos(token)).pipe(
+      timeout(10000),
       finalize(() => {
         this.loading = false;
       })
     ).subscribe({
-      next: (promos) => {
-        this.promos = promos;
+      next: () => {
+        this.loading = false;
       },
-      error: () => {
-        this.loadError = this.i18n.t('promosLoadFailed');
+      error: (err: unknown) => {
+        this.loading = false;
+        this.loadError = err instanceof HttpErrorResponse
+          ? err.error?.message || this.i18n.t('adminPromosLoadFailed')
+          : this.i18n.t('adminPromosLoadFailed');
+        this.toast.show(this.loadError, 'error');
       }
     });
   }
@@ -198,25 +206,43 @@ export class AdminPromosComponent {
     }
 
     this.saving = true;
-    this.auth.ensureAccessToken(true).pipe(
-      switchMap((token) => token
-        ? this.promoService.createAdminPromo(code, discount, new Date(this.form.expiresAt).toISOString(), token)
-        : throwError(() => new Error('No admin token'))),
+    this.fetchWithAuth((token) =>
+      this.promoService.createAdminPromo(code, discount, new Date(this.form.expiresAt).toISOString(), token)
+    ).pipe(
       timeout(15000),
       finalize(() => {
         this.saving = false;
       })
     ).subscribe({
-      next: (promo) => {
-        this.saving = false;
-        this.promos = [promo, ...this.promos.filter((item) => item.id !== promo.id)];
+      next: () => {
         this.form = { code: '', discountPercent: 10, expiresAt: this.defaultExpiry() };
         this.toast.show(this.i18n.t('promoCreated'));
       },
-      error: (error) => {
-        this.toast.show(error?.error?.message || this.i18n.t('promoCreateFailed'), 'error');
+      error: (error: unknown) => {
+        const msg = error instanceof HttpErrorResponse ? error.error?.message : undefined;
+        this.toast.show(msg || this.i18n.t('promoCreateFailed'), 'error');
       }
     });
+  }
+
+  private fetchWithAuth<T>(requestFn: (token: string) => Observable<T>): Observable<T> {
+    return this.auth.ensureAccessToken().pipe(
+      switchMap((token) => {
+        if (!token) return throwError(() => new Error('No admin token'));
+        return requestFn(token);
+      }),
+      catchError((error) => {
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
+          return this.auth.ensureAccessToken(true).pipe(
+            switchMap((refreshedToken) => {
+              if (!refreshedToken) return throwError(() => error);
+              return requestFn(refreshedToken);
+            })
+          );
+        }
+        return throwError(() => error);
+      })
+    );
   }
 
   private defaultExpiry(): string {

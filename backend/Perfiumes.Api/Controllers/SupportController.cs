@@ -19,10 +19,13 @@ public sealed class SupportController(
     [HttpPost("support/conversations")]
     public async Task<IResult> CreateConversation(CreateSupportConversationRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.UserEmail) || string.IsNullOrWhiteSpace(request.Message))
-            return Results.BadRequest(new { message = "User email and message are required." });
+        if (string.IsNullOrWhiteSpace(request.UserEmail))
+            return Results.BadRequest(new { message = "User email is required." });
 
-        var conversation = await support.CreateAsync(request);
+        var message = string.IsNullOrWhiteSpace(request.Message) ? "Support attachment" : request.Message.Trim();
+        var req = request with { Message = message };
+
+        var conversation = await support.CreateAsync(req);
         await hub.Clients.Group(SupportMessageHub.AdminGroup)
             .SendAsync(SupportMessageHub.ConversationCreatedEvent, conversation);
         await hub.Clients.Group(SupportMessageHub.UserGroup(conversation.UserEmail))
@@ -54,16 +57,22 @@ public sealed class SupportController(
     public async Task<IResult> AddAttachment(
         string id,
         [FromForm] IFormFile file,
-        [FromForm] string messageType)
+        [FromForm] string messageType,
+        [FromForm] string? senderEmail = null,
+        [FromForm] string? senderName = null)
     {
+        if (file is null)
+            return Results.BadRequest(new { message = "File is required." });
+
         var principal = auth.ValidateRequest(HttpContext);
-        if (principal is null || file is null)
-            return Results.Unauthorized();
+        var email = principal?.Email ?? senderEmail;
+        var name = senderName ?? principal?.Email;
+
         try
         {
-            var user = await users.GetByEmailAsync(principal.Email);
+            var user = !string.IsNullOrWhiteSpace(email) ? await users.GetByEmailAsync(email) : null;
             var conversation = await support.AddCustomerAttachmentAsync(
-                id, user?.FullName ?? principal.Email, principal.Email, file, messageType);
+                id, name ?? user?.FullName, email ?? user?.Email, file, messageType);
             if (conversation is null)
                 return Results.NotFound();
             await NotifyConversationAsync(conversation);

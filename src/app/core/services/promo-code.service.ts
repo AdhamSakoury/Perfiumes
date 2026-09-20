@@ -1,11 +1,13 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { PromoCode, PromoData } from '@core/models/store.models';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class PromoCodeService {
+  readonly promos = signal<PromoCode[]>([]);
+
   constructor(private readonly http: HttpClient) {}
 
   validate(code: string): Observable<PromoData> {
@@ -15,7 +17,9 @@ export class PromoCodeService {
   getAdminPromos(token: string): Observable<PromoCode[]> {
     return this.http.get<PromoCode[]>(`${environment.apiBaseUrl}/api/admin/promos`, {
       headers: this.authHeaders(token)
-    });
+    }).pipe(
+      tap((items) => this.promos.set(items))
+    );
   }
 
   createAdminPromo(code: string, discountPercent: number, expiresAt: string, token: string): Observable<PromoCode> {
@@ -23,6 +27,10 @@ export class PromoCodeService {
       `${environment.apiBaseUrl}/api/admin/promos`,
       { code, discountPercent, expiresAt },
       { headers: this.authHeaders(token) }
+    ).pipe(
+      tap((created) => {
+        this.promos.update((list) => [created, ...list.filter((item) => item.id !== created.id)]);
+      })
     );
   }
 

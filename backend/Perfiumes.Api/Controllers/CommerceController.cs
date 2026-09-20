@@ -112,27 +112,12 @@ public sealed class CommerceController(
     }
 
     [HttpPost("wallet/top-up")]
-    public async Task<IResult> TopUpWallet(TopUpWalletRequest request)
+    public IResult TopUpWallet(TopUpWalletRequest request)
     {
-        var principal = auth.ValidateRequest(HttpContext);
-        if (principal is null)
+        return Results.BadRequest(new
         {
-            return Results.Unauthorized();
-        }
-
-        var wallet = await dashboard.TopUpWalletForUserAsync(principal.Email, request);
-        if (wallet is null)
-        {
-            return Results.BadRequest(new { message = "Invalid wallet top up amount." });
-        }
-
-        await PublishNotificationAsync(
-            principal.Email,
-            "Wallet topped up",
-            $"{request.Amount:0.##} {wallet.Currency} was added to your wallet.",
-            "wallet",
-            "/wallet");
-        return Results.Ok(wallet);
+            message = "Direct wallet top-up without payment is disabled. Please top up your wallet via Paymob card payment."
+        });
     }
 
     [HttpPost("promos/validate")]

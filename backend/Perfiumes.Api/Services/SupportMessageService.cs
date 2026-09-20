@@ -72,28 +72,66 @@ IF COL_LENGTH(N'[SupportMessages]', N'MediaData') IS NULL
     public async Task<IReadOnlyList<SupportConversation>> GetForUserAsync(string userEmail)
     {
         var normalizedEmail = userEmail.Trim().ToLowerInvariant();
-        var conversations = await db.SupportConversations
+        return await db.SupportConversations
             .AsNoTracking()
-            .AsSplitQuery()
-            .Include(item => item.Messages)
             .Where(item => item.UserEmail == normalizedEmail)
             .OrderByDescending(item => item.UpdatedAt)
+            .Select(item => new SupportConversation(
+                item.Id,
+                item.UserId,
+                item.UserName,
+                item.UserEmail,
+                item.Subject,
+                item.Status,
+                item.CreatedAt,
+                item.UpdatedAt,
+                item.Messages
+                    .OrderBy(message => message.CreatedAt)
+                    .Select(message => new SupportMessage(
+                        message.Id,
+                        message.ConversationId,
+                        message.SenderRole,
+                        message.SenderName,
+                        message.SenderEmail,
+                        message.Body,
+                        message.CreatedAt,
+                        message.MessageType,
+                        message.MediaUrl,
+                        message.FileName))
+                    .ToList()))
             .ToListAsync();
-
-        return conversations.Select(ToModel).ToList();
     }
 
     public async Task<IReadOnlyList<SupportConversation>> GetAllAsync()
     {
-        var conversations = await db.SupportConversations
+        return await db.SupportConversations
             .AsNoTracking()
-            .AsSplitQuery()
-            .Include(item => item.Messages)
             .OrderByDescending(item => item.Status == "open")
             .ThenByDescending(item => item.UpdatedAt)
+            .Select(item => new SupportConversation(
+                item.Id,
+                item.UserId,
+                item.UserName,
+                item.UserEmail,
+                item.Subject,
+                item.Status,
+                item.CreatedAt,
+                item.UpdatedAt,
+                item.Messages
+                    .OrderBy(message => message.CreatedAt)
+                    .Select(message => new SupportMessage(
+                        message.Id,
+                        message.ConversationId,
+                        message.SenderRole,
+                        message.SenderName,
+                        message.SenderEmail,
+                        message.Body,
+                        message.CreatedAt,
+                        message.MessageType,
+                        message.MediaUrl,
+                        message.FileName))
+                    .ToList()))
             .ToListAsync();
-
-        return conversations.Select(ToModel).ToList();
     }
 
     public Task<SupportConversation?> AddCustomerMessageAsync(string conversationId, CreateSupportMessageRequest request)
@@ -114,12 +152,12 @@ IF COL_LENGTH(N'[SupportMessages]', N'MediaData') IS NULL
 
     public async Task<SupportConversation?> AddCustomerAttachmentAsync(
         string conversationId,
-        string senderName,
-        string senderEmail,
+        string? senderName,
+        string? senderEmail,
         IFormFile file,
         string messageType)
     {
-        if (file.Length <= 0 || file.Length > 10 * 1024 * 1024) throw new InvalidOperationException("File must be between 1 byte and 10 MB.");
+        if (file.Length <= 0 || file.Length > 15 * 1024 * 1024) throw new InvalidOperationException("File must be between 1 byte and 15 MB.");
         var type = messageType.Trim().ToLowerInvariant();
         var isImage = type == "image";
         var isAudio = type == "audio";
@@ -127,11 +165,31 @@ IF COL_LENGTH(N'[SupportMessages]', N'MediaData') IS NULL
         if (!isImage && !isAudio && !isDocument) throw new InvalidOperationException("Unsupported media type.");
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(extension))
+        {
+            var ct = (file.ContentType ?? string.Empty).ToLowerInvariant();
+            extension = ct switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                "image/gif" => ".gif",
+                "image/heic" => ".heic",
+                "audio/webm" => ".webm",
+                "audio/ogg" => ".ogg",
+                "audio/mp4" or "audio/m4a" => ".m4a",
+                "audio/mpeg" or "audio/mp3" => ".mp3",
+                "audio/wav" => ".wav",
+                "application/pdf" => ".pdf",
+                _ => isImage ? ".jpg" : isAudio ? ".webm" : ".bin"
+            };
+        }
+
         var allowed = isImage
-        ? new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" }
-        : isAudio
-            ? new[] { ".webm", ".mp3", ".wav", ".m4a", ".ogg" }
-            : new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip" };
+            ? new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif", ".jfif", ".bmp", ".svg" }
+            : isAudio
+                ? new[] { ".webm", ".mp3", ".wav", ".m4a", ".ogg", ".aac", ".flac", ".opus" }
+                : new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".zip", ".rar", ".7z" };
         if (!allowed.Contains(extension)) throw new InvalidOperationException("Unsupported file format.");
 
         var current = await db.SupportConversations.Include(item => item.Messages).FirstOrDefaultAsync(item => item.Id == conversationId);

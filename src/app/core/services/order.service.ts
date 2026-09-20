@@ -90,14 +90,26 @@ export class OrderService {
     );
   }
 
-  sendOrderMedia(orderId: string, file: File, messageType: 'image' | 'audio' | 'document', token: string): Observable<OrderMessage> {
+  sendOrderMedia(
+    orderId: string,
+    file: File,
+    messageType: 'image' | 'audio' | 'document',
+    token?: string | null,
+    senderEmail?: string,
+    senderRole?: string,
+    senderName?: string
+  ): Observable<OrderMessage> {
     const body = new FormData();
     body.append('file', file, file.name);
     body.append('messageType', messageType);
+    if (senderEmail) body.append('senderEmail', senderEmail);
+    if (senderRole) body.append('senderRole', senderRole);
+    if (senderName) body.append('senderName', senderName);
+    const headers = token ? new HttpHeaders({ Authorization: 'Bearer ' + token }) : new HttpHeaders();
     return this.http.post<OrderMessage>(
       `${environment.apiBaseUrl}/api/orders/${orderId}/messages/media`,
       body,
-      { headers: new HttpHeaders({ Authorization: 'Bearer ' + token }) }
+      { headers }
     );
   }
 

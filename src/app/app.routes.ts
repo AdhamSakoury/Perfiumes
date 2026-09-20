@@ -92,11 +92,6 @@ export const routes: Routes = [
     title: 'Settings | Gnouby'
   },
   {
-    path: 'messages',
-    loadComponent: () => import('./features/support-messages/support-messages.component').then((module) => module.SupportMessagesComponent),
-    title: 'Messages | Gnouby'
-  },
-  {
     path: 'support',
     loadComponent: () => import('./features/support-messages/support-messages.component').then((module) => module.SupportMessagesComponent),
     title: 'Live Support | Gnouby'

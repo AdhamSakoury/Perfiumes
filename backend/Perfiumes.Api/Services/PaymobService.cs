@@ -144,6 +144,139 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
         return new PaymobCheckoutResponse(order.Id, clientSecret, checkoutUrl);
     }
 
+    public async Task<PaymobCheckoutResponse> CreateWalletTopUpCheckoutAsync(
+        string topUpId,
+        decimal amount,
+        string userEmail,
+        string fullName,
+        string? phone,
+        CancellationToken cancellationToken)
+    {
+        if (!IsConfigured)
+        {
+            throw new InvalidOperationException("Paymob is not configured. Add Paymob:SecretKey, Paymob:PublicKey, and Paymob:CardIntegrationId.");
+        }
+
+        var amountCents = ToSmallestCurrencyUnit(amount);
+        var names = SplitName(string.IsNullOrWhiteSpace(fullName) ? userEmail : fullName);
+        var phoneNumber = NormalizePhone(phone ?? string.Empty);
+        var redirectionUrl = $"{_options.RedirectionUrl}?type=wallet&topUpId={Uri.EscapeDataString(topUpId)}";
+
+        var payload = new
+        {
+            amount = amountCents,
+            currency = _options.Currency,
+            payment_methods = new[] { _options.CardIntegrationId },
+            items = new[]
+            {
+                new
+                {
+                    name = $"Wallet Top Up #{topUpId}",
+                    amount = amountCents,
+                    description = $"Perfiumes Wallet Top Up ({amount:0.##} {_options.Currency})",
+                    quantity = 1
+                }
+            },
+            billing_data = new
+            {
+                first_name = names.FirstName,
+                last_name = names.LastName,
+                email = userEmail,
+                phone_number = phoneNumber,
+                apartment = "NA",
+                floor = "NA",
+                street = "NA",
+                building = "NA",
+                shipping_method = "NA",
+                postal_code = "NA",
+                city = "Cairo",
+                country = "EG",
+                state = "Cairo"
+            },
+            customer = new
+            {
+                first_name = names.FirstName,
+                last_name = names.LastName,
+                email = userEmail
+            },
+            special_reference = topUpId,
+            notification_url = BlankAsNull(_options.NotificationUrl),
+            redirection_url = redirectionUrl
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl.TrimEnd('/')}/v1/intention/");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Token", _options.SecretKey);
+        request.Content = new StringContent(JsonSerializer.Serialize(payload, _jsonOptions), Encoding.UTF8, "application/json");
+
+        using var response = await http.SendAsync(request, cancellationToken);
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Paymob intention failed: {(int)response.StatusCode} {responseBody}");
+        }
+
+        using var document = JsonDocument.Parse(responseBody);
+        var root = document.RootElement;
+        var clientSecret = root.TryGetProperty("client_secret", out var clientSecretElement)
+            ? clientSecretElement.GetString()
+            : root.TryGetProperty("cs", out var csElement)
+                ? csElement.GetString()
+                : null;
+
+        if (string.IsNullOrWhiteSpace(clientSecret))
+        {
+            throw new InvalidOperationException("Paymob did not return a client_secret.");
+        }
+
+        var checkoutUrl = $"{_options.BaseUrl.TrimEnd('/')}/unifiedcheckout/?publicKey={Uri.EscapeDataString(_options.PublicKey)}&clientSecret={Uri.EscapeDataString(clientSecret)}";
+        return new PaymobCheckoutResponse(topUpId, clientSecret, checkoutUrl);
+    }
+
+    public async Task<PaymobTransactionVerificationResult> VerifyTransactionAsync(string transactionId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.SecretKey))
+        {
+            return new PaymobTransactionVerificationResult(false, null, null, 0, "Paymob secret key is not configured.");
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_options.BaseUrl.TrimEnd('/')}/api/acceptance/transactions/{Uri.EscapeDataString(transactionId)}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Token", _options.SecretKey);
+
+            using var response = await http.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new PaymobTransactionVerificationResult(false, transactionId, null, 0, $"Paymob transaction inquiry failed with status {(int)response.StatusCode}.");
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var success = root.TryGetProperty("success", out var s) && s.GetBoolean();
+            var isVoided = root.TryGetProperty("is_voided", out var iv) && iv.GetBoolean();
+            var isRefunded = root.TryGetProperty("is_refunded", out var ir) && ir.GetBoolean();
+            var amountCents = root.TryGetProperty("amount_cents", out var ac) && ac.TryGetInt64(out var cents) ? cents : 0;
+
+            string? specialRef = null;
+            if (root.TryGetProperty("special_reference", out var sr) && sr.ValueKind == JsonValueKind.String)
+            {
+                specialRef = sr.GetString();
+            }
+            else if (root.TryGetProperty("order", out var ord) && ord.TryGetProperty("merchant_order_id", out var moi) && moi.ValueKind == JsonValueKind.String)
+            {
+                specialRef = moi.GetString();
+            }
+
+            var isPaid = success && !isVoided && !isRefunded;
+            return new PaymobTransactionVerificationResult(isPaid, transactionId, specialRef, amountCents / 100m, null);
+        }
+        catch (Exception ex)
+        {
+            return new PaymobTransactionVerificationResult(false, transactionId, null, 0, ex.Message);
+        }
+    }
+
     private static int ToSmallestCurrencyUnit(decimal value)
     {
         return (int)Math.Round(value * 100, MidpointRounding.AwayFromZero);

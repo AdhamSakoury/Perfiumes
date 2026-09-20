@@ -21,6 +21,7 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
     public DbSet<DeliveryRatingEntity> DeliveryRatings => Set<DeliveryRatingEntity>();
     public DbSet<CustomerRatingEntity> CustomerRatings => Set<CustomerRatingEntity>();
     public DbSet<AdminExpenseEntity> AdminExpenses => Set<AdminExpenseEntity>();
+    public DbSet<WalletTopUpEntity> WalletTopUpRequests => Set<WalletTopUpEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -297,6 +298,23 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.HasIndex(subscriber => subscriber.Email).IsUnique();
             entity.Property(subscriber => subscriber.Id).HasMaxLength(64);
             entity.Property(subscriber => subscriber.Email).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<WalletTopUpEntity>(entity =>
+        {
+            entity.ToTable("WalletTopUpRequests");
+            entity.HasKey(t => t.Id);
+            entity.HasIndex(t => t.UserEmail);
+            entity.HasIndex(t => t.Status);
+            entity.Property(t => t.Id).HasMaxLength(64);
+            entity.Property(t => t.UserId).HasMaxLength(64);
+            entity.Property(t => t.UserEmail).HasMaxLength(256);
+            entity.Property(t => t.Amount).HasPrecision(18, 2);
+            entity.Property(t => t.Currency).HasMaxLength(8);
+            entity.Property(t => t.Status).HasMaxLength(32);
+            entity.Property(t => t.PaymentProvider).HasMaxLength(64);
+            entity.Property(t => t.ProviderTransactionId).HasMaxLength(128);
+            entity.Property(t => t.ClientSecret).HasMaxLength(256);
         });
     }
 }

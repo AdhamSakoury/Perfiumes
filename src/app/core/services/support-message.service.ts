@@ -93,13 +93,17 @@ export class SupportMessageService {
   }
 
   sendCustomerMedia(conversationId: string, file: File, messageType: 'image' | 'audio' | 'document', token: string): Observable<SupportConversation> {
+    const user = this.auth.currentUser();
     const form = new FormData();
     form.append('file', file, file.name);
     form.append('messageType', messageType);
+    if (user?.email) form.append('senderEmail', user.email);
+    if (user?.fullName) form.append('senderName', user.fullName);
+    const headers = token ? this.authHeaders(token) : new HttpHeaders();
     return this.http.post<SupportConversation>(
       `${environment.apiBaseUrl}/api/support/conversations/${conversationId}/messages/media`,
       form,
-      { headers: this.authHeaders(token) }
+      { headers }
     ).pipe(tap((conversation) => this.upsertConversation(conversation)));
   }
 

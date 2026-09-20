@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Perfiumes.Api.Data;
+using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using Perfiumes.Api.Services;
 using System.Security.Cryptography;
@@ -13,6 +17,10 @@ namespace Perfiumes.Api.Controllers;
 public sealed class PaymentsController(
     PaymobService paymob,
     OrderService orders,
+    AdminDashboardService dashboard,
+    NotificationService notifications,
+    IHubContext<NotificationHub> notificationHub,
+    PerfiumesDbContext db,
     AdminAuthService auth,
     IOptions<PaymobOptions> options,
     ILogger<PaymentsController> logger) : ControllerBase
@@ -66,6 +74,128 @@ public sealed class PaymentsController(
         }
     }
 
+    [HttpPost("wallet-top-up")]
+    public async Task<IResult> InitiateWalletTopUp(WalletTopUpApiRequest request, CancellationToken cancellationToken)
+    {
+        if (!paymob.IsConfigured)
+            return Results.Problem(paymob.ConfigurationError, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        if (request.Amount < 5)
+            return Results.BadRequest(new { message = "Minimum top-up amount is 5 EGP." });
+        if (request.Amount > 50000)
+            return Results.BadRequest(new { message = "Maximum top-up amount is 50,000 EGP." });
+
+        var principal = auth.ValidateRequest(HttpContext);
+        if (principal is null)
+            return Results.Unauthorized();
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == principal.Email, cancellationToken);
+        if (user is null)
+            return Results.Unauthorized();
+
+        var topUp = await dashboard.CreateTopUpRequestAsync(user.Email, request.Amount);
+        if (topUp is null)
+            return Results.BadRequest(new { message = "Could not initialize wallet top up." });
+
+        try
+        {
+            var checkout = await paymob.CreateWalletTopUpCheckoutAsync(
+                topUp.Id,
+                topUp.Amount,
+                user.Email,
+                user.FullName,
+                user.Phone,
+                cancellationToken);
+
+            topUp.ClientSecret = checkout.ClientSecret;
+            await db.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(new WalletTopUpResponse(
+                topUp.Id,
+                topUp.Amount,
+                topUp.Currency,
+                checkout.ClientSecret,
+                checkout.CheckoutUrl));
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Results.Problem("The payment gateway is taking too long. Please try again in a moment.",
+                statusCode: StatusCodes.Status504GatewayTimeout);
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning(exception, "Paymob could not be reached for wallet top-up {TopUpId}", topUp.Id);
+            return Results.Problem("Could not reach Paymob checkout. Please try again in a moment.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogWarning("Paymob checkout could not be created for wallet top-up {TopUpId}: {Message}", topUp.Id, exception.Message);
+            await dashboard.FailTopUpAsync(topUp.Id, null);
+            return Results.BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("wallet-top-up/{id}")]
+    public async Task<IResult> GetWalletTopUpStatus(string id)
+    {
+        var principal = auth.ValidateRequest(HttpContext);
+        if (principal is null)
+            return Results.Unauthorized();
+
+        var topUp = await dashboard.GetTopUpRequestByIdAsync(id);
+        if (topUp is null)
+            return Results.NotFound();
+
+        if (!principal.Email.Equals(topUp.UserEmail, StringComparison.OrdinalIgnoreCase))
+            return Results.Forbid();
+
+        return Results.Ok(new WalletTopUpStatusDto(
+            topUp.Id,
+            topUp.Amount,
+            topUp.Currency,
+            topUp.Status,
+            topUp.PaymentProvider,
+            topUp.ProviderTransactionId,
+            topUp.CreatedAt,
+            topUp.CompletedAt));
+    }
+
+    [HttpPost("wallet-top-up/{id}/confirm")]
+    public async Task<IResult> ConfirmWalletTopUp(string id, [FromBody] WalletTopUpConfirmRequest? request, CancellationToken cancellationToken)
+    {
+        var principal = auth.ValidateRequest(HttpContext);
+        if (principal is null)
+            return Results.Unauthorized();
+
+        var topUp = await dashboard.GetTopUpRequestByIdAsync(id);
+        if (topUp is null)
+            return Results.NotFound();
+
+        if (!principal.Email.Equals(topUp.UserEmail, StringComparison.OrdinalIgnoreCase))
+            return Results.Forbid();
+
+        if (topUp.Status == "paid")
+        {
+            var currentWallet = await dashboard.GetWalletForUserAsync(topUp.UserEmail);
+            return Results.Ok(new { status = "paid", wallet = currentWallet });
+        }
+
+        var transactionId = request?.TransactionId;
+        if (!string.IsNullOrWhiteSpace(transactionId))
+        {
+            var verification = await paymob.VerifyTransactionAsync(transactionId, cancellationToken);
+            if (verification.Success && (verification.SpecialReference == topUp.Id || verification.SpecialReference == null))
+            {
+                var completed = await dashboard.CompleteTopUpAsync(topUp.Id, transactionId);
+                await PublishWalletTopUpNotificationAsync(topUp.UserEmail, topUp.Amount, topUp.Currency);
+                return Results.Ok(new { status = "paid", wallet = completed?.Wallet });
+            }
+        }
+
+        return Results.Ok(new { status = topUp.Status });
+    }
+
     [HttpPost("webhook")]
     public async Task<IResult> Webhook(CancellationToken cancellationToken)
     {
@@ -95,12 +225,50 @@ public sealed class PaymentsController(
 
         var existingOrder = await orders.GetByIdAsync(orderId);
         if (existingOrder is null)
+        {
+            var walletTopUp = await dashboard.GetTopUpRequestByIdAsync(orderId);
+            if (walletTopUp is not null)
+            {
+                if (success)
+                {
+                    var result = await dashboard.CompleteTopUpAsync(orderId, transactionId);
+                    await PublishWalletTopUpNotificationAsync(walletTopUp.UserEmail, walletTopUp.Amount, walletTopUp.Currency);
+                }
+                else
+                {
+                    await dashboard.FailTopUpAsync(orderId, transactionId);
+                }
+                return Results.Ok(new { received = true, type = "wallet" });
+            }
+
             return Results.NotFound();
+        }
+
         if (existingOrder.PaymentMethod != "card" || existingOrder.PaymentProvider != "Paymob")
             return Results.BadRequest(new { message = "This callback does not match a Paymob card order." });
 
         var order = await orders.UpdatePaymentStatusAsync(orderId, success ? "paid" : "failed", transactionId);
         return order is null ? Results.NotFound() : Results.Ok(new { received = true });
+    }
+
+    private async Task PublishWalletTopUpNotificationAsync(string userEmail, decimal amount, string currency)
+    {
+        try
+        {
+            var notification = notifications.Create(
+                userEmail.Trim().ToLowerInvariant(),
+                "Wallet topped up",
+                $"{amount:0.##} {currency} was added to your wallet via Paymob Visa.",
+                "wallet",
+                "/wallet");
+            await notificationHub.Clients
+                .Group(NotificationHub.GroupName(notification.UserEmail))
+                .SendAsync(NotificationHub.NotificationCreatedEvent, notification);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not send wallet top-up notification to {Email}", userEmail);
+        }
     }
 
     private static string? ReadString(JsonElement root, params string[] path)

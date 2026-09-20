@@ -331,6 +331,55 @@
   gap: 0.65rem;
 }
 
+.paymob-badge {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(27, 77, 77, 0.12);
+  color: #1B4D4D;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wallet-paymob-card {
+  background: linear-gradient(135deg, #1B4D4D 0%, #0d2929 100%);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  color: #fff;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 10px 25px -8px rgba(27, 77, 77, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.paymob-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.paymob-card-brand {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 1.35rem;
+  color: #F5A623;
+}
+
+.paymob-chip {
+  font-size: 1.15rem;
+  color: rgba(245, 166, 35, 0.75);
+}
+
+.paymob-card-notice {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.4;
+  margin: 0;
+}
+
 .wallet-topup-form {
   display: grid;
   gap: 0.75rem;
@@ -350,43 +399,101 @@
   font-weight: 900;
 }
 
-.wallet-topup-form input {
+.wallet-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.wallet-input-wrapper input {
   width: 100%;
   min-height: 2.75rem;
   border: 1px solid rgba(245, 166, 35, 0.34);
   border-radius: 0.5rem;
   background: #fff;
   color: #1B4D4D;
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 800;
   outline: 0;
-  padding: 0.65rem 0.75rem;
+  padding: 0.65rem 3.5rem 0.65rem 0.75rem;
 }
 
-.wallet-topup-form input:focus {
+:host-context([dir="rtl"]) .wallet-input-wrapper input {
+  padding: 0.65rem 0.75rem 0.65rem 3.5rem;
+}
+
+.wallet-input-wrapper input:focus {
   border-color: #F5A623;
   box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.12);
 }
 
-.wallet-topup-form button {
-  min-height: 2.75rem;
+.currency-tag {
+  position: absolute;
+  right: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #8b7355;
+  pointer-events: none;
+}
+
+:host-context([dir="rtl"]) .currency-tag {
+  right: auto;
+  left: 0.75rem;
+}
+
+.topup-min-hint {
+  font-size: 0.74rem;
+  color: #8b7355;
+}
+
+.quick-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.preset-chip {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  background: rgba(245, 166, 35, 0.08);
+  color: #1B4D4D;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-chip:hover,
+.preset-chip.active {
+  background: #F5A623;
+  color: #1A1510;
+  border-color: #F5A623;
+  transform: translateY(-1px);
+}
+
+.paymob-pay-btn {
+  min-height: 2.85rem;
+  width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   border-radius: 0.5rem;
-  background: #F5A623;
+  background: linear-gradient(135deg, #F5A623 0%, #E69512 100%);
   color: #1A1510;
+  font-size: 0.95rem;
   font-weight: 900;
+  box-shadow: 0 4px 14px rgba(245, 166, 35, 0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.wallet-topup-form button:hover {
+.paymob-pay-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 16px 32px -24px rgba(245, 166, 35, 0.9);
 }
 
-.wallet-topup-form button:disabled {
+.paymob-pay-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -500,6 +607,33 @@
   background: #1D2B2B;
   color: #F5F0E6;
   border-color: rgba(245, 166, 35, 0.32);
+}
+
+:host-context(.dark) .wallet-paymob-card {
+  background: linear-gradient(135deg, #162a2a 0%, #0c1818 100%);
+  border: 1px solid rgba(245, 166, 35, 0.22);
+}
+
+:host-context(.dark) .paymob-badge {
+  background: rgba(245, 166, 35, 0.16);
+  color: #F5A623;
+}
+
+:host-context(.dark) .preset-chip {
+  background: rgba(245, 166, 35, 0.12);
+  border-color: rgba(245, 166, 35, 0.3);
+  color: #F5F0E6;
+}
+
+:host-context(.dark) .preset-chip:hover,
+:host-context(.dark) .preset-chip.active {
+  background: #F5A623;
+  color: #1A1510;
+}
+
+:host-context(.dark) .topup-min-hint,
+:host-context(.dark) .currency-tag {
+  color: #E6D5B8;
 }
 
 @keyframes wallet-spin {

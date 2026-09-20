@@ -65,12 +65,43 @@ export class AdminMessagesComponent {
     this.refreshConversations(true);
   }
 
-  private refreshConversations(showBusy: boolean): void {
+  private refreshConversations(showBusy = true): void {
     if (!this.isAdmin) return;
-    this.loading = showBusy && this.conversations.length === 0;
+    this.loading = showBusy;
     this.loadError = '';
-    this.adminRequest((token) => this.support.getAdminConversations(token)).pipe(
-      timeout(8000),
+
+    const token = this.auth.currentAccessToken();
+    const fetchConvs = (t: string) => this.support.getAdminConversations(t).pipe(
+      timeout(10000),
+      finalize(() => {
+        this.loading = false;
+      })
+    );
+
+    if (token) {
+      fetchConvs(token).subscribe({
+        next: (items) => {
+          this.applyConversations(items);
+        },
+        error: (err) => {
+          this.auth.refreshAdminAccessToken().pipe(
+            switchMap((freshToken) => freshToken ? fetchConvs(freshToken) : throwError(() => err))
+          ).subscribe({
+            next: (items) => {
+              this.applyConversations(items);
+            },
+            error: () => {
+              this.loadError = this.i18n.t('supportMessagesLoadFailed');
+              this.toast.show(this.loadError, 'error');
+            }
+          });
+        }
+      });
+      return;
+    }
+
+    this.auth.ensureAccessToken().pipe(
+      switchMap((freshToken) => freshToken ? fetchConvs(freshToken) : throwError(() => new Error('No admin token'))),
       finalize(() => {
         this.loading = false;
       })
@@ -80,7 +111,7 @@ export class AdminMessagesComponent {
       },
       error: () => {
         this.loadError = this.i18n.t('supportMessagesLoadFailed');
-        this.toast.show(this.i18n.t('supportMessagesLoadFailed'), 'error');
+        this.toast.show(this.loadError, 'error');
       }
     });
   }

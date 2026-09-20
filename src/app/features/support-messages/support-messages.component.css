@@ -1,124 +1,293 @@
-.messages-header {
+/* ===== Page Shell ===== */
+.sd-page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 5.5rem clamp(1rem, 3vw, 5rem) 1.5rem;
+}
+
+/* ===== Top Bar ===== */
+.sd-topbar {
   @apply mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4;
 }
 
-.messages-header p {
-  @apply text-nubian-gold font-semibold;
+.sd-topbar-left .sd-label {
+  @apply block text-nubian-gold font-semibold text-sm uppercase tracking-widest mb-1;
 }
 
-.messages-header h1 {
+.sd-heading {
   @apply text-3xl md:text-4xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold;
 }
 
-.messages-header button,
-.messages-empty a {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nubian-brown text-white font-semibold hover:bg-nubian-gold hover:text-nubian-dark transition-colors disabled:opacity-50;
-}
-
-.messages-header button span,
-.messages-header button i {
-  color: inherit;
-}
-
-.messages-actions {
+.sd-topbar-right {
   @apply flex flex-wrap items-center gap-3;
 }
 
-.messages-actions .new-message-btn {
-  @apply bg-nubian-gold text-nubian-dark hover:bg-nubian-brown hover:text-white;
+/* ===== Live Badge ===== */
+.sd-live-badge {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border border-nubian-gold/30 bg-nubian-cream/70 dark:bg-nubian-surface text-nubian-brown dark:text-nubian-sand;
 }
 
-.messages-layout {
-  @apply grid grid-cols-1 lg:grid-cols-[330px_minmax(0,1fr)] gap-0 bg-white dark:bg-nubian-surface rounded-2xl shadow-xl border border-nubian-gold/20 overflow-hidden;
-  min-height: 620px;
+.sd-live-badge.connected {
+  @apply border-green-400/50 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300;
 }
 
-.thread-list,
-.thread-panel,
-.messages-empty {
-  @apply bg-white dark:bg-nubian-surface;
+.sd-live-dot {
+  @apply w-2 h-2 rounded-full bg-nubian-brown/40 dark:bg-nubian-sand/40;
 }
 
-.thread-list {
-  @apply p-2 space-y-1 overflow-y-auto border-r border-nubian-gold/15;
-  max-height: 620px;
+.sd-live-badge.connected .sd-live-dot {
+  @apply bg-green-500;
+  animation: sd-pulse 1.5s ease-in-out infinite;
 }
 
-.thread-row {
-  @apply w-full grid grid-cols-[42px_1fr] items-center gap-3 text-left p-3 rounded-xl hover:bg-nubian-gold/10 transition-colors;
+@keyframes sd-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-.thread-row.active {
-  @apply bg-nubian-gold/15;
+/* ===== Buttons ===== */
+.sd-btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
-.thread-avatar {
-  @apply w-10 h-10 rounded-full bg-nubian-brown text-white flex items-center justify-center;
+.sd-btn-ghost {
+  @apply bg-nubian-cream dark:bg-nubian-surface2 text-nubian-brown dark:text-nubian-sand border border-nubian-gold/25 hover:bg-nubian-gold/20;
 }
 
-.thread-copy {
-  @apply min-w-0;
+.sd-btn-primary {
+  @apply bg-nubian-brown text-white hover:bg-nubian-gold hover:text-nubian-dark;
 }
 
-.thread-copy strong {
-  @apply block text-nubian-brown dark:text-nubian-gold truncate;
+.sd-btn-outline {
+  @apply border border-nubian-gold/40 bg-transparent text-nubian-brown dark:text-nubian-sand hover:bg-nubian-gold/10;
 }
 
-.thread-copy small,
-.messages-empty p {
-  @apply block text-xs text-nubian-earth dark:text-nubian-sand/80 truncate;
+.sd-btn-resolve {
+  @apply border border-green-500/40 bg-transparent text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20;
 }
 
-.empty-new-message {
-  @apply w-full min-h-32 flex flex-col items-center justify-center gap-3 p-4 rounded-xl border border-dashed border-nubian-gold/50 text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold/10 transition-colors text-center font-semibold;
+/* ===== Main Layout ===== */
+.sd-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  /* 5.5rem top padding + ~5rem topbar + 1.5rem bottom padding = ~12rem */
+  height: calc(100vh - 12rem);
+  min-height: 520px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 20px 48px -30px rgba(26, 21, 16, 0.45);
+  background: white;
 }
 
-.empty-new-message i {
+:host-context(.dark) .sd-layout {
+  background: #132121;
+  border-color: rgba(212, 175, 55, 0.18);
+}
+
+/* ===== Sidebar ===== */
+.sd-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  border-right: 1px solid rgba(212, 175, 55, 0.15);
+  background: #faf8f4;
+}
+
+:host-context(.dark) .sd-sidebar {
+  background: #0f1a1a;
+  border-color: rgba(212, 175, 55, 0.12);
+}
+
+.sd-sidebar-section {
+  @apply p-3 border-b border-nubian-gold/10;
+}
+
+.sd-sidebar-section--nolabel {
+  @apply space-y-0.5;
+}
+
+.sd-sidebar-label {
+  @apply text-[10px] uppercase tracking-[0.15em] font-bold text-nubian-earth dark:text-nubian-sand/60 mb-2 px-1;
+}
+
+/* Conversation rows */
+.sd-conv-row {
+  @apply w-full flex items-center gap-3 text-left p-2.5 rounded-xl hover:bg-nubian-gold/10 transition-colors;
+}
+
+.sd-conv-row.active {
+  @apply bg-nubian-gold/20 border border-nubian-gold/35;
+}
+
+.sd-conv-avatar {
+  @apply w-9 h-9 flex-shrink-0 rounded-full bg-nubian-brown text-white flex items-center justify-center text-sm font-bold;
+}
+
+.sd-conv-copy {
+  @apply min-w-0 flex-1;
+}
+
+.sd-conv-copy strong {
+  @apply block text-nubian-brown dark:text-nubian-gold truncate text-sm font-semibold;
+}
+
+.sd-conv-copy small {
+  @apply block text-xs text-nubian-earth dark:text-nubian-sand/60 truncate capitalize;
+}
+
+/* New ticket empty state */
+.sd-new-ticket-empty {
+  @apply m-3 w-[calc(100%-1.5rem)] min-h-28 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-nubian-gold/40 text-nubian-brown dark:text-nubian-gold text-sm font-semibold hover:bg-nubian-gold/10 transition-colors;
+}
+
+.sd-new-ticket-empty i {
   @apply text-2xl;
 }
 
-.thread-panel {
-  @apply overflow-hidden flex flex-col min-w-0;
+/* Ticket card */
+.sd-ticket-card {
+  @apply rounded-xl border border-nubian-gold/20 bg-white dark:bg-nubian-surface p-3 space-y-1;
 }
 
-.thread-panel header {
-  @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-nubian-gold/20 bg-white dark:bg-nubian-surface;
+.sd-ticket-id {
+  @apply text-nubian-gold text-xs font-black uppercase tracking-wider;
 }
 
-.thread-panel h2 {
-  @apply text-xl font-bold text-nubian-brown dark:text-nubian-gold truncate;
-  font-family: inherit;
+.sd-ticket-subject {
+  @apply text-nubian-brown dark:text-nubian-gold font-semibold text-sm leading-snug;
 }
 
-.thread-panel header p {
-  @apply text-sm text-nubian-earth dark:text-nubian-sand truncate;
+.sd-ticket-meta {
+  @apply block text-nubian-earth dark:text-nubian-sand/60 text-[11px];
 }
 
-.thread-panel header span {
-  @apply px-3 py-1 rounded-full bg-nubian-gold/20 text-sm font-semibold text-nubian-brown dark:text-nubian-gold;
+.sd-status-badge {
+  @apply inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase;
+  background: rgba(212, 175, 55, 0.18);
+  color: #92400E;
 }
 
-.thread-panel header span.connected {
-  @apply bg-green-500/15 text-green-700 dark:text-green-300;
+.sd-status-badge.sd-status-open { @apply bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300; }
+.sd-status-badge.sd-status-answered { @apply bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300; }
+.sd-status-badge.sd-status-closed { @apply bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400; }
+
+/* Specialist card */
+.sd-specialist-card {
+  @apply flex items-center gap-2.5 rounded-xl border border-nubian-gold/20 bg-white dark:bg-nubian-surface p-3;
 }
 
-.thread-messages {
-  @apply flex-1 p-5 space-y-2 bg-nubian-cream/50 dark:bg-nubian-dark/30 overflow-y-auto;
+.sd-specialist-avatar {
+  @apply w-9 h-9 rounded-full bg-nubian-brown/10 dark:bg-nubian-gold/10 text-nubian-brown dark:text-nubian-gold flex items-center justify-center;
 }
 
-.thread-message {
-  @apply w-fit max-w-[min(72%,680px)] rounded-2xl rounded-bl-md bg-white dark:bg-nubian-surface2 border border-nubian-gold/15 px-4 py-2.5 text-nubian-brown dark:text-nubian-sand shadow-sm;
+.sd-specialist-card strong {
+  @apply block text-nubian-brown dark:text-nubian-gold text-sm font-semibold;
 }
 
-.thread-message.mine {
-  @apply ml-auto bg-nubian-brown text-white rounded-bl-2xl rounded-br-md;
+.sd-specialist-card small {
+  @apply block text-nubian-earth dark:text-nubian-sand/60 text-[11px];
 }
 
-.thread-message p {
-  @apply whitespace-pre-wrap leading-relaxed;
+/* Sidebar footer */
+.sd-sidebar-footer {
+  @apply mt-auto p-3 flex items-center gap-2 text-nubian-earth dark:text-nubian-sand/50 text-[11px] border-t border-nubian-gold/10;
 }
 
-.thread-media-image {
+/* ===== Chat Panel ===== */
+.sd-chat-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+  background: white;
+}
+
+:host-context(.dark) .sd-chat-panel {
+  background: #132121;
+}
+
+/* ===== Chat Header ===== */
+.sd-chat-header {
+  @apply flex items-center justify-between gap-3 px-5 py-3.5 border-b border-nubian-gold/20 bg-white dark:bg-nubian-surface;
+}
+
+.sd-chat-header-left {
+  @apply flex items-center gap-3 min-w-0;
+}
+
+.sd-chat-icon {
+  @apply w-10 h-10 flex-shrink-0 rounded-xl bg-nubian-brown/10 dark:bg-nubian-gold/10 text-nubian-brown dark:text-nubian-gold flex items-center justify-center text-lg;
+}
+
+.sd-chat-header h2 {
+  @apply flex items-center gap-2 text-lg font-bold text-nubian-brown dark:text-nubian-gold;
+}
+
+.sd-chat-header p {
+  @apply text-xs text-nubian-earth dark:text-nubian-sand/70 mt-0.5;
+}
+
+.sd-chat-header-actions {
+  @apply flex items-center gap-2 flex-shrink-0;
+}
+
+.sd-live-session-badge {
+  @apply px-2.5 py-0.5 rounded-full text-xs font-bold bg-nubian-gold/20 text-nubian-brown dark:text-nubian-gold;
+}
+
+.sd-live-session-badge.active {
+  @apply bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300;
+}
+
+/* ===== Messages area ===== */
+.sd-messages {
+  @apply flex-1 overflow-y-auto p-5 space-y-3;
+  background: rgba(245, 240, 230, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+:host-context(.dark) .sd-messages {
+  background: rgba(10, 20, 20, 0.4);
+}
+
+.sd-date-sep {
+  @apply flex items-center gap-3 text-xs text-nubian-earth dark:text-nubian-sand/50 my-2;
+}
+
+.sd-date-sep::before,
+.sd-date-sep::after {
+  content: '';
+  @apply flex-1 border-t border-nubian-gold/20;
+}
+
+/* ===== Chat Bubbles ===== */
+.sd-bubble {
+  @apply w-fit max-w-[75%] rounded-2xl rounded-bl-md bg-white dark:bg-nubian-surface2 border border-nubian-gold/15 px-4 py-3 text-nubian-brown dark:text-nubian-sand shadow-sm;
+}
+
+.sd-bubble.mine {
+  @apply ml-auto bg-nubian-brown text-white border-transparent rounded-bl-2xl rounded-br-md;
+}
+
+.sd-bubble p {
+  @apply whitespace-pre-wrap leading-relaxed text-sm;
+}
+
+.sd-bubble time {
+  @apply block mt-1 text-[10px] opacity-60 text-right;
+}
+
+.sd-bubble-sender {
+  @apply flex items-center gap-2 mb-1 text-xs font-semibold text-nubian-earth dark:text-nubian-sand/70;
+}
+
+.sd-admin-tag {
+  @apply px-1.5 py-0.5 rounded text-[9px] font-black bg-nubian-brown/10 dark:bg-nubian-gold/15 text-nubian-brown dark:text-nubian-gold uppercase tracking-wide;
+}
+
+.sd-media-image {
   display: block;
   max-width: 240px;
   max-height: 240px;
@@ -126,152 +295,443 @@
   object-fit: cover;
 }
 
-.thread-message audio {
-  max-width: 240px;
+.sd-bubble audio { max-width: 240px; }
+
+.sd-media-doc {
+  @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-nubian-gold/15 text-nubian-brown dark:text-nubian-gold text-sm break-all;
 }
 
-.thread-document {
-  @apply inline-flex items-center gap-2 max-w-full px-3 py-2 rounded-lg bg-nubian-gold/15 text-nubian-brown dark:text-nubian-gold text-sm break-all;
+/* ===== Start state ===== */
+.sd-start-state {
+  @apply flex flex-col items-center justify-center text-center gap-2 text-nubian-earth dark:text-nubian-sand/70 py-10;
 }
 
-.thread-message time {
-  @apply block mt-1 text-[11px] opacity-60 text-right;
+.sd-start-state i {
+  @apply text-4xl text-nubian-gold mb-1;
 }
 
-.thread-reply {
-  @apply flex items-end gap-2 p-4 border-t border-nubian-gold/20 bg-white dark:bg-nubian-surface;
-}
-
-.thread-media-btn {
-  @apply inline-flex items-center justify-center w-9 h-9 min-w-9 min-h-9 p-0 rounded-full bg-nubian-cream/70 dark:bg-nubian-surface2 text-nubian-brown/70 dark:text-nubian-sand/80 hover:bg-nubian-gold/20 hover:text-nubian-gold cursor-pointer transition-colors;
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-.thread-media-btn i,
-.thread-media-btn svg {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
-  line-height: 1;
-}
-
-.thread-emoji-wrap > button {
-  font-size: 14px;
-}
-
-.thread-reply > .thread-media-btn,
-.thread-reply > .thread-emoji-wrap {
-  flex: 0 0 auto;
-}
-
-.thread-media-btn.recording {
-  @apply text-red-600;
-}
-
-.thread-voice-btn {
-  @apply relative;
-  touch-action: none;
-}
-
-.thread-voice-btn.recording {
-  transform: scale(1.12);
-}
-
-.thread-voice-btn:not(.recording) {
-  transform: none;
-}
-
-.thread-voice-preview {
-  @apply flex-1 min-w-0 flex items-center gap-2 text-red-600;
-}
-
-.thread-voice-preview.ready {
-  @apply text-purple-700;
-}
-
-.thread-voice-wave {
-  @apply flex-1 max-w-[220px] h-7;
-  background: repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 7px);
-  mask-image: linear-gradient(90deg, transparent 0, black 8%, black 92%, transparent 100%);
-  animation: thread-voice-wave-pulse 0.8s ease-in-out infinite alternate;
-}
-
-@keyframes thread-voice-wave-pulse {
-  from { transform: scaleY(0.55); opacity: 0.65; }
-  to { transform: scaleY(1); opacity: 1; }
-}
-
-.thread-emoji-wrap {
-  position: relative;
-}
-
-.thread-emoji-picker {
-  @apply absolute bottom-10 left-0 z-10 grid grid-cols-8 gap-1 p-2 rounded-xl bg-white dark:bg-nubian-surface2 border border-nubian-gold/20 shadow-lg overflow-y-auto;
-  width: min(320px, calc(100vw - 32px));
-  max-height: 230px;
-}
-
-.thread-emoji-picker button {
-  @apply border-0 bg-transparent cursor-pointer text-lg p-1;
-}
-
-.thread-reply textarea {
-  @apply flex-1 min-h-12 max-h-32 px-4 py-3 rounded-2xl border border-nubian-sand dark:border-nubian-gold/25 bg-nubian-cream/60 dark:bg-nubian-surface2 text-nubian-brown dark:text-nubian-sand outline-none focus:ring-2 focus:ring-nubian-gold/50 resize-none;
-}
-
-@media (max-width: 640px) {
-  .thread-reply {
-    flex-wrap: wrap;
-    padding: 10px;
-  }
-
-  .thread-reply textarea {
-    order: 2;
-    min-width: 0;
-    flex-basis: calc(100% - 48px);
-  }
-
-  .thread-reply > button[type='submit'] {
-    order: 3;
-  }
-}
-
-.thread-reply > button[type='submit'] {
-  @apply w-12 h-12 rounded-full p-0 shrink-0 inline-flex items-center justify-center bg-nubian-brown text-white hover:bg-nubian-gold hover:text-nubian-dark transition-colors disabled:opacity-50;
-}
-
-.thread-reply .thread-media-btn {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  padding: 0 !important;
-  font-size: 14px !important;
-}
-
-.thread-reply .thread-media-btn i {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
-}
-
-.support-start {
-  @apply min-h-60 flex flex-col items-center justify-center text-center gap-2 text-nubian-earth dark:text-nubian-sand;
-}
-
-.support-start i {
-  @apply text-4xl text-nubian-gold mb-2;
-}
-
-.support-start strong {
+.sd-start-state strong {
   @apply text-lg text-nubian-brown dark:text-nubian-gold;
 }
 
-.messages-empty {
-  @apply max-w-xl mx-auto text-center p-8 rounded-2xl shadow-xl border border-nubian-gold/20;
+.sd-start-state p {
+  @apply text-sm max-w-xs;
 }
 
-.messages-empty h1 {
-  @apply text-2xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold mb-3;
+.sd-start-state--full {
+  @apply flex-1 min-h-full;
+}
+
+/* ===== Quick Replies ===== */
+.sd-quick-replies {
+  @apply flex flex-wrap items-center gap-2 px-4 py-2 border-t border-nubian-gold/15 bg-nubian-cream/40 dark:bg-nubian-surface/50 text-xs text-nubian-earth dark:text-nubian-sand/60;
+}
+
+.sd-quick-replies i {
+  @apply text-nubian-gold;
+}
+
+.sd-quick-replies span {
+  @apply font-semibold;
+}
+
+.sd-quick-replies button {
+  @apply px-3 py-1 rounded-full border border-nubian-gold/30 bg-white dark:bg-nubian-surface2 text-nubian-brown dark:text-nubian-sand hover:bg-nubian-gold/15 transition-colors;
+}
+
+/* ===== Composer ===== */
+.sd-composer {
+  @apply border-t border-nubian-gold/20 bg-white dark:bg-nubian-surface;
+  display: flex;
+  flex-direction: column;
+}
+
+.sd-composer textarea {
+  @apply w-full px-4 pt-3 pb-2 text-sm text-nubian-brown dark:text-nubian-sand bg-transparent outline-none resize-none border-b border-nubian-gold/10;
+  min-height: 4rem;
+  max-height: 8rem;
+  dir: auto;
+}
+
+.sd-composer textarea::placeholder {
+  @apply text-nubian-earth/60 dark:text-nubian-sand/40;
+}
+
+.sd-composer-toolbar {
+  @apply flex items-center justify-between gap-2 px-3 py-2;
+}
+
+.sd-composer-tools {
+  @apply flex items-center gap-1;
+}
+
+/* Tool buttons */
+.sd-tool-btn {
+  @apply inline-flex items-center justify-center w-8 h-8 rounded-lg text-nubian-brown/60 dark:text-nubian-sand/60 hover:bg-nubian-gold/15 hover:text-nubian-brown dark:hover:text-nubian-gold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
+  font-size: 0.85rem;
+}
+
+.sd-tool-btn.recording {
+  @apply text-red-500;
+}
+
+.sd-composer-send {
+  @apply flex items-center gap-3;
+}
+
+.sd-press-hint {
+  @apply text-[11px] text-nubian-earth/50 dark:text-nubian-sand/40 hidden sm:block;
+}
+
+.sd-send-btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-nubian-brown text-white text-sm font-bold hover:bg-nubian-gold hover:text-nubian-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.sd-disclaimer {
+  @apply text-[11px] text-nubian-earth/50 dark:text-nubian-sand/40 px-4 pb-2 flex items-center gap-1.5;
+}
+
+/* Voice preview */
+/* ===== Voice Recording Bar ===== */
+.sd-pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(27, 77, 77, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  color: #1B4D4D;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  margin: 6px 12px;
+}
+.dark .sd-pending-chip {
+  background: rgba(245, 166, 35, 0.15);
+  color: #F5A623;
+}
+.sd-chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.sd-voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #1B4D4D 0%, #162222 100%);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 50px;
+  padding: 6px 12px 6px 8px;
+  margin: 8px 0 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.25s;
+}
+
+.sd-voice-bar--ready {
+  background: linear-gradient(135deg, #162222 0%, #0F1717 100%);
+  border-color: #F5A623;
+}
+
+.sd-voice-bar__mic {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(245, 166, 35, 0.2);
+  border: 1px solid rgba(245, 166, 35, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #F5A623;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  animation: sd-mic-pulse 1.2s ease-in-out infinite;
+}
+
+.sd-voice-bar--ready .sd-voice-bar__mic {
+  animation: none;
+  background: #F5A623;
+  color: #0F1717;
+}
+
+@keyframes sd-mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.5); }
+  50%       { box-shadow: 0 0 0 8px rgba(245, 166, 35, 0); }
+}
+
+.sd-voice-bar__waves {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5px;
+  height: 32px;
+  overflow: hidden;
+}
+
+.sd-voice-bar__bar {
+  display: inline-block;
+  width: 3px;
+  border-radius: 3px;
+  background: #F5A623;
+  animation: sd-waveform 0.6s ease-in-out infinite alternate;
+  transform-origin: center bottom;
+}
+
+.sd-voice-bar--ready .sd-voice-bar__bar {
+  animation: none;
+  height: 12px !important;
+  opacity: 0.5;
+  background: #E6D5B8;
+}
+
+.sd-voice-bar__bar:nth-child(odd)  { height: 18px; animation-duration: 0.55s; }
+.sd-voice-bar__bar:nth-child(even) { height: 10px; animation-duration: 0.70s; }
+.sd-voice-bar__bar:nth-child(3n)   { height: 24px; animation-duration: 0.45s; }
+.sd-voice-bar__bar:nth-child(5n)   { height: 28px; animation-duration: 0.80s; }
+.sd-voice-bar__bar:nth-child(7n)   { height: 14px; animation-duration: 0.60s; }
+
+@keyframes sd-waveform {
+  from { transform: scaleY(0.3); opacity: 0.55; }
+  to   { transform: scaleY(1);   opacity: 1; }
+}
+
+.sd-voice-bar__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #E6D5B8;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.sd-voice-bar__cancel {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #E6D5B8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.sd-voice-bar__cancel:hover {
+  background: rgba(245, 166, 35, 0.35);
+  color: #FFFFFF;
+}
+
+
+/* ===== Emoji Picker ===== */
+.sd-emoji-wrap {
+  position: relative;
+}
+
+.sd-emoji-picker {
+  @apply absolute bottom-10 left-0 z-20 grid grid-cols-8 gap-1 p-2 rounded-xl bg-white dark:bg-nubian-surface2 border border-nubian-gold/20 shadow-xl overflow-y-auto;
+  width: min(300px, calc(100vw - 32px));
+  max-height: 200px;
+}
+
+.sd-emoji-picker button {
+  @apply border-0 bg-transparent cursor-pointer text-base p-1 rounded hover:bg-nubian-gold/15 transition-colors;
+}
+
+/* ===== Auth / Error card ===== */
+.sd-state-card {
+  @apply max-w-sm mx-auto text-center p-8 rounded-2xl shadow-xl border border-nubian-gold/20 bg-white dark:bg-nubian-surface space-y-3;
+}
+
+.sd-state-card i {
+  @apply text-3xl text-nubian-gold;
+}
+
+.sd-state-card h2 {
+  @apply text-xl font-bold font-cinzel text-nubian-brown dark:text-nubian-gold;
+}
+
+.sd-state-card p {
+  @apply text-sm text-nubian-earth dark:text-nubian-sand;
+}
+
+.sd-state-card a {
+  @apply inline-flex items-center justify-center px-5 py-2 rounded-lg bg-nubian-brown text-white font-semibold hover:bg-nubian-gold hover:text-nubian-dark transition-colors;
+}
+
+/* ===== Dark mode overrides ===== */
+:host-context(.dark) .sd-chat-header,
+:host-context(.dark) .sd-composer,
+:host-context(.dark) .sd-quick-replies {
+  background: #132121;
+}
+
+:host-context(.dark) .sd-ticket-card,
+:host-context(.dark) .sd-specialist-card {
+  background: #1a2a2a;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .sd-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 80vh;
+  }
+
+  .sd-sidebar {
+    max-height: 14rem;
+    border-right: none;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+    overflow-y: auto;
+  }
+
+  .sd-chat-panel {
+    min-height: 32rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .sd-chat-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sd-chat-header-actions {
+    width: 100%;
+  }
+
+  .sd-composer-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sd-bubble {
+    max-width: 90%;
+  }
+}
+
+/* ===== Spinner ===== */
+.is-spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Live Camera Modal ===== */
+.camera-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.camera-modal-panel {
+  width: 100%;
+  max-width: 480px;
+  background: #1c1917;
+  color: white;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.camera-modal-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #D4AF37;
+}
+
+.camera-video-wrap {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  background: #141210;
+}
+
+.camera-snap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 9999px;
+  background: #D4AF37;
+  color: #181512;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.camera-snap-btn:hover {
+  background: #f5c842;
+  transform: scale(1.04);
+}
+
+.camera-cancel-btn {
+  padding: 10px 18px;
+  border-radius: 9999px;
+  background: transparent;
+  color: #a8a29e;
+  border: 1px solid #44403c;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.camera-cancel-btn:hover {
+  color: white;
+  border-color: #78716c;
 }
