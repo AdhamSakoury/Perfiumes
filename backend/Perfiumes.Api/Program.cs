@@ -84,6 +84,7 @@ builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<SupportMessageService>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<DeliveryZoneService>();
 builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<PromoCodeService>();
 builder.Services.AddScoped<NewsletterService>();
@@ -131,6 +132,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<PerfiumesDbContext>();
     await db.Database.EnsureCreatedAsync();
     await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureSchemaAsync();
+    await scope.ServiceProvider.GetRequiredService<DeliveryZoneService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<ProductRepository>().EnsureSeedAsync();
     await scope.ServiceProvider.GetRequiredService<UserService>().EnsureSchemaAsync();
     await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);

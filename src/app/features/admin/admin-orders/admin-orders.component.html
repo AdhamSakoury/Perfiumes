@@ -66,8 +66,8 @@
               <div class="order-summary">
                 <b>{{ order.total | egp }}</b>
                 <span class="status-pill">{{ statusLabel(order.status) }}</span>
-                <span class="payment-pill" [class.paid]="order.paymentStatus === 'paid'">
-                  {{ paymentMethodLabel(order.paymentMethod) }} - {{ order.paymentStatus || ('pending' | t) }}
+                <span class="payment-pill" [class.paid]="order.paymentStatus === 'paid'" [class.partial]="order.paymentStatus === 'partiallyPaid'">
+                  {{ paymentMethodLabel(order.paymentMethod) }} - {{ paymentStatusLabel(order.paymentStatus) }}
                 </span>
               </div>
             </div>
@@ -79,7 +79,10 @@
             </div>
 
             <div class="order-items">
-              <span>{{ order.shippingAddress.city }} - Shipping {{ (order.shippingFee || 0) | egp }}</span>
+              <span>{{ order.shippingAddress.city }}@if (order.deliveryZoneName) { · {{ order.deliveryZoneName }} }@if (order.deliveryAreaName) { / {{ order.deliveryAreaName }} }</span>
+              <span>{{ 'deliveryFee' | t }} {{ (order.shippingFee || 0) | egp }}</span>
+              <span>{{ 'amountToPayOnline' | t }} {{ (order.onlinePaymentAmount || 0) | egp }}</span>
+              <span>{{ 'amountDueAtDelivery' | t }} {{ dueAtDelivery(order) | egp }}</span>
               <span>{{ order.courierName || 'Courier pending' }}</span>
               <span>{{ order.trackingNumber || 'No tracking number yet' }}</span>
               @if (order.estimatedDelivery) {

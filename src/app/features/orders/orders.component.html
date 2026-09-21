@@ -215,8 +215,13 @@
           @if (order.discount > 0) {
             <div class="discount-row"><span>{{ 'discount' | t }}</span><strong>-{{ order.discount | egp }}</strong></div>
           }
-          <div><span>Shipping</span><strong>{{ (order.shippingFee || 0) | egp }}</strong></div>
+          <div><span>{{ 'deliveryFee' | t }}</span><strong>{{ (order.shippingFee || 0) | egp }}</strong></div>
           <div class="total-row"><span>{{ 'total' | t }}</span><strong>{{ order.total | egp }}</strong></div>
+          <div><span>{{ 'amountToPayOnline' | t }}</span><strong>{{ (order.onlinePaymentAmount || 0) | egp }}</strong></div>
+          <div><span>{{ 'amountDueAtDelivery' | t }}</span><strong>{{ dueAtDelivery(order) | egp }}</strong></div>
+          @if (order.deliveryZoneName) {
+            <div><span>{{ 'deliveryZone' | t }}</span><strong>{{ order.deliveryZoneName }}@if (order.deliveryAreaName) { / {{ order.deliveryAreaName }} }</strong></div>
+          }
         </div>
         <div class="orders-modal-actions">
           @if (isWithDelivery(order)) {

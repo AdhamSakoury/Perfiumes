@@ -24,14 +24,14 @@
     } @else {
       <i class="fas fa-credit-card"></i>
       <p>Paymob Checkout</p>
-      <h1>{{ loading ? 'Confirming your payment' : order?.paymentStatus === 'paid' ? 'Payment successful' : order?.paymentStatus === 'failed' ? 'Payment was not completed' : 'Payment is being confirmed' }}</h1>
+      <h1>{{ loading ? 'Confirming your payment' : isOnlineSuccess ? 'Payment successful' : order?.paymentStatus === 'failed' ? 'Payment was not completed' : 'Payment is being confirmed' }}</h1>
       <span>
         @if (error) {
           {{ error }}
         } @else if (loading) {
           We are securely checking Paymob's final result. Please do not pay again.
-        } @else if (order?.paymentStatus === 'paid') {
-          Your payment was confirmed. Your order is now being prepared.
+        } @else if (isOnlineSuccess) {
+          Product payment was confirmed. Delivery is collected when the order arrives.
         } @else if (order?.paymentStatus === 'failed') {
           No payment was confirmed. You can return to the store and try again.
         } @else if (orderId) {

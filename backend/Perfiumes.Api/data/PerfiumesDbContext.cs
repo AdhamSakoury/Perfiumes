@@ -22,6 +22,8 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
     public DbSet<CustomerRatingEntity> CustomerRatings => Set<CustomerRatingEntity>();
     public DbSet<AdminExpenseEntity> AdminExpenses => Set<AdminExpenseEntity>();
     public DbSet<WalletTopUpEntity> WalletTopUpRequests => Set<WalletTopUpEntity>();
+    public DbSet<DeliveryZoneEntity> DeliveryZones => Set<DeliveryZoneEntity>();
+    public DbSet<DeliveryZoneAreaEntity> DeliveryZoneAreas => Set<DeliveryZoneAreaEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,8 +96,14 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(order => order.Discount).HasPrecision(18, 2);
             entity.Property(order => order.ShippingFee).HasPrecision(18, 2);
             entity.Property(order => order.Total).HasPrecision(18, 2);
+            entity.Property(order => order.OnlinePaymentAmount).HasPrecision(18, 2);
+            entity.Property(order => order.AmountDueAtDelivery).HasPrecision(18, 2);
             entity.Property(order => order.PaymentMethod).HasMaxLength(32);
             entity.Property(order => order.PaymentStatus).HasMaxLength(32);
+            entity.Property(order => order.DeliveryZoneId).HasMaxLength(64);
+            entity.Property(order => order.DeliveryZoneName).HasMaxLength(160);
+            entity.Property(order => order.DeliveryAreaId).HasMaxLength(64);
+            entity.Property(order => order.DeliveryAreaName).HasMaxLength(160);
             entity.Property(order => order.PaymentProvider).HasMaxLength(80);
             entity.Property(order => order.PaymentReference).HasMaxLength(120);
             entity.Property(order => order.DeliveryUserId).HasMaxLength(64);
@@ -315,6 +323,34 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(t => t.PaymentProvider).HasMaxLength(64);
             entity.Property(t => t.ProviderTransactionId).HasMaxLength(128);
             entity.Property(t => t.ClientSecret).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<DeliveryZoneEntity>(entity =>
+        {
+            entity.ToTable("DeliveryZones");
+            entity.HasKey(zone => zone.Id);
+            entity.Property(zone => zone.Id).HasMaxLength(64);
+            entity.Property(zone => zone.Name).HasMaxLength(160);
+            entity.Property(zone => zone.CityRegion).HasMaxLength(160);
+            entity.Property(zone => zone.MinFee).HasPrecision(18, 2);
+            entity.Property(zone => zone.MaxFee).HasPrecision(18, 2);
+            entity.Property(zone => zone.FixedFee).HasPrecision(18, 2);
+            entity.Property(zone => zone.DefaultFee).HasPrecision(18, 2);
+            entity.Property(zone => zone.PricingType).HasMaxLength(24);
+            entity.HasMany(zone => zone.Areas)
+                .WithOne(area => area.Zone)
+                .HasForeignKey(area => area.DeliveryZoneId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DeliveryZoneAreaEntity>(entity =>
+        {
+            entity.ToTable("DeliveryZoneAreas");
+            entity.HasKey(area => area.Id);
+            entity.Property(area => area.Id).HasMaxLength(64);
+            entity.Property(area => area.DeliveryZoneId).HasMaxLength(64);
+            entity.Property(area => area.Name).HasMaxLength(160);
+            entity.Property(area => area.Fee).HasPrecision(18, 2);
         });
     }
 }

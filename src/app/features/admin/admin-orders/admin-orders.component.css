@@ -226,6 +226,11 @@
   color: #15803d;
 }
 
+.payment-pill.partial {
+  background: rgba(245, 166, 35, 0.18);
+  color: #b45309;
+}
+
 .order-card:hover .status-pill {
   background: rgba(245, 166, 35, 0.24);
   transform: translateY(-1px);

@@ -19,26 +19,40 @@
               <label>{{ 'fullName' | t }}<input name="name" [(ngModel)]="form.name" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
               <label>{{ 'email' | t }}<input type="email" name="email" [(ngModel)]="form.email" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
               <label>{{ 'phone' | t }}<input name="phone" [(ngModel)]="form.phone" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
-              <label>{{ 'city' | t }}<input name="city" [(ngModel)]="form.city" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
-              <label class="md:col-span-2">{{ 'address' | t }}<textarea name="address" [(ngModel)]="form.address" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" rows="3" required></textarea></label>
               <label>{{ 'postalCode' | t }}<input name="postal" [(ngModel)]="form.postal" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required></label>
+              <label class="md:col-span-2">{{ 'deliveryZone' | t }}
+                <select name="deliveryZone" [(ngModel)]="selectedZoneId" (ngModelChange)="onZoneChange()" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+                  <option value="">{{ 'selectDeliveryZone' | t }}</option>
+                  @for (zone of zones; track zone.id) {
+                    <option [value]="zone.id">{{ zone.name }} — {{ zone.cityRegion }}</option>
+                  }
+                </select>
+              </label>
+              @if (needsArea) {
+                <label class="md:col-span-2">{{ 'deliveryArea' | t }}
+                  <select name="deliveryArea" [(ngModel)]="selectedAreaId" (ngModelChange)="onAreaChange()" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" required>
+                    <option value="">{{ 'selectDeliveryArea' | t }}</option>
+                    @for (area of selectedAreas; track area.id) {
+                      <option [value]="area.id">{{ area.name }} ({{ area.fee | egp }})</option>
+                    }
+                  </select>
+                </label>
+              }
+              <label class="md:col-span-2">{{ 'address' | t }}<textarea name="address" [(ngModel)]="form.address" class="mt-2 w-full px-4 py-3 rounded-lg border border-nubian-sand dark:border-nubian-gold/25 bg-white dark:bg-nubian-surface2" rows="3" required></textarea></label>
             </div>
             @if (error) { <p class="text-nubian-terracotta">{{ error }}</p> }
+            @if (quoteError) { <p class="text-nubian-terracotta">{{ quoteError }}</p> }
 
             <div class="rounded-xl border border-nubian-gold/20 bg-nubian-sand/20 dark:bg-nubian-surface2 p-4">
-              <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">Delivery estimate</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                @for (region of deliveryRegions; track region.label) {
-                  <div class="rounded-lg bg-white/70 dark:bg-nubian-surface border border-nubian-gold/10 p-3">
-                    <strong>{{ region.label }}</strong>
-                    <p>{{ region.fee | egp }}</p>
-                    <small>{{ region.eta }}</small>
-                  </div>
-                }
-              </div>
-              <p class="mt-3 text-sm text-nubian-earth dark:text-nubian-sand">
-                Selected city estimate: {{ shippingFee() | egp }} - {{ deliveryEta() }}
-              </p>
+              <h3 class="font-bold mb-3 text-nubian-brown dark:text-nubian-gold">{{ 'deliveryEstimate' | t }}</h3>
+              @if (quote) {
+                <p class="text-sm text-nubian-earth dark:text-nubian-sand">
+                  {{ quote.deliveryZoneName }}@if (quote.deliveryAreaName) { — {{ quote.deliveryAreaName }} }
+                </p>
+                <p class="mt-2 text-sm">{{ 'deliveryFee' | t }}: <strong>{{ quote.shippingFee | egp }}</strong> · {{ deliveryEta() }}</p>
+              } @else {
+                <p class="text-sm text-nubian-earth dark:text-nubian-sand">{{ 'selectZoneToSeeFee' | t }}</p>
+              }
             </div>
 
             <div>
@@ -49,31 +63,31 @@
                   <span class="payment-icon"><i class="fas fa-money-bill-wave"></i></span>
                   <span>
                     <strong>{{ 'cashOnDelivery' | t }}</strong>
-                    <small>Order is confirmed immediately; pay upon delivery.</small>
+                    <small>{{ 'codHint' | t }}</small>
                   </span>
                 </label>
                 <label class="checkout-payment-option" [class.active]="paymentMethod === 'wallet'">
                   <input type="radio" name="payment" value="wallet" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-wallet"></i></span>
                   <span>
-                    <strong>Pay with wallet</strong>
-                    <small>Your wallet is charged immediately and securely.</small>
+                    <strong>{{ 'payWithWallet' | t }}</strong>
+                    <small>{{ 'walletOnlineHint' | t }}</small>
                   </span>
                 </label>
                 <label class="checkout-payment-option" [class.active]="paymentMethod === 'card'" [class.opacity-60]="cardGatewayReady === false">
                   <input type="radio" name="payment" value="card" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-credit-card"></i></span>
                   <span>
-                    <strong>Card payment</strong>
-                    <small>{{ cardGatewayReady === false ? 'Paymob is temporarily unavailable.' : 'Secure checkout with Paymob — you will be redirected after placing the order.' }}</small>
+                    <strong>{{ 'cardPayment' | t }}</strong>
+                    <small>{{ cardGatewayReady === false ? ('paymobUnavailable' | t) : ('cardOnlineHint' | t) }}</small>
                   </span>
                 </label>
                 <label class="checkout-payment-option" [class.active]="paymentMethod === 'instapay'">
                   <input type="radio" name="payment" value="instapay" [(ngModel)]="paymentMethod" (change)="onPaymentMethodChange()" class="custom-radio">
                   <span class="payment-icon"><i class="fas fa-building-columns"></i></span>
                   <span>
-                    <strong>InstaPay transfer</strong>
-                    <small>Order is held pending manual confirmation by admin.</small>
+                    <strong>{{ 'instapayTransfer' | t }}</strong>
+                    <small>{{ 'instapayHint' | t }}</small>
                   </span>
                 </label>
               </div>
@@ -95,8 +109,8 @@
               </div>
             </div>
 
-            <button type="submit" [disabled]="processing" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-70">
-              <i class="fas mr-2" [class.fa-spinner]="processing" [class.fa-spin]="processing" [class.fa-check]="!processing"></i>
+            <button type="submit" [disabled]="processing || quoting || !quote" class="w-full py-3 bg-nubian-brown text-white font-bold rounded-lg hover:bg-nubian-gold hover:text-nubian-dark transition-all disabled:opacity-70">
+              <i class="fas mr-2" [class.fa-spinner]="processing || quoting" [class.fa-spin]="processing || quoting" [class.fa-check]="!processing && !quoting"></i>
               {{ processing ? (processingStep === 'paymob' ? ('redirectingToPaymob' | t) : ('processing' | t)) : ('placeOrder' | t) }}
             </button>
           </form>
@@ -115,20 +129,26 @@
                 </div>
               }
             </div>
-            <div class="space-y-3">
-              <div class="flex justify-between"><span>{{ 'subtotal' | t }}</span><strong>{{ cart.subtotal() | egp }}</strong></div>
-              @if (cart.promo()) {
-                <div class="flex justify-between text-green-600"><span>{{ cart.promo()!.code }}</span><strong>-{{ cart.discount() | egp }}</strong></div>
+            <div class="space-y-3 text-sm">
+              <div class="flex justify-between"><span>{{ 'productsSubtotal' | t }}</span><strong>{{ (quote?.subtotal ?? cart.subtotal()) | egp }}</strong></div>
+              @if ((quote?.discount ?? cart.discount()) > 0) {
+                <div class="flex justify-between text-green-600"><span>{{ cart.promo()?.code || ('discount' | t) }}</span><strong>-{{ (quote?.discount ?? cart.discount()) | egp }}</strong></div>
               }
-              <div class="flex justify-between"><span>Shipping</span><strong>{{ shippingFee() | egp }}</strong></div>
-              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-xl"><span>{{ 'total' | t }}</span><strong class="text-nubian-gold">{{ payableTotal() | egp }}</strong></div>
+              <div class="flex justify-between"><span>{{ 'deliveryFee' | t }}</span><strong>{{ shippingFee() | egp }}</strong></div>
+              <div class="border-t border-nubian-gold/20 pt-3 flex justify-between text-lg"><span>{{ 'totalOrderAmount' | t }}</span><strong class="text-nubian-gold">{{ payableTotal() | egp }}</strong></div>
+              <div class="checkout-pay-split">
+                <div>
+                  <span>{{ 'amountToPayOnline' | t }}</span>
+                  <strong>{{ onlineAmount() | egp }}</strong>
+                </div>
+                <div>
+                  <span>{{ 'amountDueAtDelivery' | t }}</span>
+                  <strong>{{ deliveryDueAmount() | egp }}</strong>
+                </div>
+              </div>
+              <p class="text-xs text-nubian-earth dark:text-nubian-sand">{{ 'paymentMethod' | t }}: {{ paymentProviderLabel() }}</p>
             </div>
           </aside>
         </div>
       }
     </section>
-
-
-
-
-

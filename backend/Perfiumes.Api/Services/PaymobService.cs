@@ -68,7 +68,13 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
             throw new InvalidOperationException("Paymob is not configured. Add Paymob:SecretKey, Paymob:PublicKey, and Paymob:CardIntegrationId.");
         }
 
-        var amount = ToSmallestCurrencyUnit(order.Total);
+        var onlineAmount = OnlineChargeAmount(order);
+        if (onlineAmount <= 0)
+        {
+            throw new InvalidOperationException("There is no product amount to charge online for this order.");
+        }
+
+        var amount = ToSmallestCurrencyUnit(onlineAmount);
         var names = SplitName(order.ShippingAddress.Name);
         var phone = NormalizePhone(order.ShippingAddress.Phone);
         var payload = new
@@ -77,15 +83,14 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
             currency = _options.Currency,
             payment_methods = new[] { _options.CardIntegrationId },
             // Paymob validates that the items total matches the requested amount.
-            // Product prices alone do not include shipping or discounts, so represent
-            // this checkout as one order-total line to keep the amount exact.
+            // Charge products only; delivery is collected when the order arrives.
             items = new[]
             {
                 new
                 {
                     name = $"Order {order.Id}",
                     amount,
-                    description = "Gnouby Perfumes order total",
+                    description = "Gnouby Perfumes products (delivery collected on arrival)",
                     quantity = 1
                 }
             },
@@ -275,6 +280,17 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
         {
             return new PaymobTransactionVerificationResult(false, transactionId, null, 0, ex.Message);
         }
+    }
+
+    private static decimal OnlineChargeAmount(OrderDto order)
+    {
+        if (order.OnlinePaymentAmount > 0)
+        {
+            return order.OnlinePaymentAmount;
+        }
+
+        // Legacy orders created before delivery split: keep charging the stored total.
+        return order.Total;
     }
 
     private static int ToSmallestCurrencyUnit(decimal value)

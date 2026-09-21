@@ -1,0 +1,144 @@
+<section class="page-shell admin-zones-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+  @if (!auth.currentUser()) {
+    <div class="admin-zones-empty">
+      <h1>{{ 'adminLoginRequired' | t }}</h1>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
+    </div>
+  } @else if (!isAdmin) {
+    <div class="admin-zones-empty">
+      <h1>{{ 'adminsOnly' | t }}</h1>
+      <a routerLink="/">{{ 'backHome' | t }}</a>
+    </div>
+  } @else {
+    <div class="admin-zones-main">
+      <header class="admin-zones-topbar">
+        <div>
+          <p>{{ 'operations' | t }}</p>
+          <h2>{{ 'deliveryPricing' | t }}</h2>
+          <span>{{ 'deliveryPricingSubtitle' | t }}</span>
+        </div>
+        <button type="button" (click)="load()" [disabled]="loading">
+          <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
+          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
+        </button>
+      </header>
+
+      <div class="admin-zones-grid">
+        <form class="admin-zones-form" (ngSubmit)="save()">
+          <div>
+            <p>{{ editingId ? ('edit' | t) : ('create' | t) }}</p>
+            <h3>{{ editingId ? ('editDeliveryZone' | t) : ('newDeliveryZone' | t) }}</h3>
+          </div>
+          <label>
+            <span>{{ 'zoneName' | t }}</span>
+            <input name="name" [(ngModel)]="form.name" placeholder="Alexandria">
+          </label>
+          <label>
+            <span>{{ 'cityRegion' | t }}</span>
+            <input name="cityRegion" [(ngModel)]="form.cityRegion" placeholder="Alexandria">
+          </label>
+          <label>
+            <span>{{ 'pricingType' | t }}</span>
+            <select name="pricingType" [(ngModel)]="form.pricingType">
+              <option value="fixed">{{ 'pricingFixed' | t }}</option>
+              <option value="range">{{ 'pricingRange' | t }}</option>
+              <option value="distance">{{ 'pricingDistance' | t }}</option>
+            </select>
+          </label>
+          @if (form.pricingType === 'fixed') {
+            <label>
+              <span>{{ 'fixedDeliveryFee' | t }}</span>
+              <input type="number" min="0" step="1" name="fixedFee" [(ngModel)]="form.fixedFee">
+            </label>
+          } @else {
+            <div class="admin-zones-two">
+              <label>
+                <span>{{ 'minDeliveryFee' | t }}</span>
+                <input type="number" min="0" step="1" name="minFee" [(ngModel)]="form.minFee">
+              </label>
+              <label>
+                <span>{{ 'maxDeliveryFee' | t }}</span>
+                <input type="number" min="0" step="1" name="maxFee" [(ngModel)]="form.maxFee">
+              </label>
+            </div>
+            <label>
+              <span>{{ 'defaultDeliveryFee' | t }}</span>
+              <input type="number" min="0" step="1" name="defaultFee" [(ngModel)]="form.defaultFee">
+            </label>
+          }
+          <div class="admin-zones-two">
+            <label>
+              <span>{{ 'estimatedDays' | t }}</span>
+              <input type="number" min="1" name="estimatedDays" [(ngModel)]="form.estimatedDays">
+            </label>
+            <label>
+              <span>{{ 'sortOrder' | t }}</span>
+              <input type="number" name="sortOrder" [(ngModel)]="form.sortOrder">
+            </label>
+          </div>
+          <label class="admin-zones-toggle">
+            <input type="checkbox" name="isActive" [(ngModel)]="form.isActive">
+            <span>{{ 'activeZone' | t }}</span>
+          </label>
+
+          <div class="admin-zones-areas">
+            <div class="admin-zones-areas-head">
+              <strong>{{ 'deliveryAreas' | t }}</strong>
+              <button type="button" (click)="addArea()">{{ 'addArea' | t }}</button>
+            </div>
+            @for (area of form.areas; track $index) {
+              <div class="admin-zones-area-row">
+                <input [(ngModel)]="area.name" [name]="'area-name-' + $index" placeholder="Nearby">
+                <input type="number" min="0" [(ngModel)]="area.fee" [name]="'area-fee-' + $index">
+                <button type="button" (click)="removeArea($index)" aria-label="Remove area"><i class="fas fa-xmark"></i></button>
+              </div>
+            }
+          </div>
+
+          <div class="admin-zones-actions">
+            @if (editingId) {
+              <button type="button" (click)="startCreate()">{{ 'cancel' | t }}</button>
+            }
+            <button type="submit" [disabled]="saving">
+              <i class="fas" [class.fa-plus]="!saving && !editingId" [class.fa-save]="!saving && editingId" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
+              <span>{{ saving ? ('saving' | t) : (editingId ? ('saveChanges' | t) : ('create' | t)) }}</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="admin-zones-panel">
+          @if (loadError) {
+            <p>{{ loadError }}</p>
+          } @else if (!zones.length) {
+            <p>{{ 'noDeliveryZones' | t }}</p>
+          } @else {
+            <div class="admin-zones-list">
+              @for (zone of zones; track zone.id) {
+                <article>
+                  <div>
+                    <strong>{{ zone.name }}</strong>
+                    <small>{{ zone.cityRegion }} · {{ zone.pricingType }}</small>
+                    <em>{{ feeLabel(zone) }} EGP · {{ zone.estimatedDays }} {{ 'days' | t }}</em>
+                    <em>{{ zone.updatedAt | date:'medium' }}</em>
+                    @if (zone.areas.length) {
+                      <p>
+                        @for (area of zone.areas; track area.id) {
+                          <span>{{ area.name }} {{ area.fee | egp }}</span>
+                        }
+                      </p>
+                    }
+                  </div>
+                  <div class="admin-zones-card-actions">
+                    <span [class.inactive]="!zone.isActive">{{ zone.isActive ? ('active' | t) : ('inactive' | t) }}</span>
+                    <button type="button" (click)="startEdit(zone)">{{ 'edit' | t }}</button>
+                    <button type="button" (click)="remove(zone)" [disabled]="deletingId === zone.id">{{ 'delete' | t }}</button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</section>

@@ -11,8 +11,14 @@ public sealed class OrderEntity
     public decimal Discount { get; set; }
     public decimal ShippingFee { get; set; }
     public decimal Total { get; set; }
+    public decimal OnlinePaymentAmount { get; set; }
+    public decimal AmountDueAtDelivery { get; set; }
     public string PaymentMethod { get; set; } = "cashOnDelivery";
     public string PaymentStatus { get; set; } = "pending";
+    public string? DeliveryZoneId { get; set; }
+    public string? DeliveryZoneName { get; set; }
+    public string? DeliveryAreaId { get; set; }
+    public string? DeliveryAreaName { get; set; }
     public string PaymentProvider { get; set; } = string.Empty;
     public string PaymentReference { get; set; } = string.Empty;
     public string? DeliveryUserId { get; set; }

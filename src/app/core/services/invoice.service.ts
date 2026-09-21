@@ -361,8 +361,11 @@ export class InvoiceService {
                 <div style="margin-top: 6px; font-size: 12px; color: #44403c;">
                   <div><strong>${isAr ? 'طريقة الدفع:' : 'Method:'}</strong> ${paymentMethodLabel}</div>
                   ${order.paymentReference ? `<div style="margin-top: 3px;"><strong>${isAr ? 'المرجع:' : 'Reference:'}</strong> ${order.paymentReference}</div>` : ''}
+                  ${order.deliveryZoneName ? `<div style="margin-top: 3px;"><strong>${isAr ? 'منطقة التوصيل:' : 'Delivery zone:'}</strong> ${order.deliveryZoneName}${order.deliveryAreaName ? ` / ${order.deliveryAreaName}` : ''}</div>` : ''}
+                  <div style="margin-top: 3px;"><strong>${isAr ? 'مدفوع أونلاين:' : 'Paid online:'}</strong> ${formatEgp(order.onlinePaymentAmount || 0)}</div>
+                  <div style="margin-top: 3px;"><strong>${isAr ? 'مستحق عند التوصيل:' : 'Due at delivery:'}</strong> ${formatEgp(this.dueAtDelivery(order))}</div>
                   <div style="margin-top: 6px;">
-                    <span class="status-pill ${order.paymentStatus === 'paid' ? 'pill-paid' : 'pill-pending'}">
+                    <span class="status-pill ${order.paymentStatus === 'paid' ? 'pill-paid' : order.paymentStatus === 'partiallyPaid' ? 'pill-pending' : 'pill-pending'}">
                       ${paymentStatusBadge}
                     </span>
                   </div>
@@ -417,6 +420,13 @@ export class InvoiceService {
     printWindow.document.close();
   }
 
+  private dueAtDelivery(order: Order): number {
+    if (order.paymentStatus === 'paid') return 0;
+    if (typeof order.amountDueAtDelivery === 'number') return order.amountDueAtDelivery;
+    if (order.paymentMethod === 'cashOnDelivery') return order.total;
+    return order.shippingFee || 0;
+  }
+
   private getPaymentMethodLabel(method?: string, isAr = false): string {
     switch (method) {
       case 'wallet':
@@ -435,6 +445,10 @@ export class InvoiceService {
     switch (status) {
       case 'paid':
         return isAr ? '✓ مدفوع بالكامل' : '✓ Paid in Full';
+      case 'partiallyPaid':
+        return isAr ? 'مدفوع جزئياً — التوصيل عند الاستلام' : 'Partially paid — delivery on arrival';
+      case 'failed':
+        return isAr ? 'فشل الدفع' : 'Payment failed';
       case 'refunded':
         return isAr ? 'تم الاسترجاع' : 'Refunded';
       case 'pending':

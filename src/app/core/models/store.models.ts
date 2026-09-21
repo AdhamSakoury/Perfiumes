@@ -103,10 +103,16 @@ export interface Order {
   discount: number;
   shippingFee?: number;
   total: number;
-  paymentMethod?: 'cashOnDelivery' | 'wallet' | string;
-  paymentStatus?: 'pending' | 'paid' | string;
+  onlinePaymentAmount?: number;
+  amountDueAtDelivery?: number;
+  paymentMethod?: 'cashOnDelivery' | 'wallet' | 'card' | 'instapay' | string;
+  paymentStatus?: 'pending' | 'paid' | 'partiallyPaid' | 'failed' | 'refunded' | string;
   paymentProvider?: string;
   paymentReference?: string;
+  deliveryZoneId?: string | null;
+  deliveryZoneName?: string | null;
+  deliveryAreaId?: string | null;
+  deliveryAreaName?: string | null;
   deliveryUserId?: string | null;
 deliveryName?: string | null;
   deliveryPhone?: string | null;
@@ -408,3 +414,63 @@ export type FinancePeriod =
   | 'this-year'
   | 'last-year'
   | 'custom';
+
+export interface DeliveryZoneArea {
+  id: string;
+  name: string;
+  fee: number;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  cityRegion: string;
+  minFee: number;
+  maxFee: number;
+  fixedFee: number;
+  defaultFee: number;
+  pricingType: 'fixed' | 'range' | 'distance' | string;
+  estimatedDays: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  areas: DeliveryZoneArea[];
+}
+
+export interface CheckoutQuote {
+  subtotal: number;
+  discount: number;
+  shippingFee: number;
+  total: number;
+  paymentMethod: string;
+  onlinePaymentAmount: number;
+  amountDueAtDelivery: number;
+  deliveryZoneId: string;
+  deliveryZoneName: string;
+  deliveryAreaId?: string | null;
+  deliveryAreaName?: string | null;
+  estimatedDays: number;
+}
+
+export interface UpsertDeliveryZone {
+  name: string;
+  cityRegion: string;
+  pricingType: string;
+  minFee: number;
+  maxFee: number;
+  fixedFee: number;
+  defaultFee: number;
+  estimatedDays: number;
+  sortOrder: number;
+  isActive: boolean;
+  areas: Array<{
+    id?: string;
+    name: string;
+    fee: number;
+    sortOrder: number;
+    isActive: boolean;
+  }>;
+}
