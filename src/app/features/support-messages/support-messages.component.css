@@ -735,3 +735,324 @@
   color: white;
   border-color: #78716c;
 }
+
+/* Camera Preview / Retake / Confirm */
+.camera-preview-wrap {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.captured-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.camera-retake-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e5e5;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.camera-retake-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.camera-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 9999px;
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.camera-confirm-btn:hover {
+  background: #16a34a;
+  transform: scale(1.03);
+}
+
+/* ===== Staged Previews before Sending ===== */
+.sd-staged-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin: 6px 12px;
+  border-radius: 12px;
+  background: rgba(27, 77, 77, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  gap: 12px;
+  animation: sdFadeIn 0.2s ease-out;
+}
+:host-context(.dark) .sd-staged-preview {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.sd-staged-img-wrap,
+.sd-staged-doc-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.sd-staged-img-wrap img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  flex-shrink: 0;
+}
+
+.sd-staged-doc-wrap i {
+  font-size: 1.75rem;
+  color: #D4AF37;
+  flex-shrink: 0;
+}
+
+.sd-staged-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1a2a2a;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:host-context(.dark) .sd-staged-name {
+  color: #f3f4f6;
+}
+
+.sd-staged-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sd-btn-send-staged,
+.sd-btn-attach-staged {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: #1B4D4D;
+  color: #D4AF37;
+  font-weight: 600;
+  font-size: 0.82rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.sd-btn-send-staged:hover,
+.sd-btn-attach-staged:hover {
+  background: #143b3b;
+  transform: scale(1.02);
+}
+
+.sd-btn-cancel-staged {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.sd-btn-cancel-staged:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Staged Voice Preview */
+.sd-staged-voice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sd-btn-voice-preview {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #D4AF37;
+  color: #181512;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.sd-btn-voice-preview:hover {
+  transform: scale(1.08);
+}
+
+.sd-voice-preview-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.sd-voice-preview-info span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a2a2a;
+}
+:host-context(.dark) .sd-voice-preview-info span {
+  color: #f3f4f6;
+}
+.sd-voice-preview-info small {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+/* Voice Recording Bar extra buttons */
+.sd-voice-bar__timer {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #F5A623;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  margin: 0 4px;
+}
+
+.sd-voice-bar__done {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #22c55e;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.sd-voice-bar__done:hover {
+  background: #16a34a;
+  transform: scale(1.1);
+}
+
+/* Zoomable Image inside chat message */
+.media-image-container {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.media-image-container:hover .image-zoom-hint {
+  opacity: 1;
+}
+
+.image-zoom-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+/* ===== Lightbox Modal ===== */
+.sd-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: sdFadeIn 0.2s ease-out;
+}
+
+.sd-lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sd-lightbox-img {
+  max-width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.sd-lightbox-close-btn {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1c1917;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.sd-lightbox-close-btn:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+@keyframes sdFadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+

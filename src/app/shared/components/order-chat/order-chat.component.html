@@ -55,7 +55,10 @@
                   </span>
                 </div>
                 @if (msg.messageType === 'image' && msg.mediaUrl) {
-                  <img class="msg-image" [src]="mediaUrl(msg.mediaUrl)" [alt]="msg.fileName || 'Shared image'">
+                  <div class="media-image-container" (click)="openLightbox(mediaUrl(msg.mediaUrl))" title="Click to enlarge">
+                    <img class="msg-image" [src]="mediaUrl(msg.mediaUrl)" [alt]="msg.fileName || 'Shared image'">
+                    <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i></span>
+                  </div>
                 } @else if (msg.messageType === 'audio' && msg.mediaUrl) {
                   <audio class="msg-audio" controls [src]="mediaUrl(msg.mediaUrl)"></audio>
                 } @else if (msg.messageType === 'document' && msg.mediaUrl) {
@@ -73,71 +76,128 @@
       }
     </div>
 
+    <!-- Staged Previews before Sending -->
+    @if (pendingImageUrl()) {
+      <div class="chat-staged-preview">
+        <div class="staged-img-wrap">
+          <img [src]="pendingImageUrl()" alt="Selected image preview">
+          <span class="staged-name">{{ pendingImageFile()?.name }}</span>
+        </div>
+        <button type="button" class="btn-cancel-staged" (click)="clearPendingImage()" title="Cancel image">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    }
+
+    @if (pendingDocFile()) {
+      <div class="chat-staged-preview chat-staged-doc">
+        <div class="staged-doc-wrap">
+          <i class="fas fa-file-lines"></i>
+          <span class="staged-name">{{ pendingDocFile()?.name }}</span>
+        </div>
+        <button type="button" class="btn-cancel-staged" (click)="clearPendingDoc()" title="Cancel document">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    }
+
+    @if (pendingVoiceUrl()) {
+      <div class="chat-staged-preview chat-staged-voice">
+        <button type="button" class="btn-voice-preview" (click)="playPausePreview()" title="Play voice note">
+          <i class="fas" [class.fa-play]="!isPlayingPreview()" [class.fa-pause]="isPlayingPreview()"></i>
+        </button>
+        <div class="voice-preview-info">
+          <span>Voice Note</span>
+          <small>{{ pendingVoiceFile()?.name }}</small>
+        </div>
+        <button type="button" class="btn-cancel-staged" (click)="clearPendingVoice()" title="Cancel voice note">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    }
+
     <!-- Input Footer -->
     <footer class="chat-input-bar">
-      <div class="chat-tools">
-        <div class="emoji-tool">
-          <button type="button" class="chat-tool-btn" (click)="emojiPickerOpen.set(!emojiPickerOpen())" [disabled]="sending()" aria-label="Add emoji">😊</button>
-          @if (emojiPickerOpen()) {
-            <div class="emoji-picker">
-              @for (emoji of chatEmojis; track emoji) {
-                <button type="button" (click)="appendEmoji(emoji, chatTextInput)">{{ emoji }}</button>
-              }
-            </div>
-          }
-        </div>
-        <label class="chat-tool-btn" title="Upload image">
-          <i class="fas fa-image"></i>
-          <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
-        </label>
-        <button type="button" class="chat-tool-btn" title="Take a photo" (click)="openCamera()" [disabled]="sending()">
-          <i class="fas fa-camera"></i>
-        </button>
-        <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
-        <label class="chat-tool-btn" title="Upload document">
-          <i class="fas fa-file-lines"></i>
-          <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z" (change)="onMediaSelected($event, 'document')" class="visually-hidden-input">
-        </label>
-        @if (recording() || pendingVoiceFile) {
-          <div class="voice-bar" [class.voice-bar--ready]="!!pendingVoiceFile && !recording()" (click)="pendingVoiceFile && !recording() ? sendPendingVoice() : toggleRecording()">
-            <div class="voice-bar__mic">
-              <i class="fas fa-microphone"></i>
-            </div>
-            <div class="voice-bar__waves">
-              @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track i) {
-                <span class="voice-bar__bar" [style.animation-delay]="(i * 0.05) + 's'"></span>
-              }
-            </div>
-            <span class="voice-bar__label">{{ recording() ? 'Recording...' : 'Tap to send' }}</span>
-            <button type="button" class="voice-bar__cancel" (click)="$event.stopPropagation(); recording() ? toggleRecording() : (pendingVoiceFile = undefined)" title="Cancel">
-              <i class="fas fa-times"></i>
-            </button>
+      <!-- Voice Recording Bar -->
+      @if (recording()) {
+        <div class="voice-recording-bar">
+          <div class="voice-mic-active">
+            <i class="fas fa-microphone"></i>
           </div>
-        } @else {
-          <button type="button" class="chat-tool-btn voice-record-btn" (click)="toggleRecording()" [disabled]="sending()" aria-label="Record voice note">
+          <div class="voice-waves">
+            @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track i) {
+              <span class="voice-wave-bar" [style.animation-delay]="(i * 0.05) + 's'"></span>
+            }
+          </div>
+          <span class="voice-timer">{{ formatDuration(recordingDuration()) }}</span>
+          <button type="button" class="voice-btn-cancel" (click)="cancelRecording()" title="Cancel recording">
+            <i class="fas fa-trash-can"></i>
+          </button>
+          <button type="button" class="voice-btn-done" (click)="toggleRecording()" title="Finish recording">
+            <i class="fas fa-check"></i>
+          </button>
+        </div>
+      } @else {
+        <div class="chat-tools">
+          <!-- Emoji Picker -->
+          <div class="emoji-tool">
+            <button type="button" class="chat-tool-btn" (click)="emojiPickerOpen.set(!emojiPickerOpen())" [disabled]="sending()" aria-label="Add emoji">
+              <i class="fas fa-face-smile"></i>
+            </button>
+            @if (emojiPickerOpen()) {
+              <div class="emoji-picker">
+                @for (emoji of chatEmojis; track emoji) {
+                  <button type="button" (click)="appendEmoji(emoji, chatTextInput)">{{ emoji }}</button>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Image Upload -->
+          <label class="chat-tool-btn" title="Upload image">
+            <i class="fas fa-image"></i>
+            <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
+          </label>
+
+          <!-- Camera -->
+          <button type="button" class="chat-tool-btn" title="Take photo" (click)="openCamera()" [disabled]="sending()">
+            <i class="fas fa-camera"></i>
+          </button>
+          <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
+
+          <!-- Document Upload -->
+          <label class="chat-tool-btn" title="Upload document">
+            <i class="fas fa-paperclip"></i>
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z" (change)="onMediaSelected($event, 'document')" class="visually-hidden-input">
+          </label>
+
+          <!-- Voice Note -->
+          <button type="button" class="chat-tool-btn voice-record-btn" (click)="toggleRecording()" [disabled]="sending()" aria-label="Record voice note" title="Record voice note">
             <i class="fas fa-microphone"></i>
           </button>
-        }
-      </div>
-      <div class="chat-compose">
-        <input
-          #chatTextInput
-          type="text"
-          [(ngModel)]="newMessage"
-          (keydown.enter)="sendMessage()"
-          placeholder="Type a message here..."
-          [disabled]="sending()"
-          class="chat-text-input"
-        />
-        <button
-          type="button"
-          (click)="sendMessage()"
-          [disabled]="(!newMessage.trim() && !pendingVoiceFile && !recording()) || sending()"
-          class="chat-send-btn"
-        >
-          <i class="fas" [class.fa-paper-plane]="!sending()" [class.fa-spinner]="sending()" [class.fa-spin]="sending()"></i>
-        </button>
-      </div>
+        </div>
+
+        <div class="chat-compose">
+          <input
+            #chatTextInput
+            type="text"
+            [(ngModel)]="newMessage"
+            (keydown.enter)="sendMessage()"
+            placeholder="Type a message..."
+            [disabled]="sending()"
+            class="chat-text-input"
+            dir="auto"
+          />
+          <button
+            type="button"
+            (click)="sendMessage()"
+            [disabled]="(!newMessage.trim() && !pendingVoiceFile() && !pendingImageFile() && !pendingDocFile()) || sending()"
+            class="chat-send-btn"
+          >
+            <i class="fas" [class.fa-paper-plane]="!sending()" [class.fa-spinner]="sending()" [class.fa-spin]="sending()"></i>
+          </button>
+        </div>
+      }
     </footer>
   </div>
 
@@ -145,23 +205,54 @@
   @if (cameraOpen()) {
     <div class="camera-modal-backdrop" (click)="closeCamera()">
       <div class="camera-modal-panel" (click)="$event.stopPropagation()">
-        <div class="camera-modal-header">
+        <header class="camera-modal-header">
           <h4><i class="fas fa-camera"></i> Take Photo</h4>
           <button type="button" class="close-btn" (click)="closeCamera()"><i class="fas fa-times"></i></button>
+        </header>
+
+        <div class="camera-body">
+          @if (capturedPhotoUrl()) {
+            <div class="camera-preview-wrap">
+              <img [src]="capturedPhotoUrl()" alt="Captured photo preview" class="captured-preview-img">
+            </div>
+          } @else {
+            <div class="camera-video-wrap">
+              <video #cameraVideo autoplay playsinline muted class="camera-video"></video>
+              <canvas #cameraCanvas style="display: none;"></canvas>
+            </div>
+          }
         </div>
-        <div class="camera-video-wrap">
-          <video #cameraVideo autoplay playsinline muted class="camera-video"></video>
-          <canvas #cameraCanvas style="display: none;"></canvas>
-        </div>
-        <div class="camera-modal-actions">
-          <button type="button" class="camera-snap-btn" (click)="capturePhoto()">
-            <i class="fas fa-circle-dot"></i>
-            <span>Snap Photo</span>
-          </button>
-          <button type="button" class="camera-cancel-btn" (click)="closeCamera()">
-            Cancel
-          </button>
-        </div>
+
+        <footer class="camera-modal-actions">
+          @if (capturedPhotoUrl()) {
+            <button type="button" class="camera-retake-btn" (click)="retakePhoto()">
+              <i class="fas fa-rotate-left"></i>
+              <span>Retake</span>
+            </button>
+            <button type="button" class="camera-confirm-btn" (click)="confirmCapturedPhoto()">
+              <i class="fas fa-check"></i>
+              <span>Use Photo</span>
+            </button>
+          } @else {
+            <button type="button" class="camera-snap-btn" (click)="snapPhoto()">
+              <i class="fas fa-circle-dot"></i>
+              <span>Snap Photo</span>
+            </button>
+            <button type="button" class="camera-cancel-btn" (click)="closeCamera()">
+              Cancel
+            </button>
+          }
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- Image Lightbox Modal -->
+  @if (lightboxImageUrl()) {
+    <div class="order-lightbox-backdrop" (click)="closeLightbox()">
+      <div class="order-lightbox-content" (click)="$event.stopPropagation()">
+        <button type="button" class="order-lightbox-close-btn" (click)="closeLightbox()"><i class="fas fa-times"></i></button>
+        <img [src]="lightboxImageUrl()" alt="Full image preview" class="order-lightbox-img">
       </div>
     </div>
   }

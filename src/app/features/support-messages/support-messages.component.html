@@ -110,9 +110,65 @@
             </div>
           </div>
 
+          <!-- Staged Previews for Composing -->
+          @if (stagedImage()) {
+            <div class="sd-staged-preview">
+              <div class="sd-staged-img-wrap">
+                <img [src]="stagedImage()?.previewUrl" alt="Selected image preview">
+                <span class="sd-staged-name">{{ stagedImage()?.file?.name }}</span>
+              </div>
+              <div class="sd-staged-actions">
+                <button type="button" class="sd-btn-attach-staged" (click)="sendStagedImage()" title="Attach image">
+                  <i class="fas fa-check"></i> Attach
+                </button>
+                <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedImage()" title="Cancel image">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (stagedDoc()) {
+            <div class="sd-staged-preview sd-staged-doc">
+              <div class="sd-staged-doc-wrap">
+                <i class="fas fa-file-lines"></i>
+                <span class="sd-staged-name">{{ stagedDoc()?.name }}</span>
+              </div>
+              <div class="sd-staged-actions">
+                <button type="button" class="sd-btn-attach-staged" (click)="sendStagedDoc()" title="Attach file">
+                  <i class="fas fa-check"></i> Attach
+                </button>
+                <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedDoc()" title="Cancel document">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (pendingVoiceUrl()) {
+            <div class="sd-staged-preview sd-staged-voice">
+              <button type="button" class="sd-btn-voice-preview" (click)="toggleVoicePlayback()" title="Play voice note">
+                <i class="fas" [class.fa-play]="!voicePlaying()" [class.fa-pause]="voicePlaying()"></i>
+              </button>
+              <div class="sd-voice-preview-info">
+                <span>Voice Note</span>
+                <small>Ready to send</small>
+              </div>
+              <div class="sd-staged-actions">
+                <button type="button" class="sd-btn-attach-staged" (click)="sendPendingVoice()" title="Attach voice note">
+                  <i class="fas fa-check"></i> Attach
+                </button>
+                <button type="button" class="sd-btn-cancel-staged" (click)="clearPendingVoice()" title="Cancel voice note">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          }
+
           <form (ngSubmit)="createConversation()" class="sd-composer">
-            @if (recording() || pendingVoiceFile) {
-              <div class="sd-voice-bar" [class.sd-voice-bar--ready]="!!pendingVoiceFile && !recording()" (click)="pendingVoiceFile && !recording() ? createConversation() : toggleRecording()">
+            <!-- Voice Recording Active Bar -->
+            @if (recording()) {
+              <div class="sd-voice-bar">
                 <div class="sd-voice-bar__mic">
                   <i class="fas fa-microphone"></i>
                 </div>
@@ -121,19 +177,24 @@
                     <span class="sd-voice-bar__bar" [style.animation-delay]="(i * 0.05) + 's'"></span>
                   }
                 </div>
-                <span class="sd-voice-bar__label">{{ recording() ? 'Recording...' : 'Tap to send voice note' }}</span>
-                <button type="button" class="sd-voice-bar__cancel" (click)="$event.stopPropagation(); recording() ? toggleRecording() : clearPendingMedia()" title="Cancel">
-                  <i class="fas fa-times"></i>
+                <span class="sd-voice-bar__timer">{{ recordingTime }}</span>
+                <button type="button" class="sd-voice-bar__cancel" (click)="cancelRecording()" title="Cancel recording">
+                  <i class="fas fa-trash-can"></i>
+                </button>
+                <button type="button" class="sd-voice-bar__done" (click)="toggleRecording()" title="Stop recording">
+                  <i class="fas fa-check"></i>
                 </button>
               </div>
             }
+
             @if (pendingInitialMedia) {
               <div class="sd-pending-chip">
-                <i class="fas" [class.fa-image]="pendingInitialMedia.type === 'image'" [class.fa-file-lines]="pendingInitialMedia.type === 'document'"></i>
+                <i class="fas" [class.fa-image]="pendingInitialMedia.type === 'image'" [class.fa-file-lines]="pendingInitialMedia.type === 'document'" [class.fa-microphone]="pendingInitialMedia.type === 'audio'"></i>
                 <span>{{ pendingInitialMedia.file.name }}</span>
-                <button type="button" class="sd-chip-remove" (click)="clearPendingMedia()" title="Remove">&times;</button>
+                <button type="button" class="sd-chip-remove" (click)="clearPendingInitialMedia()" title="Remove">&times;</button>
               </div>
             }
+
             <textarea
               #composerTextarea1
               name="newMessage"
@@ -157,20 +218,20 @@
                     </div>
                   }
                 </div>
-                <!-- Image -->
+                <!-- Image Upload with Preview -->
                 <label class="sd-tool-btn" title="Upload image">
                   <i class="fas fa-image"></i>
-                  <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" hidden>
+                  <input type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
                 </label>
-                <!-- Camera -->
+                <!-- Camera with Retake flow -->
                 <button type="button" class="sd-tool-btn" title="Take photo" (click)="openCamera()" [disabled]="creating">
                   <i class="fas fa-camera"></i>
                 </button>
-                <input #cameraFallbackInputNew type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" style="display: none;">
+                <input #cameraFallbackInputNew type="file" accept="image/*" capture="environment" (change)="onImageSelected($event)" style="display: none;">
                 <!-- Document -->
                 <label class="sd-tool-btn" title="Attach document">
                   <i class="fas fa-paperclip"></i>
-                  <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" (change)="onMediaSelected($event, 'document')" hidden>
+                  <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" (change)="onDocSelected($event)" hidden>
                 </label>
                 <!-- Voice -->
                 <button type="button" class="sd-tool-btn" [class.recording]="recording()" (click)="toggleRecording()" [disabled]="creating" title="Voice note">
@@ -179,7 +240,7 @@
               </div>
               <div class="sd-composer-send">
                 <small class="sd-press-hint">Press Enter to send</small>
-                <button type="submit" class="sd-send-btn" [disabled]="creating || (!newMessage.trim() && !hasInitialMedia)">
+                <button type="submit" class="sd-send-btn" [disabled]="creating || (!newMessage.trim() && !hasInitialMedia && !stagedImage() && !stagedDoc())">
                   <i class="fas fa-paper-plane"></i>
                   <span>Send Reply</span>
                 </button>
@@ -226,9 +287,12 @@
                   <span class="sd-bubble-sender">Gnouby Support<b class="sd-admin-tag">ADMIN</b></span>
                 }
                 @if (message.messageType === 'image' && message.mediaUrl) {
-                  <img class="sd-media-image" [src]="mediaUrl(message.mediaUrl)" [alt]="message.fileName || 'Shared image'">
+                  <div class="media-image-container" (click)="openLightbox(mediaUrl(message.mediaUrl))" title="Click to view full size">
+                    <img class="sd-media-image" [src]="mediaUrl(message.mediaUrl)" [alt]="message.fileName || 'Shared image'">
+                    <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i> View</span>
+                  </div>
                 } @else if (message.messageType === 'audio' && message.mediaUrl) {
-                  <audio controls [src]="mediaUrl(message.mediaUrl)"></audio>
+                  <audio controls [src]="mediaUrl(message.mediaUrl)" class="sd-audio-player"></audio>
                 } @else if (message.messageType === 'document' && message.mediaUrl) {
                   <a class="sd-media-doc" [href]="mediaUrl(message.mediaUrl)" target="_blank" rel="noopener noreferrer">
                     <i class="fas fa-file-lines"></i>{{ message.fileName || 'Download document' }}
@@ -252,10 +316,66 @@
             </div>
           }
 
-          <!-- Composer -->
+          <!-- Staged Media Previews before Sending -->
+          @if (stagedImage()) {
+            <div class="sd-staged-preview">
+              <div class="sd-staged-img-wrap">
+                <img [src]="stagedImage()?.previewUrl" alt="Selected image preview">
+                <span class="sd-staged-name">{{ stagedImage()?.file?.name }}</span>
+              </div>
+              <div class="sd-staged-actions">
+                <button type="button" class="sd-btn-send-staged" (click)="sendStagedImage()" [disabled]="sending" title="Send image now">
+                  <i class="fas fa-paper-plane"></i> Send Image
+                </button>
+                <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedImage()" title="Cancel image">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (stagedDoc()) {
+            <div class="sd-staged-preview sd-staged-doc">
+              <div class="sd-staged-doc-wrap">
+                <i class="fas fa-file-lines"></i>
+                <span class="sd-staged-name">{{ stagedDoc()?.name }}</span>
+              </div>
+              <div class="sd-staged-actions">
+                <button type="button" class="sd-btn-send-staged" (click)="sendStagedDoc()" [disabled]="sending" title="Send document now">
+                  <i class="fas fa-paper-plane"></i> Send File
+                </button>
+                <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedDoc()" title="Cancel document">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (pendingVoiceUrl()) {
+            <div class="sd-staged-preview sd-staged-voice">
+              <button type="button" class="sd-btn-voice-preview" (click)="toggleVoicePlayback()" title="Play voice note">
+                <i class="fas" [class.fa-play]="!voicePlaying()" [class.fa-pause]="voicePlaying()"></i>
+              </button>
+              <div class="sd-voice-preview-info">
+                <span>Voice Note</span>
+                <small>Ready to send</small>
+              </div>
+              <div class="sd-staged-actions">
+                <button type="button" class="sd-btn-send-staged" (click)="sendPendingVoice()" [disabled]="sending" title="Send voice note now">
+                  <i class="fas fa-paper-plane"></i> Send Voice
+                </button>
+                <button type="button" class="sd-btn-cancel-staged" (click)="clearPendingVoice()" title="Cancel voice note">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Composer Form -->
           <form (ngSubmit)="send()" class="sd-composer">
-            @if (recording() || pendingVoiceFile) {
-              <div class="sd-voice-bar" [class.sd-voice-bar--ready]="!!pendingVoiceFile && !recording()" (click)="pendingVoiceFile && !recording() ? send() : toggleRecording()">
+            <!-- Voice Recording Active Bar -->
+            @if (recording()) {
+              <div class="sd-voice-bar">
                 <div class="sd-voice-bar__mic">
                   <i class="fas fa-microphone"></i>
                 </div>
@@ -264,12 +384,16 @@
                     <span class="sd-voice-bar__bar" [style.animation-delay]="(i * 0.05) + 's'"></span>
                   }
                 </div>
-                <span class="sd-voice-bar__label">{{ recording() ? 'Recording...' : 'Tap to send' }}</span>
-                <button type="button" class="sd-voice-bar__cancel" (click)="$event.stopPropagation(); recording() ? toggleRecording() : (pendingVoiceFile = undefined)" title="Cancel">
-                  <i class="fas fa-times"></i>
+                <span class="sd-voice-bar__timer">{{ recordingTime }}</span>
+                <button type="button" class="sd-voice-bar__cancel" (click)="cancelRecording()" title="Cancel recording">
+                  <i class="fas fa-trash-can"></i>
+                </button>
+                <button type="button" class="sd-voice-bar__done" (click)="toggleRecording()" title="Finish recording">
+                  <i class="fas fa-check"></i>
                 </button>
               </div>
             }
+
             <textarea
               #composerTextarea2
               name="replyText"
@@ -294,38 +418,30 @@
                     </div>
                   }
                 </div>
-                <!-- Image -->
+                <!-- Image Upload with Preview -->
                 <label class="sd-tool-btn" title="Upload image">
                   <i class="fas fa-image"></i>
-                  <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" hidden>
+                  <input type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
                 </label>
-                <!-- Camera -->
+                <!-- Camera with Retake flow -->
                 <button type="button" class="sd-tool-btn" title="Take photo" (click)="openCamera()" [disabled]="sending">
                   <i class="fas fa-camera"></i>
                 </button>
-                <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" style="display: none;">
+                <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onImageSelected($event)" style="display: none;">
                 <!-- Document -->
                 <label class="sd-tool-btn" title="Attach file">
                   <i class="fas fa-paperclip"></i>
-                  <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" (change)="onMediaSelected($event, 'document')" hidden>
+                  <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" (change)="onDocSelected($event)" hidden>
                 </label>
                 <!-- Voice -->
                 <button type="button" class="sd-tool-btn" [class.recording]="recording()" (click)="toggleRecording()" [disabled]="sending" title="Voice note">
                   <i class="fas fa-microphone"></i>
                 </button>
-                <!-- Bold (decorative) -->
-                <button type="button" class="sd-tool-btn" title="Bold" disabled>
-                  <i class="fas fa-bold"></i>
-                </button>
-                <!-- Code (decorative) -->
-                <button type="button" class="sd-tool-btn" title="Code" disabled>
-                  <i class="fas fa-code"></i>
-                </button>
               </div>
               <div class="sd-composer-send">
                 <small class="sd-press-hint">Press Enter to send</small>
                 <button type="submit" class="sd-send-btn"
-                  [disabled]="sending || (!replyText.trim() && !pendingVoiceFile && !recording()) || conversation.status === 'closed'">
+                  [disabled]="sending || (!replyText.trim() && !stagedImage() && !stagedDoc() && !pendingVoiceUrl() && !recording()) || conversation.status === 'closed'">
                   <i class="fas fa-paper-plane"></i>
                   <span>Send Reply</span>
                 </button>
@@ -350,27 +466,60 @@
     </div>
   }
 
-  <!-- Live Camera Modal -->
+  <!-- Live Camera Modal with Snap / Retake / Confirm -->
   @if (cameraOpen()) {
     <div class="camera-modal-backdrop" (click)="closeCamera()">
       <div class="camera-modal-panel" (click)="$event.stopPropagation()">
-        <div class="camera-modal-header">
+        <header class="camera-modal-header">
           <h4><i class="fas fa-camera"></i> Take Photo</h4>
           <button type="button" class="close-btn" (click)="closeCamera()"><i class="fas fa-times"></i></button>
+        </header>
+
+        <div class="camera-modal-body">
+          @if (capturedPhotoUrl()) {
+            <div class="camera-preview-wrap">
+              <img [src]="capturedPhotoUrl()" alt="Captured photo preview" class="captured-preview-img">
+            </div>
+          } @else {
+            <div class="camera-video-wrap">
+              <video #cameraVideo autoplay playsinline muted class="camera-video"></video>
+              <canvas #cameraCanvas style="display: none;"></canvas>
+            </div>
+          }
         </div>
-        <div class="camera-video-wrap">
-          <video #cameraVideo autoplay playsinline muted class="camera-video"></video>
-          <canvas #cameraCanvas style="display: none;"></canvas>
-        </div>
-        <div class="camera-modal-actions">
-          <button type="button" class="camera-snap-btn" (click)="capturePhoto()">
-            <i class="fas fa-circle-dot"></i>
-            <span>Snap Photo</span>
-          </button>
-          <button type="button" class="camera-cancel-btn" (click)="closeCamera()">
-            Cancel
-          </button>
-        </div>
+
+        <footer class="camera-modal-actions">
+          @if (capturedPhotoUrl()) {
+            <button type="button" class="camera-retake-btn" (click)="retakePhoto()">
+              <i class="fas fa-rotate-left"></i>
+              <span>Retake</span>
+            </button>
+            <button type="button" class="camera-confirm-btn" (click)="confirmPhoto()">
+              <i class="fas fa-check"></i>
+              <span>Use Photo</span>
+            </button>
+          } @else {
+            <button type="button" class="camera-snap-btn" (click)="capturePhoto()">
+              <i class="fas fa-circle-dot"></i>
+              <span>Snap Photo</span>
+            </button>
+            <button type="button" class="camera-cancel-btn" (click)="closeCamera()">
+              Cancel
+            </button>
+          }
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- Lightbox Modal for viewing received/sent images -->
+  @if (lightboxUrl()) {
+    <div class="sd-lightbox-backdrop" (click)="closeLightbox()">
+      <div class="sd-lightbox-content" (click)="$event.stopPropagation()">
+        <button type="button" class="sd-lightbox-close-btn" (click)="closeLightbox()" title="Close viewer">
+          <i class="fas fa-times"></i>
+        </button>
+        <img [src]="lightboxUrl()" alt="Full view" class="sd-lightbox-img">
       </div>
     </div>
   }

@@ -1054,10 +1054,15 @@ END
             throw new UnauthorizedAccessException("Not authorized to chat on this order.");
         }
 
-        var effectiveRole = isDelivery ? "delivery" : (isCustomer ? "customer" : "admin");
-        var effectiveName = !string.IsNullOrWhiteSpace(senderName)
+        var effectiveRole = (isDelivery && senderRole.Equals("delivery", StringComparison.OrdinalIgnoreCase))
+            ? "delivery"
+            : (isCustomer && senderRole.Equals("customer", StringComparison.OrdinalIgnoreCase))
+                ? "customer"
+                : (isDelivery ? "delivery" : (isCustomer ? "customer" : "admin"));
+
+        var effectiveName = !string.IsNullOrWhiteSpace(senderName) && senderName.Trim() != "User"
             ? senderName.Trim()
-            : (isDelivery ? (order.DeliveryName ?? "Delivery partner") : (isCustomer ? order.ShippingName : "Admin"));
+            : (effectiveRole == "delivery" ? (order.DeliveryName ?? "Delivery partner") : (effectiveRole == "customer" ? (!string.IsNullOrWhiteSpace(order.ShippingName) ? order.ShippingName : "Customer") : "Admin"));
 
         var message = new OrderMessageEntity
         {
@@ -1180,8 +1185,15 @@ END
         var mediaData = mediaBuffer.ToArray();
         var mediaContentType = GetMediaContentType(extension, normalizedType);
 
-        var effectiveRole = isDelivery ? "delivery" : (isCustomer ? "customer" : "admin");
-        var effectiveName = string.IsNullOrWhiteSpace(senderName) ? "User" : senderName.Trim();
+        var effectiveRole = (isDelivery && senderRole.Equals("delivery", StringComparison.OrdinalIgnoreCase))
+            ? "delivery"
+            : (isCustomer && senderRole.Equals("customer", StringComparison.OrdinalIgnoreCase))
+                ? "customer"
+                : (isDelivery ? "delivery" : (isCustomer ? "customer" : "admin"));
+
+        var effectiveName = !string.IsNullOrWhiteSpace(senderName) && senderName.Trim() != "User"
+            ? senderName.Trim()
+            : (effectiveRole == "delivery" ? (order.DeliveryName ?? "Delivery partner") : (effectiveRole == "customer" ? (!string.IsNullOrWhiteSpace(order.ShippingName) ? order.ShippingName : "Customer") : "Admin"));
         var entity = new OrderMessageEntity
         {
             Id = $"msg_{Guid.NewGuid():N}",

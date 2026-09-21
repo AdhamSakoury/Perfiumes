@@ -94,7 +94,10 @@
                 <article class="message-bubble" [class.admin]="message.senderRole === 'admin'">
                   <strong>{{ message.senderRole === 'admin' ? ('gnoubySupport' | t) : message.senderName }}</strong>
                   @if (message.messageType === 'image' && message.mediaUrl) {
-                    <img class="support-media-image" [src]="mediaUrl(message.mediaUrl)" [alt]="message.fileName || 'Shared image'">
+                    <div class="media-image-container" (click)="openLightbox(mediaUrl(message.mediaUrl))" title="Click to enlarge">
+                      <img class="support-media-image" [src]="mediaUrl(message.mediaUrl)" [alt]="message.fileName || 'Shared image'">
+                      <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i></span>
+                    </div>
                   } @else if (message.messageType === 'audio' && message.mediaUrl) {
                     <audio controls [src]="mediaUrl(message.mediaUrl)"></audio>
                   } @else if (message.messageType === 'document' && message.mediaUrl) {
@@ -109,11 +112,106 @@
               }
             </div>
 
-            <form (ngSubmit)="reply()" class="reply-form">
-              <textarea name="replyText" [(ngModel)]="replyText" rows="2" [placeholder]="'replyTo' | t:{ name: conversation.userName }" dir="auto"></textarea>
-              <button type="submit" [disabled]="replying || !replyText.trim() || conversation.status === 'closed'" [attr.aria-label]="'sendReply' | t">
-                <i class="fas fa-paper-plane"></i>
-              </button>
+            <!-- Staged Previews before Sending -->
+            @if (pendingImageUrl()) {
+              <div class="admin-staged-preview">
+                <div class="preview-img-wrap">
+                  <img [src]="pendingImageUrl()" alt="Selected image preview">
+                  <span class="preview-name">{{ pendingImageFile()?.name }}</span>
+                </div>
+                <button type="button" class="btn-cancel-preview" (click)="clearPendingImage()" title="Cancel image">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            }
+
+            @if (pendingVoiceUrl()) {
+              <div class="admin-staged-preview admin-staged-voice">
+                <button type="button" class="btn-voice-preview" (click)="playPausePreview()" title="Play voice note">
+                  <i class="fas" [class.fa-play]="!isPlayingPreview()" [class.fa-pause]="isPlayingPreview()"></i>
+                </button>
+                <div class="voice-preview-info">
+                  <span>Voice Note</span>
+                  <small>{{ pendingVoiceFile()?.name }}</small>
+                </div>
+                <button type="button" class="btn-cancel-preview" (click)="clearPendingVoice()" title="Cancel voice note">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            }
+
+            <form (ngSubmit)="sendCurrentReply()" class="reply-form">
+              <!-- Voice Recording Bar -->
+              @if (recording()) {
+                <div class="admin-voice-bar">
+                  <div class="admin-voice-mic">
+                    <i class="fas fa-microphone"></i>
+                  </div>
+                  <div class="admin-voice-waves">
+                    @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track i) {
+                      <span class="admin-voice-wave-bar" [style.animation-delay]="(i * 0.05) + 's'"></span>
+                    }
+                  </div>
+                  <span class="admin-voice-timer">{{ formatDuration(recordingDuration()) }}</span>
+                  <button type="button" class="admin-voice-btn-cancel" (click)="cancelRecording()" title="Cancel recording">
+                    <i class="fas fa-trash-can"></i>
+                  </button>
+                  <button type="button" class="admin-voice-btn-done" (click)="toggleRecording()" title="Finish recording">
+                    <i class="fas fa-check"></i>
+                  </button>
+                </div>
+              } @else {
+                <div class="admin-reply-input-row">
+                  <textarea
+                    #adminReplyTextarea
+                    name="replyText"
+                    [(ngModel)]="replyText"
+                    rows="2"
+                    [placeholder]="'replyTo' | t:{ name: conversation.userName }"
+                    [disabled]="conversation.status === 'closed' || replying || uploadingMedia()"
+                    (keydown.enter)="$event.preventDefault(); sendCurrentReply()"
+                    dir="auto">
+                  </textarea>
+
+                  <div class="admin-reply-tools">
+                    <!-- Emoji Picker -->
+                    <div class="admin-emoji-wrap">
+                      <button type="button" class="admin-tool-btn" (click)="emojiPickerOpen.set(!emojiPickerOpen())" [disabled]="conversation.status === 'closed'" title="Emoji">
+                        <i class="fas fa-face-smile"></i>
+                      </button>
+                      @if (emojiPickerOpen()) {
+                        <div class="admin-emoji-picker">
+                          @for (emoji of chatEmojis; track emoji) {
+                            <button type="button" (click)="appendEmoji(emoji, adminReplyTextarea)">{{ emoji }}</button>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Image Upload -->
+                    <label class="admin-tool-btn" title="Attach image" [class.disabled]="conversation.status === 'closed'">
+                      <i class="fas fa-image"></i>
+                      <input type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="conversation.status === 'closed'" style="display: none;">
+                    </label>
+
+                    <!-- Camera Photo Capture -->
+                    <button type="button" class="admin-tool-btn" (click)="openCamera()" [disabled]="conversation.status === 'closed'" title="Take camera photo">
+                      <i class="fas fa-camera"></i>
+                    </button>
+                    <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onImageSelected($event)" style="display: none;">
+
+                    <!-- Voice Note Recording -->
+                    <button type="button" class="admin-tool-btn" (click)="toggleRecording()" [disabled]="conversation.status === 'closed'" title="Record voice note">
+                      <i class="fas fa-microphone"></i>
+                    </button>
+
+                    <!-- Submit / Send -->
+                    <button type="submit" class="admin-send-btn" [disabled]="replying || uploadingMedia() || (!replyText.trim() && !pendingImageFile() && !pendingVoiceFile()) || conversation.status === 'closed'" [attr.aria-label]="'sendReply' | t">
+                      <i class="fas" [class.fa-paper-plane]="!replying && !uploadingMedia()" [class.fa-spinner]="replying || uploadingMedia()" [class.fa-spin]="replying || uploadingMedia()"></i>
+                    </button>
+                  </div>
+                </div>
+              }
             </form>
           } @else {
             <div class="chat-state">
@@ -136,5 +234,61 @@
         </section>
       </div>
     </div>
+
+    <!-- Live Camera Modal -->
+    @if (cameraOpen()) {
+      <div class="admin-modal-backdrop" (click)="closeCamera()">
+        <div class="admin-modal-panel" (click)="$event.stopPropagation()">
+          <header class="admin-modal-header">
+            <h4><i class="fas fa-camera"></i> Take Photo</h4>
+            <button type="button" class="btn-modal-close" (click)="closeCamera()"><i class="fas fa-times"></i></button>
+          </header>
+
+          <div class="admin-camera-body">
+            @if (capturedPhotoUrl()) {
+              <div class="admin-camera-preview-wrap">
+                <img [src]="capturedPhotoUrl()" alt="Captured photo preview" class="captured-preview-img">
+              </div>
+            } @else {
+              <div class="admin-camera-video-wrap">
+                <video #cameraVideo autoplay playsinline muted class="admin-camera-video"></video>
+                <canvas #cameraCanvas style="display: none;"></canvas>
+              </div>
+            }
+          </div>
+
+          <footer class="admin-modal-footer">
+            @if (capturedPhotoUrl()) {
+              <button type="button" class="admin-btn-secondary" (click)="retakePhoto()">
+                <i class="fas fa-rotate-left"></i>
+                <span>Retake</span>
+              </button>
+              <button type="button" class="admin-btn-primary" (click)="confirmCapturedPhoto()">
+                <i class="fas fa-check"></i>
+                <span>Use Photo</span>
+              </button>
+            } @else {
+              <button type="button" class="admin-btn-snap" (click)="snapPhoto()">
+                <i class="fas fa-circle-dot"></i>
+                <span>Capture Photo</span>
+              </button>
+              <button type="button" class="admin-btn-secondary" (click)="closeCamera()">
+                Cancel
+              </button>
+            }
+          </footer>
+        </div>
+      </div>
+    }
+
+    <!-- Image Lightbox Modal -->
+    @if (lightboxImageUrl()) {
+      <div class="admin-modal-backdrop lightbox-backdrop" (click)="closeLightbox()">
+        <div class="lightbox-content" (click)="$event.stopPropagation()">
+          <button type="button" class="lightbox-close-btn" (click)="closeLightbox()"><i class="fas fa-times"></i></button>
+          <img [src]="lightboxImageUrl()" alt="Full image preview" class="lightbox-full-img">
+        </div>
+      </div>
+    }
   }
 </section>

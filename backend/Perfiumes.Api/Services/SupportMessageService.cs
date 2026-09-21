@@ -150,12 +150,47 @@ IF COL_LENGTH(N'[SupportMessages]', N'MediaData') IS NULL
         return AddMessageAsync(conversationId, "admin", "Gnouby Admin", adminEmail, Clean(body, string.Empty), "answered");
     }
 
-    public async Task<SupportConversation?> AddCustomerAttachmentAsync(
+    public Task<SupportConversation?> AddCustomerAttachmentAsync(
         string conversationId,
         string? senderName,
         string? senderEmail,
         IFormFile file,
         string messageType)
+    {
+        return AddAttachmentAsync(
+            conversationId,
+            "customer",
+            Clean(senderName, "Customer"),
+            Clean(senderEmail, "unknown@local").ToLowerInvariant(),
+            file,
+            messageType,
+            "open");
+    }
+
+    public Task<SupportConversation?> AddAdminAttachmentAsync(
+        string conversationId,
+        string adminEmail,
+        IFormFile file,
+        string messageType)
+    {
+        return AddAttachmentAsync(
+            conversationId,
+            "admin",
+            "Gnouby Admin",
+            Clean(adminEmail, "admin@perfiumes.local").ToLowerInvariant(),
+            file,
+            messageType,
+            "answered");
+    }
+
+    public async Task<SupportConversation?> AddAttachmentAsync(
+        string conversationId,
+        string senderRole,
+        string senderName,
+        string senderEmail,
+        IFormFile file,
+        string messageType,
+        string nextStatus)
     {
         if (file.Length <= 0 || file.Length > 15 * 1024 * 1024) throw new InvalidOperationException("File must be between 1 byte and 15 MB.");
         var type = messageType.Trim().ToLowerInvariant();
@@ -200,20 +235,20 @@ IF COL_LENGTH(N'[SupportMessages]', N'MediaData') IS NULL
         await input.CopyToAsync(buffer);
         var message = new SupportMessageEntity
         {
-        Id = $"msg_{Guid.NewGuid():N}",
-        ConversationId = conversationId,
-        SenderRole = "customer",
-        SenderName = Clean(senderName, "Customer"),
-        SenderEmail = Clean(senderEmail, "unknown@local").ToLowerInvariant(),
-        Body = isImage ? "📷 Image" : isAudio ? "🎤 Voice note" : "📄 Document",
-        MessageType = type,
-        MediaUrl = $"/api/support-messages/media/{Guid.NewGuid():N}",
-        FileName = Path.GetFileName(file.FileName),
-        MediaContentType = GetMediaContentType(extension, type),
-        MediaData = buffer.ToArray(),
-        CreatedAt = DateTimeOffset.UtcNow
+            Id = $"msg_{Guid.NewGuid():N}",
+            ConversationId = conversationId,
+            SenderRole = senderRole,
+            SenderName = Clean(senderName, senderRole == "admin" ? "Gnouby Admin" : "Customer"),
+            SenderEmail = Clean(senderEmail, "unknown@local").ToLowerInvariant(),
+            Body = isImage ? "📷 Image" : isAudio ? "🎤 Voice note" : "📄 Document",
+            MessageType = type,
+            MediaUrl = $"/api/support-messages/media/{Guid.NewGuid():N}",
+            FileName = Path.GetFileName(file.FileName),
+            MediaContentType = GetMediaContentType(extension, type),
+            MediaData = buffer.ToArray(),
+            CreatedAt = DateTimeOffset.UtcNow
         };
-        current.Status = "open";
+        current.Status = nextStatus;
         current.UpdatedAt = message.CreatedAt;
         current.Messages.Add(message);
         await db.SaveChangesAsync();

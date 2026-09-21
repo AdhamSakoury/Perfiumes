@@ -65,11 +65,22 @@ public sealed class SupportController(
             return Results.BadRequest(new { message = "File is required." });
 
         var principal = auth.ValidateRequest(HttpContext);
+        var isAdmin = principal?.Role == "admin";
         var email = principal?.Email ?? senderEmail;
         var name = senderName ?? principal?.Email;
 
         try
         {
+            if (isAdmin && !string.IsNullOrWhiteSpace(principal?.Email))
+            {
+                var adminConv = await support.AddAdminAttachmentAsync(id, principal.Email, file, messageType);
+                if (adminConv is null) return Results.NotFound();
+                await NotifyConversationAsync(adminConv);
+                await PublishNotificationAsync(adminConv.UserEmail, "Support replied",
+                    "Admin sent an attachment.", "info", "/support");
+                return Results.Ok(adminConv);
+            }
+
             var user = !string.IsNullOrWhiteSpace(email) ? await users.GetByEmailAsync(email) : null;
             var conversation = await support.AddCustomerAttachmentAsync(
                 id, name ?? user?.FullName, email ?? user?.Email, file, messageType);
@@ -113,6 +124,36 @@ public sealed class SupportController(
                 $"Admin replied to {conversation.Subject}.", "info", "/messages");
         }
         return conversation is null ? Results.NotFound() : Results.Ok(conversation);
+    }
+
+    [HttpPost("admin/support/conversations/{id}/reply/media")]
+    [IgnoreAntiforgeryToken]
+    public async Task<IResult> ReplyMedia(
+        string id,
+        [FromForm] IFormFile file,
+        [FromForm] string messageType)
+    {
+        if (file is null)
+            return Results.BadRequest(new { message = "File is required." });
+
+        var admin = auth.ValidateRequest(HttpContext);
+        if (admin?.Role != "admin")
+            return Results.Unauthorized();
+
+        try
+        {
+            var conversation = await support.AddAdminAttachmentAsync(id, admin.Email, file, messageType);
+            if (conversation is null)
+                return Results.NotFound();
+            await NotifyConversationAsync(conversation);
+            await PublishNotificationAsync(conversation.UserEmail, "Support replied",
+                "Admin sent an attachment.", "info", "/messages");
+            return Results.Ok(conversation);
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("admin/support/conversations/{id}/close")]
