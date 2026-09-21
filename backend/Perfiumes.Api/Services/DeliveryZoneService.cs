@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Data.Entities;
@@ -5,7 +6,7 @@ using Perfiumes.Api.Models;
 
 namespace Perfiumes.Api.Services;
 
-public sealed class DeliveryZoneService(PerfiumesDbContext db)
+public sealed class DeliveryZoneService(PerfiumesDbContext db, IHttpClientFactory httpFactory)
 {
     public async Task EnsureSchemaAsync()
     {
@@ -108,24 +109,28 @@ END
 
     public async Task<ResolvedDelivery> ResolveAsync(string zoneId, string? areaId, bool requireActive = true)
     {
-        if (string.IsNullOrWhiteSpace(zoneId))
+        DeliveryZoneEntity? zone = null;
+        if (!string.IsNullOrWhiteSpace(zoneId))
         {
-            throw new InvalidOperationException("Please select a delivery area.");
+            zone = await db.DeliveryZones
+                .AsNoTracking()
+                .Include(item => item.Areas)
+                .FirstOrDefaultAsync(item => item.Id == zoneId);
         }
 
-        var zone = await db.DeliveryZones
-            .AsNoTracking()
-            .Include(item => item.Areas)
-            .FirstOrDefaultAsync(item => item.Id == zoneId);
-
-        if (zone is null)
+        if (zone is null || (requireActive && !zone.IsActive))
         {
-            throw new InvalidOperationException("The selected delivery area is not supported.");
-        }
+            zone = await db.DeliveryZones
+                .AsNoTracking()
+                .Include(item => item.Areas)
+                .Where(z => !requireActive || z.IsActive)
+                .OrderBy(z => z.SortOrder)
+                .FirstOrDefaultAsync();
 
-        if (requireActive && !zone.IsActive)
-        {
-            throw new InvalidOperationException("This delivery area is currently unavailable. Please choose another area.");
+            if (zone is null)
+            {
+                throw new InvalidOperationException("No delivery zones are currently configured.");
+            }
         }
 
         var activeAreas = zone.Areas
@@ -138,17 +143,223 @@ END
         if (!string.IsNullOrWhiteSpace(areaId))
         {
             area = activeAreas.FirstOrDefault(item => item.Id == areaId);
-            if (area is null)
-            {
-                throw new InvalidOperationException("The selected delivery neighborhood is not available.");
-            }
         }
-        else if (activeAreas.Count > 0 && !IsFixed(zone.PricingType))
+
+        if (area is null && activeAreas.Count > 0)
         {
-            throw new InvalidOperationException("Please select the specific area within this delivery zone.");
+            area = activeAreas.FirstOrDefault(a => a.Fee == zone.DefaultFee) ?? activeAreas[0];
         }
 
         return new ResolvedDelivery(zone, area, ResolveFee(zone, area), Math.Max(1, zone.EstimatedDays));
+    }
+
+    public async Task<DetectedLocationDto> DetectLocationAsync(DetectLocationRequest request)
+    {
+        var allZones = await db.DeliveryZones
+            .AsNoTracking()
+            .Include(z => z.Areas)
+            .Where(z => z.IsActive)
+            .OrderBy(z => z.SortOrder)
+            .ToListAsync();
+
+        if (allZones.Count == 0)
+        {
+            return new DetectedLocationDto(
+                Success: false,
+                FormattedAddress: request.Address ?? string.Empty,
+                City: string.Empty,
+                Governorate: string.Empty,
+                ZoneId: string.Empty,
+                ZoneName: string.Empty,
+                AreaId: null,
+                AreaName: null,
+                ShippingFee: 0,
+                EstimatedDays: 3,
+                Message: "No delivery zones are configured.");
+        }
+
+        double? lat = request.Latitude;
+        double? lon = request.Longitude;
+        string formattedAddress = request.Address?.Trim() ?? string.Empty;
+        string state = string.Empty;
+        string city = string.Empty;
+
+        if (lat.HasValue && lon.HasValue && Math.Abs(lat.Value) > 0.001)
+        {
+            try
+            {
+                var client = httpFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(5);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("GnoubyPerfumes/1.0 (support@gnouby.com)");
+
+                var latStr = lat.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var lonStr = lon.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var url = $"https://nominatim.openstreetmap.org/reverse?lat={latStr}&lon={lonStr}&format=json&accept-language=ar,en";
+                var response = await client.GetFromJsonAsync<System.Text.Json.JsonElement>(url);
+
+                if (response.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    if (response.TryGetProperty("display_name", out var dn))
+                    {
+                        formattedAddress = dn.GetString() ?? formattedAddress;
+                    }
+
+                    if (response.TryGetProperty("address", out var addrElem) && addrElem.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        state = GetStringProp(addrElem, "state")
+                             ?? GetStringProp(addrElem, "governorate")
+                             ?? string.Empty;
+
+                        city = GetStringProp(addrElem, "city")
+                            ?? GetStringProp(addrElem, "town")
+                            ?? GetStringProp(addrElem, "village")
+                            ?? GetStringProp(addrElem, "county")
+                            ?? GetStringProp(addrElem, "suburb")
+                            ?? string.Empty;
+
+                        var road = GetStringProp(addrElem, "road")
+                                ?? GetStringProp(addrElem, "street")
+                                ?? string.Empty;
+
+                        var parts = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(road)) parts.Add(road);
+                        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
+                        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
+
+                        if (parts.Count > 0)
+                        {
+                            formattedAddress = string.Join("، ", parts);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to coordinates-based region detection
+            }
+        }
+
+        DeliveryZoneEntity? matchedZone = null;
+        DeliveryZoneAreaEntity? matchedArea = null;
+
+        var textToMatch = $"{formattedAddress} {city} {state} {request.Address}".ToLowerInvariant();
+
+        // 1. Check Alexandria:
+        bool isAlex = textToMatch.Contains("alex") || textToMatch.Contains("اسكندر") || textToMatch.Contains("إسكندر");
+        if (!isAlex && lat.HasValue && lon.HasValue)
+        {
+            isAlex = lat.Value >= 31.0 && lat.Value <= 31.45 && lon.Value >= 29.5 && lon.Value <= 30.35;
+        }
+
+        // 2. Check Greater Cairo:
+        bool isCairo = textToMatch.Contains("cairo") || textToMatch.Contains("giza") || textToMatch.Contains("قاهر") ||
+                       textToMatch.Contains("جيز") || textToMatch.Contains("قليوب") || textToMatch.Contains("أكتوبر") ||
+                       textToMatch.Contains("زايد") || textToMatch.Contains("تجمع") || textToMatch.Contains("معادي") ||
+                       textToMatch.Contains("شروق") || textToMatch.Contains("عبور") || textToMatch.Contains("بدر");
+        if (!isCairo && lat.HasValue && lon.HasValue && !isAlex)
+        {
+            var distToCairo = HaversineDistance(lat.Value, lon.Value, 30.0444, 31.2357);
+            isCairo = distToCairo <= 45;
+        }
+
+        if (isAlex)
+        {
+            matchedZone = allZones.FirstOrDefault(z => z.Name.Contains("Alex", StringComparison.OrdinalIgnoreCase) ||
+                                                       z.CityRegion.Contains("Alex", StringComparison.OrdinalIgnoreCase) ||
+                                                       z.Id == "zone_alexandria");
+            if (matchedZone is not null && matchedZone.Areas.Count > 0)
+            {
+                var activeAreas = matchedZone.Areas.Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToList();
+                if (lat.HasValue && lon.HasValue)
+                {
+                    var dist = HaversineDistance(lat.Value, lon.Value, 31.2001, 29.9187);
+                    if (dist <= 12 && activeAreas.Count > 0) matchedArea = activeAreas[0];
+                    else if (dist <= 25 && activeAreas.Count > 1) matchedArea = activeAreas[1];
+                    else if (activeAreas.Count > 2) matchedArea = activeAreas[2];
+                    else matchedArea = activeAreas.LastOrDefault();
+                }
+                matchedArea ??= activeAreas.FirstOrDefault(a => a.Fee == matchedZone.DefaultFee) ?? activeAreas.FirstOrDefault();
+            }
+        }
+        else if (isCairo)
+        {
+            matchedZone = allZones.FirstOrDefault(z => z.Name.Contains("Cairo", StringComparison.OrdinalIgnoreCase) ||
+                                                       z.CityRegion.Contains("Cairo", StringComparison.OrdinalIgnoreCase) ||
+                                                       z.Id == "zone_cairo");
+            if (matchedZone is not null && matchedZone.Areas.Count > 0)
+            {
+                var activeAreas = matchedZone.Areas.Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToList();
+                if (lat.HasValue && lon.HasValue)
+                {
+                    var dist = HaversineDistance(lat.Value, lon.Value, 30.0444, 31.2357);
+                    if (dist <= 15 && activeAreas.Count > 0) matchedArea = activeAreas[0];
+                    else if (dist <= 30 && activeAreas.Count > 1) matchedArea = activeAreas[1];
+                    else if (activeAreas.Count > 2) matchedArea = activeAreas[2];
+                    else matchedArea = activeAreas.LastOrDefault();
+                }
+                matchedArea ??= activeAreas.FirstOrDefault(a => a.Fee == matchedZone.DefaultFee) ?? activeAreas.FirstOrDefault();
+            }
+        }
+        else
+        {
+            // 3. Location is OUTSIDE Cairo & Alexandria (Mansoura, Tanta, Upper Egypt, Canal, etc.)
+            matchedZone = allZones.FirstOrDefault(z =>
+                (!string.IsNullOrWhiteSpace(city) && (z.Name.Contains(city, StringComparison.OrdinalIgnoreCase) || z.CityRegion.Contains(city, StringComparison.OrdinalIgnoreCase))) ||
+                (!string.IsNullOrWhiteSpace(state) && (z.Name.Contains(state, StringComparison.OrdinalIgnoreCase) || z.CityRegion.Contains(state, StringComparison.OrdinalIgnoreCase))));
+
+            matchedZone ??= allZones.FirstOrDefault(z =>
+                z.CityRegion.Contains("Upper Egypt", StringComparison.OrdinalIgnoreCase) ||
+                z.CityRegion.Contains("governorate", StringComparison.OrdinalIgnoreCase) ||
+                z.CityRegion.Contains("المحافظات", StringComparison.OrdinalIgnoreCase) ||
+                z.CityRegion.Contains("خارج", StringComparison.OrdinalIgnoreCase) ||
+                z.Name.Contains("Upper Egypt", StringComparison.OrdinalIgnoreCase) ||
+                z.Id == "zone_upper_egypt_near");
+
+            matchedZone ??= allZones.LastOrDefault();
+
+            if (matchedZone is not null && matchedZone.Areas.Count > 0)
+            {
+                var activeAreas = matchedZone.Areas.Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToList();
+                matchedArea = activeAreas.FirstOrDefault(a => a.Fee == matchedZone.DefaultFee) ?? activeAreas.FirstOrDefault();
+            }
+        }
+
+        matchedZone ??= allZones[0];
+
+        decimal fee = ResolveFee(matchedZone, matchedArea);
+        int days = Math.Max(1, matchedZone.EstimatedDays);
+
+        return new DetectedLocationDto(
+            Success: true,
+            FormattedAddress: string.IsNullOrWhiteSpace(formattedAddress) ? (request.Address ?? string.Empty) : formattedAddress,
+            City: !string.IsNullOrWhiteSpace(city) ? city : (!string.IsNullOrWhiteSpace(state) ? state : matchedZone.CityRegion),
+            Governorate: !string.IsNullOrWhiteSpace(state) ? state : matchedZone.CityRegion,
+            ZoneId: matchedZone.Id,
+            ZoneName: matchedZone.Name,
+            AreaId: matchedArea?.Id,
+            AreaName: matchedArea?.Name,
+            ShippingFee: fee,
+            EstimatedDays: days,
+            Message: "Delivery zone detected successfully.");
+    }
+
+    private static string? GetStringProp(System.Text.Json.JsonElement elem, string prop)
+    {
+        return elem.TryGetProperty(prop, out var val) && val.ValueKind == System.Text.Json.JsonValueKind.String
+            ? val.GetString()
+            : null;
+    }
+
+    private static double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double R = 6371; // Earth radius in km
+        var dLat = (lat2 - lat1) * Math.PI / 180.0;
+        var dLon = (lon2 - lon1) * Math.PI / 180.0;
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(lat1 * Math.PI / 180.0) * Math.Cos(lat2 * Math.PI / 180.0) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c;
     }
 
     private static decimal ResolveFee(DeliveryZoneEntity zone, DeliveryZoneAreaEntity? area)

@@ -42,6 +42,10 @@ export class AdminDeliveryZonesComponent {
   deletingId = '';
   loadError = '';
 
+  // Filter & Search
+  searchTerm = '';
+  statusFilter: 'all' | 'active' | 'inactive' = 'all';
+
   constructor(
     readonly auth: AuthService,
     private readonly zoneService: DeliveryZoneService,
@@ -58,6 +62,43 @@ export class AdminDeliveryZonesComponent {
 
   get isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
+  }
+
+  // --- Statistics ---
+  get totalZones(): number {
+    return this.zones.length;
+  }
+
+  get activeZonesCount(): number {
+    return this.zones.filter((z) => z.isActive).length;
+  }
+
+  get inactiveZonesCount(): number {
+    return this.zones.filter((z) => !z.isActive).length;
+  }
+
+  get totalAreasCount(): number {
+    return this.zones.reduce((sum, z) => sum + (z.areas?.length || 0), 0);
+  }
+
+  // --- Filtered List ---
+  get filteredZones(): DeliveryZone[] {
+    return this.zones.filter((zone) => {
+      // Status filter
+      if (this.statusFilter === 'active' && !zone.isActive) return false;
+      if (this.statusFilter === 'inactive' && zone.isActive) return false;
+
+      // Search filter
+      const term = this.searchTerm.trim().toLowerCase();
+      if (!term) return true;
+
+      const matchName = zone.name.toLowerCase().includes(term);
+      const matchCity = zone.cityRegion.toLowerCase().includes(term);
+      const matchType = zone.pricingType.toLowerCase().includes(term);
+      const matchArea = zone.areas?.some((a) => a.name.toLowerCase().includes(term));
+
+      return matchName || matchCity || matchType || matchArea;
+    });
   }
 
   load(): void {
@@ -96,7 +137,7 @@ export class AdminDeliveryZonesComponent {
       estimatedDays: zone.estimatedDays,
       sortOrder: zone.sortOrder,
       isActive: zone.isActive,
-      areas: zone.areas.map((area) => ({
+      areas: (zone.areas || []).map((area) => ({
         id: area.id,
         name: area.name,
         fee: area.fee,
@@ -104,6 +145,11 @@ export class AdminDeliveryZonesComponent {
         isActive: area.isActive
       }))
     };
+
+    // Smooth scroll to form on mobile/smaller screens
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+      window.scrollTo({ top: 120, behavior: 'smooth' });
+    }
   }
 
   addArea(): void {
@@ -137,7 +183,7 @@ export class AdminDeliveryZonesComponent {
       finalize(() => { this.saving = false; })
     ).subscribe({
       next: () => {
-        this.toast.show(this.editingId ? this.i18n.t('deliveryZoneUpdated') : this.i18n.t('deliveryZoneCreated'));
+        this.toast.show(this.editingId ? this.i18n.t('deliveryZoneUpdated') : this.i18n.t('deliveryZoneCreated'), 'success');
         this.startCreate();
         this.load();
       },
@@ -148,14 +194,51 @@ export class AdminDeliveryZonesComponent {
     });
   }
 
+  toggleActive(zone: DeliveryZone, event?: Event): void {
+    if (event) event.stopPropagation();
+    if (!this.isAdmin || this.saving) return;
+
+    const updatedPayload: UpsertDeliveryZone = {
+      name: zone.name,
+      cityRegion: zone.cityRegion,
+      pricingType: zone.pricingType,
+      minFee: zone.minFee,
+      maxFee: zone.maxFee,
+      fixedFee: zone.fixedFee,
+      defaultFee: zone.defaultFee,
+      estimatedDays: zone.estimatedDays,
+      sortOrder: zone.sortOrder,
+      isActive: !zone.isActive,
+      areas: (zone.areas || []).map((a, i) => ({
+        id: a.id,
+        name: a.name,
+        fee: a.fee,
+        sortOrder: a.sortOrder || i + 1,
+        isActive: a.isActive
+      }))
+    };
+
+    this.fetchWithAuth((token) => this.zoneService.update(zone.id, updatedPayload, token)).subscribe({
+      next: () => {
+        zone.isActive = !zone.isActive;
+        this.toast.show(zone.isActive ? 'Zone activated' : 'Zone deactivated', 'success');
+      },
+      error: () => {
+        this.toast.show('Failed to update zone status', 'error');
+      }
+    });
+  }
+
   remove(zone: DeliveryZone): void {
     if (!this.isAdmin || this.deletingId) return;
+    if (!confirm(`Are you sure you want to delete the delivery zone "${zone.name}"?`)) return;
+
     this.deletingId = zone.id;
     this.fetchWithAuth((token) => this.zoneService.delete(zone.id, token)).pipe(
       finalize(() => { this.deletingId = ''; })
     ).subscribe({
       next: () => {
-        this.toast.show(this.i18n.t('deliveryZoneDeleted'));
+        this.toast.show(this.i18n.t('deliveryZoneDeleted'), 'success');
         if (this.editingId === zone.id) this.startCreate();
         this.load();
       },

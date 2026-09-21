@@ -141,7 +141,7 @@
         <div class="chat-tools">
           <!-- Emoji Picker -->
           <div class="emoji-tool">
-            <button type="button" class="chat-tool-btn" (click)="emojiPickerOpen.set(!emojiPickerOpen())" [disabled]="sending()" aria-label="Add emoji">
+            <button type="button" class="chat-tool-btn" (click)="emojiPickerOpen.set(!emojiPickerOpen())" [disabled]="sending()" aria-label="Add emoji" title="Add emoji">
               <i class="fas fa-face-smile"></i>
             </button>
             @if (emojiPickerOpen()) {
@@ -156,19 +156,19 @@
           <!-- Image Upload -->
           <label class="chat-tool-btn" title="Upload image">
             <i class="fas fa-image"></i>
-            <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
+            <input type="file" accept="image/*" (change)="onMediaSelected($event, 'image')" hidden>
           </label>
 
           <!-- Camera -->
           <button type="button" class="chat-tool-btn" title="Take photo" (click)="openCamera()" [disabled]="sending()">
             <i class="fas fa-camera"></i>
           </button>
-          <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" class="visually-hidden-input">
+          <input #cameraFallbackInput type="file" accept="image/*" capture="environment" (change)="onMediaSelected($event, 'image')" style="display: none;">
 
           <!-- Document Upload -->
           <label class="chat-tool-btn" title="Upload document">
             <i class="fas fa-paperclip"></i>
-            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z" (change)="onMediaSelected($event, 'document')" class="visually-hidden-input">
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z" (change)="onMediaSelected($event, 'document')" hidden>
           </label>
 
           <!-- Voice Note -->

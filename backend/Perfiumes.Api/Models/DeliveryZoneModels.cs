@@ -58,3 +58,21 @@ public sealed record CheckoutQuoteDto(
     string? DeliveryAreaId,
     string? DeliveryAreaName,
     int EstimatedDays);
+
+public sealed record DetectLocationRequest(
+    double? Latitude,
+    double? Longitude,
+    string? Address);
+
+public sealed record DetectedLocationDto(
+    bool Success,
+    string FormattedAddress,
+    string City,
+    string Governorate,
+    string ZoneId,
+    string ZoneName,
+    string? AreaId,
+    string? AreaName,
+    decimal ShippingFee,
+    int EstimatedDays,
+    string? Message = null);

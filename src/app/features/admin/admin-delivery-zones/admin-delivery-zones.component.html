@@ -1,137 +1,598 @@
-<section class="page-shell admin-zones-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-16 2xl:px-20 py-8">
+<section class="page-shell admin-zones-page page-enter w-full px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16 py-8">
   @if (!auth.currentUser()) {
-    <div class="admin-zones-empty">
-      <h1>{{ 'adminLoginRequired' | t }}</h1>
-      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
+    <div class="luxury-card empty-state text-center py-16">
+      <i class="fas fa-lock text-4xl text-amber-500 mb-4"></i>
+      <h2 class="text-xl font-bold mb-2">{{ 'adminLoginRequired' | t }}</h2>
+      <a routerLink="/login" class="btn-luxury">{{ 'goToLogin' | t }}</a>
     </div>
   } @else if (!isAdmin) {
-    <div class="admin-zones-empty">
-      <h1>{{ 'adminsOnly' | t }}</h1>
-      <a routerLink="/">{{ 'backHome' | t }}</a>
+    <div class="luxury-card empty-state text-center py-16">
+      <i class="fas fa-shield-halved text-4xl text-rose-500 mb-4"></i>
+      <h2 class="text-xl font-bold mb-2">{{ 'adminsOnly' | t }}</h2>
+      <a routerLink="/" class="btn-luxury">{{ 'backHome' | t }}</a>
     </div>
   } @else {
-    <div class="admin-zones-main">
-      <header class="admin-zones-topbar">
+    <div class="zones-wrapper w-full space-y-8">
+
+      <!-- TOP HEADER -->
+      <header class="zones-topbar flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-stone-200/80 dark:border-stone-800/80">
         <div>
-          <p>{{ 'operations' | t }}</p>
-          <h2>{{ 'deliveryPricing' | t }}</h2>
-          <span>{{ 'deliveryPricingSubtitle' | t }}</span>
+          <div class="flex items-center gap-2 text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1.5">
+            <span class="flex items-center gap-1.5">
+              <i class="fas fa-sliders text-xs"></i>
+              <span>{{ 'operations' | t }}</span>
+            </span>
+            <span class="text-stone-300 dark:text-stone-600">/</span>
+            <span class="text-teal-900 dark:text-amber-200 font-bold">{{ 'deliveryPricing' | t }}</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black font-cinzel text-teal-950 dark:text-amber-100 tracking-tight flex items-center gap-3">
+            <span>{{ 'deliveryPricing' | t }}</span>
+            <span class="text-xs font-bold font-sans py-0.5 px-3 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+              {{ activeZonesCount }} {{ 'active' | t }}
+            </span>
+          </h1>
+          <p class="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1 max-w-2xl">
+            {{ 'deliveryPricingSubtitle' | t }}
+          </p>
         </div>
-        <button type="button" (click)="load()" [disabled]="loading">
-          <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
-          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
-        </button>
+
+        <div class="flex items-center gap-3 self-start md:self-auto">
+          <button
+            type="button"
+            (click)="load()"
+            [disabled]="loading"
+            class="btn-refresh"
+            title="Refresh zones"
+          >
+            <i class="fas fa-rotate text-sm" [class.is-spinning]="loading"></i>
+            <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
+          </button>
+        </div>
       </header>
 
-      <div class="admin-zones-grid">
-        <form class="admin-zones-form" (ngSubmit)="save()">
-          <div>
-            <p>{{ editingId ? ('edit' | t) : ('create' | t) }}</p>
-            <h3>{{ editingId ? ('editDeliveryZone' | t) : ('newDeliveryZone' | t) }}</h3>
+      <!-- STATS METRIC TILES -->
+      <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Zones -->
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-teal-500/10 text-teal-700 dark:text-teal-300">
+            <i class="fas fa-map-location-dot"></i>
           </div>
-          <label>
-            <span>{{ 'zoneName' | t }}</span>
-            <input name="name" [(ngModel)]="form.name" placeholder="Alexandria">
-          </label>
-          <label>
-            <span>{{ 'cityRegion' | t }}</span>
-            <input name="cityRegion" [(ngModel)]="form.cityRegion" placeholder="Alexandria">
-          </label>
-          <label>
-            <span>{{ 'pricingType' | t }}</span>
-            <select name="pricingType" [(ngModel)]="form.pricingType">
-              <option value="fixed">{{ 'pricingFixed' | t }}</option>
-              <option value="range">{{ 'pricingRange' | t }}</option>
-              <option value="distance">{{ 'pricingDistance' | t }}</option>
-            </select>
-          </label>
-          @if (form.pricingType === 'fixed') {
-            <label>
-              <span>{{ 'fixedDeliveryFee' | t }}</span>
-              <input type="number" min="0" step="1" name="fixedFee" [(ngModel)]="form.fixedFee">
-            </label>
-          } @else {
-            <div class="admin-zones-two">
-              <label>
-                <span>{{ 'minDeliveryFee' | t }}</span>
-                <input type="number" min="0" step="1" name="minFee" [(ngModel)]="form.minFee">
-              </label>
-              <label>
-                <span>{{ 'maxDeliveryFee' | t }}</span>
-                <input type="number" min="0" step="1" name="maxFee" [(ngModel)]="form.maxFee">
-              </label>
-            </div>
-            <label>
-              <span>{{ 'defaultDeliveryFee' | t }}</span>
-              <input type="number" min="0" step="1" name="defaultFee" [(ngModel)]="form.defaultFee">
-            </label>
-          }
-          <div class="admin-zones-two">
-            <label>
-              <span>{{ 'estimatedDays' | t }}</span>
-              <input type="number" min="1" name="estimatedDays" [(ngModel)]="form.estimatedDays">
-            </label>
-            <label>
-              <span>{{ 'sortOrder' | t }}</span>
-              <input type="number" name="sortOrder" [(ngModel)]="form.sortOrder">
-            </label>
+          <div class="metric-info">
+            <span class="metric-label">Total Zones</span>
+            <strong class="metric-val">{{ totalZones }}</strong>
           </div>
-          <label class="admin-zones-toggle">
-            <input type="checkbox" name="isActive" [(ngModel)]="form.isActive">
-            <span>{{ 'activeZone' | t }}</span>
-          </label>
+        </div>
 
-          <div class="admin-zones-areas">
-            <div class="admin-zones-areas-head">
-              <strong>{{ 'deliveryAreas' | t }}</strong>
-              <button type="button" (click)="addArea()">{{ 'addArea' | t }}</button>
-            </div>
-            @for (area of form.areas; track $index) {
-              <div class="admin-zones-area-row">
-                <input [(ngModel)]="area.name" [name]="'area-name-' + $index" placeholder="Nearby">
-                <input type="number" min="0" [(ngModel)]="area.fee" [name]="'area-fee-' + $index">
-                <button type="button" (click)="removeArea($index)" aria-label="Remove area"><i class="fas fa-xmark"></i></button>
+        <!-- Active Zones -->
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <i class="fas fa-circle-check"></i>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Active Shipping</span>
+            <strong class="metric-val text-emerald-600 dark:text-emerald-400">{{ activeZonesCount }}</strong>
+          </div>
+        </div>
+
+        <!-- Total Sub-Areas -->
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <i class="fas fa-layer-group"></i>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Specific Areas</span>
+            <strong class="metric-val text-amber-600 dark:text-amber-400">{{ totalAreasCount }}</strong>
+          </div>
+        </div>
+
+        <!-- Inactive Zones -->
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-stone-500/10 text-stone-500 dark:text-stone-400">
+            <i class="fas fa-pause"></i>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Inactive</span>
+            <strong class="metric-val">{{ inactiveZonesCount }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN 2-COLUMN GRID -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+
+        <!-- LEFT COLUMN: CREATION / EDITING FORM -->
+        <div class="xl:col-span-5 w-full">
+          <div class="form-container">
+            <!-- Form Header Badge -->
+            <div class="form-header">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="action-badge" [class.editing]="editingId">
+                    <i class="fas" [class.fa-plus]="!editingId" [class.fa-pen-to-square]="editingId"></i>
+                    <span>{{ editingId ? ('edit' | t) : ('create' | t) }}</span>
+                  </span>
+                  <h2 class="form-heading font-cinzel">
+                    {{ editingId ? ('editDeliveryZone' | t) : ('newDeliveryZone' | t) }}
+                  </h2>
+                </div>
+
+                @if (editingId) {
+                  <button type="button" (click)="startCreate()" class="btn-cancel-edit" title="Cancel edit">
+                    <i class="fas fa-xmark"></i>
+                    <span>Cancel</span>
+                  </button>
+                }
               </div>
-            }
-          </div>
+              <p class="form-sub-hint">
+                {{ editingId ? 'Update pricing rates and neighborhood overrides.' : 'Set up a new delivery region with flexible pricing options.' }}
+              </p>
+            </div>
 
-          <div class="admin-zones-actions">
-            @if (editingId) {
-              <button type="button" (click)="startCreate()">{{ 'cancel' | t }}</button>
-            }
-            <button type="submit" [disabled]="saving">
-              <i class="fas" [class.fa-plus]="!saving && !editingId" [class.fa-save]="!saving && editingId" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
-              <span>{{ saving ? ('saving' | t) : (editingId ? ('saveChanges' | t) : ('create' | t)) }}</span>
-            </button>
-          </div>
-        </form>
+            <!-- Form Body -->
+            <form (ngSubmit)="save()" class="zone-form-fields space-y-4">
+              <!-- Zone Name -->
+              <div class="input-group">
+                <label for="zoneNameInput">
+                  <i class="fas fa-signature text-amber-600 dark:text-amber-400"></i>
+                  <span>{{ 'zoneName' | t }}</span>
+                  <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  id="zoneNameInput"
+                  name="name"
+                  [(ngModel)]="form.name"
+                  placeholder="e.g. Alexandria, Greater Cairo"
+                  required
+                  class="luxury-input"
+                >
+              </div>
 
-        <div class="admin-zones-panel">
-          @if (loadError) {
-            <p>{{ loadError }}</p>
-          } @else if (!zones.length) {
-            <p>{{ 'noDeliveryZones' | t }}</p>
-          } @else {
-            <div class="admin-zones-list">
-              @for (zone of zones; track zone.id) {
-                <article>
+              <!-- City / Region -->
+              <div class="input-group">
+                <label for="cityRegionInput">
+                  <i class="fas fa-city text-amber-600 dark:text-amber-400"></i>
+                  <span>{{ 'cityRegion' | t }}</span>
+                  <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  id="cityRegionInput"
+                  name="cityRegion"
+                  [(ngModel)]="form.cityRegion"
+                  placeholder="e.g. Alexandria Governorate"
+                  required
+                  class="luxury-input"
+                >
+              </div>
+
+              <!-- Pricing Type Selection -->
+              <div class="input-group">
+                <label for="pricingTypeSelect">
+                  <i class="fas fa-calculator text-amber-600 dark:text-amber-400"></i>
+                  <span>{{ 'pricingType' | t }}</span>
+                </label>
+                <div class="select-wrapper">
+                  <select id="pricingTypeSelect" name="pricingType" [(ngModel)]="form.pricingType" class="luxury-select">
+                    <option value="fixed">{{ 'pricingFixed' | t }} (Single Flat Rate)</option>
+                    <option value="range">{{ 'pricingRange' | t }} (Min - Max Range)</option>
+                    <option value="distance">{{ 'pricingDistance' | t }} (Distance-based)</option>
+                  </select>
+                  <i class="fas fa-chevron-down select-chevron"></i>
+                </div>
+              </div>
+
+              <!-- Conditional Fees Fields -->
+              @if (form.pricingType === 'fixed') {
+                <div class="input-group">
+                  <label for="fixedFeeInput">
+                    <i class="fas fa-coins text-amber-600 dark:text-amber-400"></i>
+                    <span>{{ 'fixedDeliveryFee' | t }}</span>
+                  </label>
+                  <div class="input-addon-wrap">
+                    <input
+                      id="fixedFeeInput"
+                      type="number"
+                      min="0"
+                      step="1"
+                      name="fixedFee"
+                      [(ngModel)]="form.fixedFee"
+                      placeholder="50"
+                      class="luxury-input"
+                    >
+                    <span class="input-addon">EGP</span>
+                  </div>
+                </div>
+              } @else {
+                <!-- Range Fees: Min & Max side-by-side -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="input-group">
+                    <label for="minFeeInput">
+                      <i class="fas fa-arrow-down text-emerald-600"></i>
+                      <span>{{ 'minDeliveryFee' | t }}</span>
+                    </label>
+                    <div class="input-addon-wrap">
+                      <input
+                        id="minFeeInput"
+                        type="number"
+                        min="0"
+                        step="1"
+                        name="minFee"
+                        [(ngModel)]="form.minFee"
+                        placeholder="40"
+                        class="luxury-input"
+                      >
+                      <span class="input-addon">EGP</span>
+                    </div>
+                  </div>
+
+                  <div class="input-group">
+                    <label for="maxFeeInput">
+                      <i class="fas fa-arrow-up text-amber-600"></i>
+                      <span>{{ 'maxDeliveryFee' | t }}</span>
+                    </label>
+                    <div class="input-addon-wrap">
+                      <input
+                        id="maxFeeInput"
+                        type="number"
+                        min="0"
+                        step="1"
+                        name="maxFee"
+                        [(ngModel)]="form.maxFee"
+                        placeholder="70"
+                        class="luxury-input"
+                      >
+                      <span class="input-addon">EGP</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Default Fee -->
+                <div class="input-group">
+                  <label for="defaultFeeInput">
+                    <i class="fas fa-tag text-amber-600 dark:text-amber-400"></i>
+                    <span>{{ 'defaultDeliveryFee' | t }}</span>
+                  </label>
+                  <div class="input-addon-wrap">
+                    <input
+                      id="defaultFeeInput"
+                      type="number"
+                      min="0"
+                      step="1"
+                      name="defaultFee"
+                      [(ngModel)]="form.defaultFee"
+                      placeholder="45"
+                      class="luxury-input"
+                    >
+                    <span class="input-addon">EGP</span>
+                  </div>
+                </div>
+              }
+
+              <!-- Transit Days & Sort Order -->
+              <div class="grid grid-cols-2 gap-3">
+                <div class="input-group">
+                  <label for="estimatedDaysInput">
+                    <i class="fas fa-truck-clock text-amber-600 dark:text-amber-400"></i>
+                    <span>{{ 'estimatedDays' | t }}</span>
+                  </label>
+                  <div class="input-addon-wrap">
+                    <input
+                      id="estimatedDaysInput"
+                      type="number"
+                      min="1"
+                      name="estimatedDays"
+                      [(ngModel)]="form.estimatedDays"
+                      placeholder="3"
+                      class="luxury-input"
+                    >
+                    <span class="input-addon">Days</span>
+                  </div>
+                </div>
+
+                <div class="input-group">
+                  <label for="sortOrderInput">
+                    <i class="fas fa-arrow-down-1-9 text-amber-600 dark:text-amber-400"></i>
+                    <span>{{ 'sortOrder' | t }}</span>
+                  </label>
+                  <input
+                    id="sortOrderInput"
+                    type="number"
+                    name="sortOrder"
+                    [(ngModel)]="form.sortOrder"
+                    placeholder="1"
+                    class="luxury-input"
+                  >
+                </div>
+              </div>
+
+              <!-- Active Status Toggle -->
+              <div class="zone-status-toggle">
+                <div class="flex items-center gap-3">
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="isActive"
+                      [(ngModel)]="form.isActive"
+                      class="sr-only peer"
+                    >
+                    <div class="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-emerald-600"></div>
+                  </label>
                   <div>
-                    <strong>{{ zone.name }}</strong>
-                    <small>{{ zone.cityRegion }} · {{ zone.pricingType }}</small>
-                    <em>{{ feeLabel(zone) }} EGP · {{ zone.estimatedDays }} {{ 'days' | t }}</em>
-                    <em>{{ zone.updatedAt | date:'medium' }}</em>
-                    @if (zone.areas.length) {
-                      <p>
-                        @for (area of zone.areas; track area.id) {
-                          <span>{{ area.name }} {{ area.fee | egp }}</span>
-                        }
-                      </p>
+                    <span class="text-sm font-bold text-teal-950 dark:text-amber-100 block">{{ 'activeZone' | t }}</span>
+                    <span class="text-xs text-stone-500 dark:text-stone-400">Active zones appear as options for buyers at checkout</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sub-Areas Configuration Section -->
+              <div class="areas-card">
+                <div class="areas-card-header flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <i class="fas fa-map-pin text-amber-600 dark:text-amber-400"></i>
+                    <strong class="text-sm text-teal-950 dark:text-amber-100">{{ 'deliveryAreas' | t }}</strong>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold">
+                      {{ form.areas.length }}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="addArea()"
+                    class="btn-add-area"
+                  >
+                    <i class="fas fa-plus text-xs"></i>
+                    <span>{{ 'addArea' | t }}</span>
+                  </button>
+                </div>
+
+                @if (!form.areas.length) {
+                  <p class="text-xs text-stone-500 dark:text-stone-400 italic py-2">
+                    No specific neighborhoods added. The zone's base fee applies everywhere in this zone.
+                  </p>
+                } @else {
+                  <div class="space-y-2 mt-3">
+                    @for (area of form.areas; track $index) {
+                      <div class="area-item-row flex items-center gap-2">
+                        <input
+                          [(ngModel)]="area.name"
+                          [name]="'area-name-' + $index"
+                          placeholder="Neighborhood (e.g. Smouha)"
+                          class="luxury-input flex-1 text-xs"
+                        >
+                        <div class="input-addon-wrap w-28 flex-shrink-0">
+                          <input
+                            type="number"
+                            min="0"
+                            [(ngModel)]="area.fee"
+                            [name]="'area-fee-' + $index"
+                            placeholder="Fee"
+                            class="luxury-input text-xs"
+                          >
+                          <span class="input-addon text-xs">EGP</span>
+                        </div>
+                        <button
+                          type="button"
+                          (click)="removeArea($index)"
+                          class="btn-remove-area"
+                          title="Remove neighborhood"
+                        >
+                          <i class="fas fa-trash-can"></i>
+                        </button>
+                      </div>
                     }
                   </div>
-                  <div class="admin-zones-card-actions">
-                    <span [class.inactive]="!zone.isActive">{{ zone.isActive ? ('active' | t) : ('inactive' | t) }}</span>
-                    <button type="button" (click)="startEdit(zone)">{{ 'edit' | t }}</button>
-                    <button type="button" (click)="remove(zone)" [disabled]="deletingId === zone.id">{{ 'delete' | t }}</button>
+                }
+              </div>
+
+              <!-- Form Submit & Action Buttons -->
+              <div class="pt-2 flex items-center gap-3">
+                @if (editingId) {
+                  <button
+                    type="button"
+                    (click)="startCreate()"
+                    class="btn-secondary flex-1"
+                  >
+                    {{ 'cancel' | t }}
+                  </button>
+                }
+                <button
+                  type="submit"
+                  [disabled]="saving"
+                  class="btn-submit-zone flex-1"
+                >
+                  <i class="fas" [class.fa-plus]="!saving && !editingId" [class.fa-floppy-disk]="!saving && editingId" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
+                  <span>{{ saving ? ('saving' | t) : (editingId ? ('saveChanges' | t) : ('create' | t)) }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: ZONES LIST & FILTERS -->
+        <div class="xl:col-span-7 w-full space-y-4">
+
+          <!-- Search & Filter Controls -->
+          <div class="filter-bar flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-white dark:bg-stone-900 rounded-xl border border-stone-200/70 dark:border-stone-800 shadow-sm">
+            <!-- Search Input -->
+            <div class="relative flex-1">
+              <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs"></i>
+              <input
+                type="text"
+                [(ngModel)]="searchTerm"
+                placeholder="Search zones, cities, or areas..."
+                class="search-input w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+              @if (searchTerm) {
+                <button
+                  type="button"
+                  (click)="searchTerm = ''"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs"
+                >
+                  <i class="fas fa-circle-xmark"></i>
+                </button>
+              }
+            </div>
+
+            <!-- Status Filter Pills -->
+            <div class="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-lg self-start sm:self-auto">
+              <button
+                type="button"
+                (click)="statusFilter = 'all'"
+                class="filter-pill"
+                [class.active]="statusFilter === 'all'"
+              >
+                All ({{ totalZones }})
+              </button>
+              <button
+                type="button"
+                (click)="statusFilter = 'active'"
+                class="filter-pill"
+                [class.active]="statusFilter === 'active'"
+              >
+                Active ({{ activeZonesCount }})
+              </button>
+              <button
+                type="button"
+                (click)="statusFilter = 'inactive'"
+                class="filter-pill"
+                [class.active]="statusFilter === 'inactive'"
+              >
+                Inactive ({{ inactiveZonesCount }})
+              </button>
+            </div>
+          </div>
+
+          <!-- Zones Cards List -->
+          @if (loadError) {
+            <div class="error-banner p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 flex items-center gap-3">
+              <i class="fas fa-triangle-exclamation text-lg"></i>
+              <p class="text-sm font-medium">{{ loadError }}</p>
+            </div>
+          } @else if (!filteredZones.length) {
+            <div class="empty-zones-box text-center py-16 px-4 bg-white dark:bg-stone-900 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700">
+              <div class="w-16 h-16 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fas fa-truck-ramp-box"></i>
+              </div>
+              <h3 class="text-lg font-bold text-teal-950 dark:text-amber-100 mb-1">
+                {{ searchTerm ? 'No matching delivery zones found' : ('noDeliveryZones' | t) }}
+              </h3>
+              <p class="text-xs text-stone-500 dark:text-stone-400 max-w-sm mx-auto mb-5">
+                {{ searchTerm ? 'Try clearing your search query or changing filters.' : 'Use the configuration form on the left to define your first shipping zone.' }}
+              </p>
+              @if (searchTerm) {
+                <button type="button" (click)="searchTerm = ''; statusFilter = 'all'" class="btn-secondary text-xs">
+                  Clear Filters
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="space-y-3.5">
+              @for (zone of filteredZones; track zone.id) {
+                <article
+                  class="zone-card"
+                  [class.is-editing]="editingId === zone.id"
+                  [class.is-inactive]="!zone.isActive"
+                >
+                  <!-- Card Header -->
+                  <div class="zone-card-top flex items-start justify-between gap-3">
+                    <div>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="zone-title text-base sm:text-lg font-bold text-teal-950 dark:text-amber-100">
+                          {{ zone.name }}
+                        </h3>
+                        <span class="city-badge">
+                          <i class="fas fa-location-dot text-[10px]"></i>
+                          <span>{{ zone.cityRegion }}</span>
+                        </span>
+                        <span class="type-badge" [class.type-range]="zone.pricingType === 'range'" [class.type-distance]="zone.pricingType === 'distance'">
+                          <i class="fas" [class.fa-coins]="zone.pricingType === 'fixed'" [class.fa-arrows-left-right]="zone.pricingType === 'range'" [class.fa-route]="zone.pricingType === 'distance'"></i>
+                          <span>{{ zone.pricingType }}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Status Pill with quick toggle -->
+                    <button
+                      type="button"
+                      (click)="toggleActive(zone, $event)"
+                      class="status-chip"
+                      [class.active]="zone.isActive"
+                      [class.inactive]="!zone.isActive"
+                      title="Click to toggle status"
+                    >
+                      <span class="status-dot"></span>
+                      <span>{{ zone.isActive ? ('active' | t) : ('inactive' | t) }}</span>
+                    </button>
+                  </div>
+
+                  <!-- Rates & Delivery Time Highlight Strip -->
+                  <div class="zone-card-rates flex items-center justify-between flex-wrap gap-3 py-2.5 px-3.5 rounded-xl bg-stone-50/80 dark:bg-stone-800/50 border border-stone-200/50 dark:border-stone-700/50 my-3">
+                    <div class="flex items-baseline gap-1.5">
+                      <span class="text-xs text-stone-500 font-medium">Fee:</span>
+                      <strong class="fee-display font-cinzel text-teal-900 dark:text-amber-300 text-lg">
+                        {{ feeLabel(zone) }}
+                      </strong>
+                      <span class="text-xs font-bold text-amber-700 dark:text-amber-400">EGP</span>
+                    </div>
+
+                    <div class="flex items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
+                      <span class="flex items-center gap-1.5">
+                        <i class="fas fa-truck-fast text-amber-600"></i>
+                        <span>{{ zone.estimatedDays }} {{ 'days' | t }}</span>
+                      </span>
+                      <span class="text-stone-300 dark:text-stone-700">•</span>
+                      <span class="flex items-center gap-1">
+                        <i class="fas fa-arrow-down-1-9 text-stone-400"></i>
+                        <span>Order #{{ zone.sortOrder }}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Specific Neighborhoods (Areas) Cloud -->
+                  @if (zone.areas && zone.areas.length) {
+                    <div class="zone-areas-wrap mb-3">
+                      <div class="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 mb-1.5 font-medium">
+                        <i class="fas fa-map-pin text-amber-600"></i>
+                        <span>Neighborhood rates:</span>
+                      </div>
+                      <div class="flex flex-wrap gap-1.5">
+                        @for (area of zone.areas; track area.id || $index) {
+                          <span class="area-pill">
+                            <span class="font-medium text-stone-700 dark:text-stone-300">{{ area.name }}</span>
+                            <span class="area-pill-fee">{{ area.fee | egp }}</span>
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Card Footer & Actions -->
+                  <div class="zone-card-footer flex items-center justify-between pt-3 border-t border-stone-200/70 dark:border-stone-800/80">
+                    <span class="text-[11px] text-stone-400 flex items-center gap-1">
+                      <i class="fas fa-clock text-[10px]"></i>
+                      <span>{{ zone.updatedAt | date:'mediumDate' }}</span>
+                    </span>
+
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        (click)="startEdit(zone)"
+                        class="btn-card-edit"
+                        title="Edit zone"
+                      >
+                        <i class="fas fa-pen-to-square"></i>
+                        <span>{{ 'edit' | t }}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="remove(zone)"
+                        [disabled]="deletingId === zone.id"
+                        class="btn-card-delete"
+                        title="Delete zone"
+                      >
+                        <i class="fas" [class.fa-trash-can]="deletingId !== zone.id" [class.fa-spinner]="deletingId === zone.id" [class.fa-spin]="deletingId === zone.id"></i>
+                        <span>{{ 'delete' | t }}</span>
+                      </button>
+                    </div>
                   </div>
                 </article>
               }

@@ -455,6 +455,20 @@ export interface CheckoutQuote {
   estimatedDays: number;
 }
 
+export interface DetectedLocationResult {
+  success: boolean;
+  formattedAddress: string;
+  city: string;
+  governorate: string;
+  zoneId: string;
+  zoneName: string;
+  areaId?: string | null;
+  areaName?: string | null;
+  shippingFee: number;
+  estimatedDays: number;
+  message?: string;
+}
+
 export interface UpsertDeliveryZone {
   name: string;
   cityRegion: string;

@@ -145,6 +145,7 @@ export class OrderChatComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.clearPendingVoice();
   }
 
+
   loadMessages(): void {
     this.loading.set(true);
     this.auth.ensureAccessToken().subscribe((token) => {

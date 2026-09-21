@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { CheckoutQuote, DeliveryZone, OrderItem, UpsertDeliveryZone } from '@core/models/store.models';
+import { CheckoutQuote, DeliveryZone, DetectedLocationResult, OrderItem, UpsertDeliveryZone } from '@core/models/store.models';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -10,6 +10,14 @@ export class DeliveryZoneService {
 
   getActive(): Observable<DeliveryZone[]> {
     return this.http.get<DeliveryZone[]>(`${environment.apiBaseUrl}/api/delivery-zones`);
+  }
+
+  detectLocation(latitude?: number, longitude?: number, address?: string): Observable<DetectedLocationResult> {
+    return this.http.post<DetectedLocationResult>(`${environment.apiBaseUrl}/api/delivery-zones/detect-location`, {
+      latitude,
+      longitude,
+      address
+    });
   }
 
   getAdminZones(token: string): Observable<DeliveryZone[]> {

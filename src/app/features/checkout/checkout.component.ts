@@ -1,9 +1,9 @@
 import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy } from '@angular/core';
+import { Component, NgZone, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { CheckoutQuote, DeliveryZone, Order } from '@core/models/store.models';
+import { CheckoutQuote, DeliveryZone, DetectedLocationResult, Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { CartService } from '@core/services/cart.service';
 import { DeliveryZoneService } from '@core/services/delivery-zone.service';
@@ -26,6 +26,8 @@ export class CheckoutPageComponent implements OnDestroy {
   paymentMethod: 'cashOnDelivery' | 'wallet' | 'card' | 'instapay' = 'cashOnDelivery';
   selectedZoneId = '';
   selectedAreaId = '';
+  detectedZoneInfo: DetectedLocationResult | null = null;
+  showManualZoneSelection = false;
   zones: DeliveryZone[] = [];
   quote: CheckoutQuote | null = null;
   quoting = false;
@@ -35,10 +37,12 @@ export class CheckoutPageComponent implements OnDestroy {
   processingStep: 'idle' | 'placing' | 'paymob' = 'idle';
   cardGatewayReady: boolean | null = null;
   paymentNotice = 'Your order will be confirmed immediately. You pay the full amount when it arrives.';
-  private processingWatchdog?: ReturnType<typeof setTimeout>;
+  gpsLoading = false;
+  gpsError = '';
   private quoteTimer?: ReturnType<typeof setTimeout>;
+  private addressDebounceTimer?: ReturnType<typeof setTimeout>;
+  private processingWatchdog?: ReturnType<typeof setTimeout>;
   private paymentAttemptId?: string;
-  private readonly storageKey = 'perfiumes.checkout.delivery';
 
   constructor(
     readonly cart: CartService,
@@ -48,7 +52,8 @@ export class CheckoutPageComponent implements OnDestroy {
     private readonly deliveryZones: DeliveryZoneService,
     private readonly toast: ToastService,
     private readonly router: Router,
-    private readonly i18n: LocalizationService
+    private readonly i18n: LocalizationService,
+    private readonly ngZone: NgZone
   ) {
     const user = this.auth.currentUser();
     if (user) {
@@ -58,8 +63,12 @@ export class CheckoutPageComponent implements OnDestroy {
       this.form.address = user.address || '';
     }
 
-    this.restoreSelection();
     this.loadZones();
+
+    if (this.form.address.trim()) {
+      this.detectZone(undefined, undefined, this.form.address.trim());
+    }
+
     this.payments.paymobAvailability().subscribe({
       next: (status) => this.cardGatewayReady = status.configured,
       error: () => this.cardGatewayReady = false
@@ -69,6 +78,7 @@ export class CheckoutPageComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.clearProcessingWatchdog();
     if (this.quoteTimer) clearTimeout(this.quoteTimer);
+    if (this.addressDebounceTimer) clearTimeout(this.addressDebounceTimer);
   }
 
   get selectedZone(): DeliveryZone | undefined {
@@ -81,6 +91,10 @@ export class CheckoutPageComponent implements OnDestroy {
 
   get needsArea(): boolean {
     return (this.selectedZone?.pricingType !== 'fixed') && this.selectedAreas.length > 0;
+  }
+
+  toggleManualZoneSelection(): void {
+    this.showManualZoneSelection = !this.showManualZoneSelection;
   }
 
   onPaymentMethodChange(): void {
@@ -104,13 +118,77 @@ export class CheckoutPageComponent implements OnDestroy {
       this.form.city = zone.cityRegion;
       if (zone.areas.length === 1) this.selectedAreaId = zone.areas[0].id;
     }
-    this.persistSelection();
     this.scheduleQuote();
   }
 
   onAreaChange(): void {
-    this.persistSelection();
     this.scheduleQuote();
+  }
+
+  onAddressInput(): void {
+    if (this.addressDebounceTimer) clearTimeout(this.addressDebounceTimer);
+    const addr = this.form.address?.trim() ?? '';
+    if (addr.length < 3) return;
+
+    this.addressDebounceTimer = setTimeout(() => {
+      this.detectZone(undefined, undefined, addr);
+    }, 600);
+  }
+
+  locateRealtime(): void {
+    if (!navigator.geolocation) {
+      this.gpsError = this.i18n.t('gpsNotSupported');
+      return;
+    }
+    this.gpsLoading = true;
+    this.gpsError = '';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        this.detectZone(latitude, longitude);
+      },
+      () => {
+        this.ngZone.run(() => {
+          this.gpsLoading = false;
+          this.gpsError = this.i18n.t('gpsDenied');
+        });
+      },
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 60000 }
+    );
+  }
+
+  private detectZone(latitude?: number, longitude?: number, address?: string): void {
+    this.gpsLoading = true;
+    this.gpsError = '';
+
+    this.deliveryZones.detectLocation(latitude, longitude, address).subscribe({
+      next: (res) => {
+        this.ngZone.run(() => {
+          this.gpsLoading = false;
+          if (res.success && res.zoneId) {
+            this.detectedZoneInfo = res;
+            if (latitude && longitude && res.formattedAddress) {
+              this.form.address = res.formattedAddress;
+            }
+            if (res.city) {
+              this.form.city = res.city;
+            }
+            this.selectedZoneId = res.zoneId;
+            this.selectedAreaId = res.areaId || '';
+            this.scheduleQuote();
+          } else {
+            this.gpsError = this.i18n.t('gpsZoneNotFound');
+          }
+        });
+      },
+      error: () => {
+        this.ngZone.run(() => {
+          this.gpsLoading = false;
+          this.gpsError = this.i18n.t('gpsFetchError');
+        });
+      }
+    });
   }
 
   placeOrder(): void {
@@ -119,7 +197,7 @@ export class CheckoutPageComponent implements OnDestroy {
       this.error = this.i18n.t('shippingValidationError');
       return;
     }
-    if (!this.selectedZoneId || (this.needsArea && !this.selectedAreaId)) {
+    if (!this.selectedZoneId) {
       this.error = this.i18n.t('deliveryZoneRequired');
       return;
     }
@@ -225,8 +303,8 @@ export class CheckoutPageComponent implements OnDestroy {
   }
 
   deliveryEta(): string {
-    const days = this.quote?.estimatedDays ?? this.selectedZone?.estimatedDays;
-    return days ? `${days} business day${days === 1 ? '' : 's'}` : 'Select a delivery area';
+    const days = this.quote?.estimatedDays ?? this.detectedZoneInfo?.estimatedDays ?? this.selectedZone?.estimatedDays;
+    return days ? `${days} business day${days === 1 ? '' : 's'}` : 'Auto-calculated';
   }
 
   payableTotal(): number {
@@ -255,12 +333,12 @@ export class CheckoutPageComponent implements OnDestroy {
     this.deliveryZones.getActive().subscribe({
       next: (zones) => {
         this.zones = zones;
-        if (!this.selectedZoneId && zones.length) {
-          this.selectedZoneId = zones[0].id;
-        }
-        if (this.selectedZoneId && !zones.some((zone) => zone.id === this.selectedZoneId)) {
-          this.selectedZoneId = zones[0]?.id || '';
-          this.selectedAreaId = '';
+        if (!this.selectedZoneId && zones.length > 0) {
+          if (this.detectedZoneInfo?.zoneId) {
+            this.selectedZoneId = this.detectedZoneInfo.zoneId;
+          } else {
+            this.selectedZoneId = zones[0].id;
+          }
         }
         const zone = this.selectedZone;
         if (zone) {
@@ -269,7 +347,6 @@ export class CheckoutPageComponent implements OnDestroy {
             this.selectedAreaId = zone.areas[0].id;
           }
         }
-        this.persistSelection();
         this.scheduleQuote();
       },
       error: () => {
@@ -286,11 +363,6 @@ export class CheckoutPageComponent implements OnDestroy {
   private refreshQuote(): void {
     if (!this.auth.currentUser() || !this.cart.lines().length || !this.selectedZoneId) {
       this.quote = null;
-      return;
-    }
-    if (this.needsArea && !this.selectedAreaId) {
-      this.quote = null;
-      this.quoteError = this.i18n.t('deliveryAreaRequired');
       return;
     }
 
@@ -348,29 +420,9 @@ export class CheckoutPageComponent implements OnDestroy {
     }));
   }
 
-  private persistSelection(): void {
-    sessionStorage.setItem(this.storageKey, JSON.stringify({
-      zoneId: this.selectedZoneId,
-      areaId: this.selectedAreaId
-    }));
-  }
-
-  private restoreSelection(): void {
-    try {
-      const raw = sessionStorage.getItem(this.storageKey);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as { zoneId?: string; areaId?: string };
-      this.selectedZoneId = saved.zoneId || '';
-      this.selectedAreaId = saved.areaId || '';
-    } catch {
-      sessionStorage.removeItem(this.storageKey);
-    }
-  }
-
   private clearCheckoutState(): void {
     this.cart.clear();
     this.cart.clearPromo();
-    sessionStorage.removeItem(this.storageKey);
   }
 
   private retryOrderAfterAuthError(

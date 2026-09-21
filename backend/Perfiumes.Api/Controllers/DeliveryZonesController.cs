@@ -12,6 +12,10 @@ public sealed class DeliveryZonesController(DeliveryZoneService zones, AdminAuth
     public async Task<IResult> GetActive() =>
         Results.Ok(await zones.GetAllAsync(activeOnly: true));
 
+    [HttpPost("delivery-zones/detect-location")]
+    public async Task<IResult> DetectLocation(DetectLocationRequest request) =>
+        Results.Ok(await zones.DetectLocationAsync(request));
+
     [HttpGet("admin/delivery-zones")]
     public async Task<IResult> GetAll()
     {

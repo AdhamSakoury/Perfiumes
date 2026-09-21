@@ -88,6 +88,7 @@ builder.Services.AddScoped<DeliveryZoneService>();
 builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<PromoCodeService>();
 builder.Services.AddScoped<NewsletterService>();
+builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<GoogleAuthService>();
 builder.Services.AddHttpClient<PaymobService>(client =>
 {
