@@ -200,11 +200,22 @@ export class OrdersPageComponent {
   }
 
   paymentLabel(order: Order): string {
-    if (order.paymentMethod === 'wallet') return 'Wallet paid';
     if (order.paymentStatus === 'refunded') return 'Refunded to wallet';
-    if (order.paymentMethod === 'card') return 'Card paid';
+    if (order.paymentMethod === 'wallet') {
+      return order.paymentStatus === 'paid' ? 'Wallet paid in full' : 'Wallet paid products; delivery due';
+    }
+    if (order.paymentMethod === 'card') {
+      return order.paymentStatus === 'paid' ? 'Card paid in full' : order.paymentStatus === 'partiallyPaid' ? 'Card paid products; delivery due' : 'Card pending';
+    }
     if (order.paymentMethod === 'instapay') return order.paymentStatus === 'paid' ? 'InstaPay paid' : 'InstaPay pending';
     return 'Cash on delivery';
+  }
+
+  dueAtDelivery(order: Order): number {
+    if (order.paymentStatus === 'paid') return 0;
+    if (typeof order.amountDueAtDelivery === 'number') return order.amountDueAtDelivery;
+    if (order.paymentMethod === 'cashOnDelivery') return order.total;
+    return order.shippingFee || 0;
   }
 
   cleanPhone(phone?: string | null): string {

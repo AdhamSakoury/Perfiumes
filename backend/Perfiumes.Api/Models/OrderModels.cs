@@ -25,6 +25,8 @@ public sealed record OrderDto(
     decimal Discount,
     decimal ShippingFee,
     decimal Total,
+    decimal OnlinePaymentAmount,
+    decimal AmountDueAtDelivery,
     string PaymentMethod,
     string PaymentStatus,
     string PaymentProvider,
@@ -43,6 +45,10 @@ public sealed record OrderDto(
     ShippingAddressDto ShippingAddress,
     string? PromoCode,
     IReadOnlyList<OrderTrackingEventDto> TrackingEvents,
+    string? DeliveryZoneId = null,
+    string? DeliveryZoneName = null,
+    string? DeliveryAreaId = null,
+    string? DeliveryAreaName = null,
     int? DeliveryRating = null,
     string? DeliveryRatingComment = null,
     int? CustomerRating = null,
@@ -58,7 +64,9 @@ public sealed record CreateOrderRequest(
     string? PaymentProvider,
     ShippingAddressDto ShippingAddress,
     string? PromoCode,
-    string? ClientRequestId);
+    string? ClientRequestId,
+    string? DeliveryZoneId = null,
+    string? DeliveryAreaId = null);
 
 public sealed record UpdateOrderStatusRequest(string Status, string? Note);
 

@@ -207,8 +207,12 @@
                   <i class="fas fa-boxes-stacked mr-1"></i> {{ order.items.length }} {{ isAr ? 'منتج' : 'item(s)' }}
                 </span>
                 <span class="text-[11px] font-bold mt-0.5 inline-block"
-                  [ngClass]="order.paymentMethod === 'cashOnDelivery' ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'">
-                  {{ order.paymentMethod === 'cashOnDelivery' ? ('cashOnDelivery' | t) : ('paidOnline' | t) }}
+                  [ngClass]="cashDue(order) > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'">
+                  @if (cashDue(order) > 0) {
+                    {{ isAr ? 'تحصيل: ' : 'Collect: ' }}{{ cashDue(order) | egp }}
+                  } @else {
+                    {{ 'paidOnline' | t }}
+                  }
                 </span>
               </div>
               

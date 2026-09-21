@@ -66,20 +66,19 @@ export class DeliveryDashboardComponent {
   // Cash and financials
   readonly cashToCollect = computed(() => {
     return this.orders()
-      .filter((o) => o.status !== 'Cancelled' && o.status !== 'Delivered' && o.paymentMethod !== 'wallet' && o.paymentStatus !== 'paid')
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o) => o.status !== 'Cancelled' && o.status !== 'Delivered' && o.paymentStatus !== 'paid')
+      .reduce((sum, o) => sum + this.cashDue(o), 0);
   });
 
   readonly cashCollectedSoFar = computed(() => {
     return this.orders()
-      .filter((o) => o.status === 'Delivered' && o.paymentMethod !== 'wallet')
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o) => o.status === 'Delivered')
+      .reduce((sum, o) => sum + this.cashDue(o, true), 0);
   });
 
   readonly prepaidTotal = computed(() => {
     return this.orders()
-      .filter((o) => o.paymentMethod === 'wallet' || o.paymentStatus === 'paid')
-      .reduce((sum, o) => sum + o.total, 0);
+      .reduce((sum, o) => sum + (o.onlinePaymentAmount || 0), 0);
   });
 
   readonly totalRouteValue = computed(() => {
@@ -285,6 +284,13 @@ export class DeliveryDashboardComponent {
       this.isAr ? 'جارٍ تحضير الفاتورة كـ PDF' : 'Preparing invoice PDF for customer...',
       'success'
     );
+  }
+
+  cashDue(order: Order, collected = false): number {
+    if (!collected && order.paymentStatus === 'paid') return 0;
+    if (typeof order.amountDueAtDelivery === 'number') return order.amountDueAtDelivery;
+    if (order.paymentMethod === 'cashOnDelivery') return order.total;
+    return order.shippingFee || 0;
   }
 
   cleanPhone(phone?: string | null): string {

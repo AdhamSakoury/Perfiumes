@@ -280,6 +280,13 @@ export class DeliveryOrdersComponent {
     this.activeChatOrder.set(null);
   }
 
+  cashDue(order: Order): number {
+    if (order.paymentStatus === 'paid') return 0;
+    if (typeof order.amountDueAtDelivery === 'number') return order.amountDueAtDelivery;
+    if (order.paymentMethod === 'cashOnDelivery') return order.total;
+    return order.shippingFee || 0;
+  }
+
   cleanPhone(phone?: string | null): string {
     if (!phone) return '';
     return phone.replace(/[^\d+]/g, '');

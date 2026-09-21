@@ -22,6 +22,23 @@ public sealed class CommerceController(
     public async Task<IResult> GetOrders(string userEmail) =>
         Results.Ok(await orders.GetForUserAsync(userEmail));
 
+    [HttpPost("checkout/quote")]
+    public async Task<IResult> QuoteCheckout(CheckoutQuoteRequest request)
+    {
+        var principal = auth.ValidateRequest(HttpContext);
+        if (principal is null)
+            return Results.Unauthorized();
+
+        try
+        {
+            return Results.Ok(await orders.QuoteAsync(request));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Results.BadRequest(new { message = exception.Message });
+        }
+    }
+
     [HttpGet("orders/{id}")]
     public async Task<IResult> GetOrder(string id)
     {
@@ -86,8 +103,9 @@ public sealed class CommerceController(
                 return Results.NotFound();
             }
 
+            var refunded = order.OnlinePaymentAmount > 0 ? order.OnlinePaymentAmount : order.Total;
             var message = order.PaymentStatus == "refunded"
-                ? $"Your order {order.Id} was cancelled and {order.Total:0.##} EGP was returned to your wallet."
+                ? $"Your order {order.Id} was cancelled and {refunded:0.##} EGP was returned to your wallet."
                 : $"Your order {order.Id} was cancelled.";
             await PublishNotificationAsync(order.UserEmail, "Order cancelled", message, "order", "/wallet");
             return Results.Ok(order);

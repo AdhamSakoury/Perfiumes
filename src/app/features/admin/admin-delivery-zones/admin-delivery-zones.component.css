@@ -1,0 +1,197 @@
+.admin-zones-page {
+  color: #153f3f;
+  padding-top: 6rem;
+}
+
+.admin-zones-topbar,
+.admin-zones-form > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-zones-topbar p,
+.admin-zones-form p {
+  color: #F5A623;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-zones-topbar h2,
+.admin-zones-form h3,
+.admin-zones-empty h1 {
+  color: #153f3f;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.admin-zones-grid {
+  display: grid;
+  grid-template-columns: minmax(17rem, 26rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.admin-zones-form,
+.admin-zones-panel,
+.admin-zones-empty {
+  border: 1px solid rgba(27, 77, 77, 0.1);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 34px -32px rgba(26, 21, 16, 0.42);
+  padding: 1rem;
+}
+
+.admin-zones-form,
+.admin-zones-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-zones-form label,
+.admin-zones-two {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.admin-zones-two {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.admin-zones-form label span {
+  color: #5D4E37;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-zones-form input,
+.admin-zones-form select,
+.admin-zones-form button,
+.admin-zones-topbar button,
+.admin-zones-card-actions button {
+  min-height: 2.55rem;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 0.45rem;
+  background: #fff;
+  color: #153f3f;
+  font-weight: 800;
+  outline: 0;
+  padding: 0.55rem 0.7rem;
+}
+
+.admin-zones-toggle {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.admin-zones-areas {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  border-radius: 0.55rem;
+  padding: 0.75rem;
+}
+
+.admin-zones-areas-head,
+.admin-zones-actions,
+.admin-zones-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.admin-zones-area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.5rem auto;
+  gap: 0.4rem;
+}
+
+.admin-zones-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(230, 213, 184, 0.58);
+  border-radius: 0.5rem;
+  background: rgba(245, 240, 230, 0.38);
+  padding: 0.85rem;
+}
+
+.admin-zones-list strong,
+.admin-zones-list small,
+.admin-zones-list em {
+  display: block;
+}
+
+.admin-zones-list p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.admin-zones-list p span {
+  font-size: 0.75rem;
+  border-radius: 999px;
+  background: rgba(21, 63, 63, 0.08);
+  padding: 0.2rem 0.5rem;
+}
+
+.admin-zones-card-actions span {
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.35rem 0.65rem;
+}
+
+.admin-zones-card-actions span.inactive {
+  background: rgba(198, 93, 59, 0.12);
+  color: #C65D3B;
+}
+
+.admin-zones-form button[type="submit"],
+.admin-zones-topbar button {
+  background: #153f3f;
+  color: #fff;
+  border-color: #153f3f;
+}
+
+.is-spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 980px) {
+  .admin-zones-grid,
+  .admin-zones-two,
+  .admin-zones-area-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+:host-context(.dark) .admin-zones-form,
+:host-context(.dark) .admin-zones-panel,
+:host-context(.dark) .admin-zones-empty,
+:host-context(.dark) .admin-zones-list article {
+  background: rgba(22, 34, 34, 0.96);
+  border-color: rgba(245, 166, 35, 0.2);
+  color: #E6D5B8;
+}
+
+:host-context(.dark) .admin-zones-form input,
+:host-context(.dark) .admin-zones-form select,
+:host-context(.dark) .admin-zones-card-actions button {
+  background: #1D2B2B;
+  color: #E6D5B8;
+}

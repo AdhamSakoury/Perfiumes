@@ -132,6 +132,11 @@ export const routes: Routes = [
     title: 'Admin Promo Codes | Gnouby'
   },
   {
+    path: 'admin/delivery-zones',
+    loadComponent: () => import('./features/admin/admin-delivery-zones/admin-delivery-zones.component').then((module) => module.AdminDeliveryZonesComponent),
+    title: 'Admin Delivery Pricing | Gnouby'
+  },
+  {
     path: 'admin/users',
     loadComponent: () => import('./features/admin/admin-users/admin-users.component').then((module) => module.AdminUsersComponent),
     title: 'Admin Users | Gnouby'

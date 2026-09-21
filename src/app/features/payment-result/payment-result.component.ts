@@ -40,6 +40,10 @@ export class PaymentResultComponent {
     }
   }
 
+  get isOnlineSuccess(): boolean {
+    return this.order?.paymentStatus === 'paid' || this.order?.paymentStatus === 'partiallyPaid';
+  }
+
   private handleWalletResult(): void {
     const success = this.route.snapshot.queryParamMap.get('success');
     const transactionId = this.route.snapshot.queryParamMap.get('id') || undefined;

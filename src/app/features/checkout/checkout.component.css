@@ -68,3 +68,31 @@
 :host-context(.dark) .checkout-payment-option small {
   color: rgba(230, 213, 184, 0.75);
 }
+
+.checkout-pay-split {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  border-radius: 0.75rem;
+  background: rgba(245, 166, 35, 0.08);
+  padding: 0.75rem;
+}
+
+.checkout-pay-split div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.checkout-pay-split span {
+  color: #5D4E37;
+}
+
+:host-context(.dark) .checkout-pay-split {
+  background: rgba(245, 166, 35, 0.1);
+  border-color: rgba(245, 166, 35, 0.22);
+}
+
+:host-context(.dark) .checkout-pay-split span {
+  color: rgba(230, 213, 184, 0.78);
+}

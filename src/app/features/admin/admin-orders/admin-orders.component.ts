@@ -187,9 +187,24 @@ export class AdminOrdersComponent implements OnDestroy {
 
   paymentMethodLabel(method: string | undefined): string {
     if (method === 'wallet') return this.i18n.t('wallet');
-    if (method === 'card') return 'Card';
-    if (method === 'instapay') return 'InstaPay';
-    return this.i18n.t('cash');
+    if (method === 'card') return this.i18n.t('cardPayment');
+    if (method === 'instapay') return this.i18n.t('instapayTransfer');
+    return this.i18n.t('cashOnDelivery');
+  }
+
+  paymentStatusLabel(status: string | undefined): string {
+    if (status === 'paid') return this.i18n.t('paid');
+    if (status === 'partiallyPaid') return this.i18n.t('partiallyPaid');
+    if (status === 'failed') return this.i18n.t('failed');
+    if (status === 'refunded') return this.i18n.t('refunded');
+    return this.i18n.t('pending');
+  }
+
+  dueAtDelivery(order: Order): number {
+    if (order.paymentStatus === 'paid') return 0;
+    if (typeof order.amountDueAtDelivery === 'number') return order.amountDueAtDelivery;
+    if (order.paymentMethod === 'cashOnDelivery') return order.total;
+    return order.shippingFee || 0;
   }
 
   downloadInvoice(order: Order): void {

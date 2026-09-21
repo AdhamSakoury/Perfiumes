@@ -219,6 +219,8 @@ public sealed class PaymentsController(
             ?? ReadBool(root, "obj", "success")
             ?? false;
         var transactionId = ReadString(root, "id") ?? ReadString(root, "obj", "id");
+        var amountCents = ReadLong(root, "amount_cents")
+            ?? ReadLong(root, "obj", "amount_cents");
 
         if (string.IsNullOrWhiteSpace(orderId))
             return Results.BadRequest(new { message = "Order reference was not found in Paymob webhook." });
@@ -246,6 +248,18 @@ public sealed class PaymentsController(
 
         if (existingOrder.PaymentMethod != "card" || existingOrder.PaymentProvider != "Paymob")
             return Results.BadRequest(new { message = "This callback does not match a Paymob card order." });
+
+        if (success && existingOrder.OnlinePaymentAmount > 0 && amountCents is > 0)
+        {
+            var expectedCents = (long)Math.Round(existingOrder.OnlinePaymentAmount * 100m, MidpointRounding.AwayFromZero);
+            if (amountCents != expectedCents)
+            {
+                logger.LogWarning(
+                    "Paymob amount mismatch for order {OrderId}. Expected {Expected} cents, received {Received}.",
+                    orderId, expectedCents, amountCents);
+                success = false;
+            }
+        }
 
         var order = await orders.UpdatePaymentStatusAsync(orderId, success ? "paid" : "failed", transactionId);
         return order is null ? Results.NotFound() : Results.Ok(new { received = true });
@@ -279,6 +293,18 @@ public sealed class PaymentsController(
         {
             JsonValueKind.String => element.GetString(),
             JsonValueKind.Number => element.ToString(),
+            _ => null
+        };
+    }
+
+    private static long? ReadLong(JsonElement root, params string[] path)
+    {
+        if (!TryRead(root, out var element, path))
+            return null;
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number when element.TryGetInt64(out var value) => value,
+            JsonValueKind.String when long.TryParse(element.GetString(), out var value) => value,
             _ => null
         };
     }

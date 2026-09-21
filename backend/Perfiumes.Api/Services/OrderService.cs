@@ -10,6 +10,7 @@ namespace Perfiumes.Api.Services;
 
 public sealed class OrderService(
     PerfiumesDbContext db,
+    DeliveryZoneService deliveryZones,
     IHubContext<OrderTrackingHub> trackingHub,
     IHubContext<NotificationHub> notificationHub,
     NotificationService notifications,
@@ -149,6 +150,24 @@ IF COL_LENGTH(N'[Orders]', N'DeliveryLongitude') IS NULL
 
 IF COL_LENGTH(N'[Orders]', N'DeliveryLocationUpdatedAt') IS NULL
     ALTER TABLE [Orders] ADD [DeliveryLocationUpdatedAt] datetimeoffset NULL;
+
+IF COL_LENGTH(N'[Orders]', N'OnlinePaymentAmount') IS NULL
+    ALTER TABLE [Orders] ADD [OnlinePaymentAmount] decimal(18,2) NOT NULL CONSTRAINT [DF_Orders_OnlinePaymentAmount] DEFAULT 0;
+
+IF COL_LENGTH(N'[Orders]', N'AmountDueAtDelivery') IS NULL
+    ALTER TABLE [Orders] ADD [AmountDueAtDelivery] decimal(18,2) NOT NULL CONSTRAINT [DF_Orders_AmountDueAtDelivery] DEFAULT 0;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryZoneId') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryZoneId] nvarchar(64) NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryZoneName') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryZoneName] nvarchar(160) NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryAreaId') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryAreaId] nvarchar(64) NULL;
+
+IF COL_LENGTH(N'[Orders]', N'DeliveryAreaName') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryAreaName] nvarchar(160) NULL;
 
 IF OBJECT_ID(N'[OrderMessages]', N'U') IS NULL
 BEGIN
@@ -354,6 +373,17 @@ END
         return order is null ? null : (await AddRatingsAsync([ToDto(order)])).Single();
     }
 
+    public async Task<CheckoutQuoteDto> QuoteAsync(CheckoutQuoteRequest request)
+    {
+        if (request.Items is null || request.Items.Count == 0)
+        {
+            throw new InvalidOperationException("Your cart is empty.");
+        }
+
+        var pricing = await CalculatePricingAsync(request.Items, request.PromoCode, request.DeliveryZoneId, request.DeliveryAreaId, request.PaymentMethod);
+        return pricing.Quote;
+    }
+
     public async Task<OrderDto> CreateAsync(CreateOrderRequest request, string? authenticatedEmail = null)
     {
         var now = DateTimeOffset.UtcNow;
@@ -386,6 +416,7 @@ END
             throw new UnauthorizedAccessException("Your account has been suspended. You cannot place orders.");
         }
 
+        ValidateShippingAddress(request.ShippingAddress);
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
 
         // Anti-abuse: If the customer has cancelled 3 or more orders in the last 30 days, Cash on Delivery is disabled.
@@ -400,38 +431,26 @@ END
             }
         }
 
-        var paymentStatus = paymentMethod == "wallet" ? "paid" : "pending";
+        var pricing = await CalculatePricingAsync(
+            request.Items,
+            request.PromoCode,
+            request.DeliveryZoneId,
+            request.DeliveryAreaId,
+            paymentMethod);
+        var quote = pricing.Quote;
+        var products = pricing.Products;
+        var requestedQuantities = pricing.RequestedQuantities;
+        var promoCode = NormalizePromoCode(request.PromoCode);
+        var paymentStatus = paymentMethod == "wallet"
+            ? (quote.AmountDueAtDelivery > 0 ? "partiallyPaid" : "paid")
+            : "pending";
         var paymentProvider = NormalizePaymentProvider(paymentMethod, request.PaymentProvider);
         var paymentReference = paymentMethod is "wallet" or "card" ? $"PAY-{Guid.NewGuid():N}"[..20].ToUpperInvariant() : string.Empty;
-        var shippingFee = CalculateShippingFee(request.ShippingAddress.City);
-        var estimatedDelivery = CalculateEstimatedDelivery(request.ShippingAddress.City, now);
-        var courierName = SelectCourier(request.ShippingAddress.City);
-        var promoCode = NormalizePromoCode(request.PromoCode);
-
-        var requestedQuantities = request.Items
-            .GroupBy(item => item.Id)
-            .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity));
-        var productIds = requestedQuantities.Keys.ToList();
-        var products = await db.Products
-            .Where(product => productIds.Contains(product.Id))
-            .ToDictionaryAsync(product => product.Id);
-
-        foreach (var item in request.Items)
-        {
-            if (item.Quantity <= 0 || !products.TryGetValue(item.Id, out var product))
-            {
-                throw new InvalidOperationException($"Product {item.Id} is unavailable.");
-            }
-
-            if (product.StockQuantity < requestedQuantities[item.Id])
-            {
-                throw new InvalidOperationException($"{product.Name} has only {product.StockQuantity} item(s) in stock.");
-            }
-        }
-
-        var subtotal = request.Items.Sum(item => Math.Round(products[item.Id].Price * item.Quantity, 2));
-        var discount = await CalculateDiscountAsync(promoCode, subtotal);
-        var total = Math.Round(subtotal - discount + shippingFee, 2);
+        var shippingCity = string.IsNullOrWhiteSpace(request.ShippingAddress.City)
+            ? quote.DeliveryZoneName
+            : request.ShippingAddress.City;
+        var estimatedDelivery = now.AddDays(quote.EstimatedDays);
+        var courierName = SelectCourier(shippingCity);
 
         if (paymentMethod == "wallet")
         {
@@ -448,29 +467,32 @@ END
                 throw new InvalidOperationException("Wallet was not found for this customer.");
             }
 
-            var amount = total;
-            if (amount <= 0 || wallet.Balance < amount)
+            var amount = quote.OnlinePaymentAmount;
+            if (amount > 0 && wallet.Balance < amount)
             {
                 throw new InvalidOperationException("Insufficient wallet balance.");
             }
 
-            wallet.Balance -= amount;
-            wallet.LifetimeDebit += amount;
-            wallet.UpdatedAt = now;
-            db.WalletTransactions.Add(new WalletTransactionEntity
+            if (amount > 0)
             {
-                Id = $"wtx_{Guid.NewGuid():N}",
-                WalletId = wallet.Id,
-                Amount = amount,
-                Type = "debit",
-                ActorRole = "customer",
-                Reason = $"Payment for order {id}",
-                ReferenceId = id,
-                CreatedAt = now
-            });
+                wallet.Balance -= amount;
+                wallet.LifetimeDebit += amount;
+                wallet.UpdatedAt = now;
+                db.WalletTransactions.Add(new WalletTransactionEntity
+                {
+                    Id = $"wtx_{Guid.NewGuid():N}",
+                    WalletId = wallet.Id,
+                    Amount = amount,
+                    Type = "debit",
+                    ActorRole = "customer",
+                    Reason = $"Payment for order {id} (products only; delivery collected on arrival)",
+                    ReferenceId = id,
+                    CreatedAt = now
+                });
+            }
         }
 
-        var (defaultLat, defaultLng) = GetCityCoordinates(request.ShippingAddress.City);
+        var (defaultLat, defaultLng) = GetCityCoordinates(shippingCity);
         var custLat = request.ShippingAddress.Latitude ?? defaultLat;
         var custLng = request.ShippingAddress.Longitude ?? defaultLng;
 
@@ -481,21 +503,27 @@ END
             UserEmail = normalizedEmail,
             Status = "Processing",
             Date = now,
-            Subtotal = subtotal,
-            Discount = discount,
-            ShippingFee = shippingFee,
-            Total = total,
+            Subtotal = quote.Subtotal,
+            Discount = quote.Discount,
+            ShippingFee = quote.ShippingFee,
+            Total = quote.Total,
+            OnlinePaymentAmount = quote.OnlinePaymentAmount,
+            AmountDueAtDelivery = quote.AmountDueAtDelivery,
             PaymentMethod = paymentMethod,
             PaymentStatus = paymentStatus,
             PaymentProvider = paymentProvider,
             PaymentReference = paymentReference,
+            DeliveryZoneId = quote.DeliveryZoneId,
+            DeliveryZoneName = quote.DeliveryZoneName,
+            DeliveryAreaId = quote.DeliveryAreaId,
+            DeliveryAreaName = quote.DeliveryAreaName,
             CourierName = courierName,
             TrackingNumber = string.Empty,
             EstimatedDelivery = estimatedDelivery,
             ShippingName = request.ShippingAddress.Name,
             ShippingPhone = request.ShippingAddress.Phone,
             ShippingStreet = request.ShippingAddress.Street,
-            ShippingCity = request.ShippingAddress.City,
+            ShippingCity = shippingCity,
             ShippingState = request.ShippingAddress.State,
             ShippingZip = request.ShippingAddress.Zip,
             ShippingCountry = request.ShippingAddress.Country,
@@ -552,12 +580,21 @@ END
             return null;
         }
 
-        if (order.PaymentStatus is "paid" or "failed")
+        if (order.PaymentStatus is "paid" or "refunded")
         {
             return ToDto(order);
         }
 
-        var normalized = paymentStatus.Trim().Equals("paid", StringComparison.OrdinalIgnoreCase) ? "paid" : "failed";
+        var success = paymentStatus.Trim().Equals("paid", StringComparison.OrdinalIgnoreCase)
+            || paymentStatus.Trim().Equals("partiallyPaid", StringComparison.OrdinalIgnoreCase);
+        var normalized = success
+            ? (order.AmountDueAtDelivery > 0 ? "partiallyPaid" : "paid")
+            : "failed";
+        if (order.PaymentStatus == "partiallyPaid" && !success)
+        {
+            return ToDto(order);
+        }
+
         order.PaymentStatus = normalized;
         if (!string.IsNullOrWhiteSpace(reference))
         {
@@ -599,6 +636,11 @@ END
         if (normalizedStatus == "Cancelled" && previousStatus != "Cancelled")
         {
             await RestoreStockAsync(order);
+        }
+
+        if (normalizedStatus == "Delivered")
+        {
+            MarkCollectedOnDelivery(order);
         }
 
         order.TrackingEvents.Add(CreateTrackingEvent(id, normalizedStatus, DateTimeOffset.UtcNow, note));
@@ -648,7 +690,7 @@ END
         var applyPenalty = recentCancellationsCount >= maxFreeCancellations;
         var penaltyAmount = applyPenalty ? cancellationPenaltyFee : 0m;
 
-        var refundBase = order.PaymentStatus == "paid" ? order.Total : 0;
+        var refundBase = GetRefundablePaidAmount(order);
         var netRefund = Math.Max(0, refundBase - penaltyAmount);
 
         var wallet = await db.UserWallets
@@ -677,7 +719,7 @@ END
         }
 
         // Process refund and penalty in wallet
-        if (order.PaymentStatus == "paid")
+        if (refundBase > 0)
         {
             if (wallet is not null)
             {
@@ -843,6 +885,10 @@ END
         }
 
         order.TrackingEvents.Add(CreateTrackingEvent(id, normalizedStatus, DateTimeOffset.UtcNow, note));
+        if (normalizedStatus == "Delivered")
+        {
+            MarkCollectedOnDelivery(order);
+        }
         await db.SaveChangesAsync();
 
         await trackingHub.Clients
@@ -1576,31 +1622,6 @@ END
         return (30.0444, 31.2357);
     }
 
-    private static decimal CalculateShippingFee(string city)
-    {
-        var normalized = city.Trim().ToLowerInvariant();
-        if (normalized.Contains("cairo") || normalized.Contains("giza") || normalized.Contains("القاهرة") || normalized.Contains("الجيزة"))
-        {
-            return 75;
-        }
-
-        if (normalized.Contains("alex") || normalized.Contains("alexandria") || normalized.Contains("اسكندرية") || normalized.Contains("الإسكندرية"))
-        {
-            return 95;
-        }
-
-        return 120;
-    }
-
-    private static DateTimeOffset CalculateEstimatedDelivery(string city, DateTimeOffset now)
-    {
-        var normalized = city.Trim().ToLowerInvariant();
-        var days = normalized.Contains("cairo") || normalized.Contains("giza") || normalized.Contains("القاهرة") || normalized.Contains("الجيزة")
-            ? 2
-            : 4;
-        return now.AddDays(days);
-    }
-
     private static string SelectCourier(string city)
     {
         var normalized = city.Trim().ToLowerInvariant();
@@ -1616,6 +1637,107 @@ END
             : promoCode.Trim().ToUpperInvariant();
     }
 
+    private static void ValidateShippingAddress(ShippingAddressDto address)
+    {
+        if (string.IsNullOrWhiteSpace(address.Name)
+            || string.IsNullOrWhiteSpace(address.Street)
+            || string.IsNullOrWhiteSpace(address.Phone))
+        {
+            throw new InvalidOperationException("Please complete the delivery name, phone, and street address.");
+        }
+    }
+
+    private static void MarkCollectedOnDelivery(OrderEntity order)
+    {
+        if (order.PaymentStatus is "failed" or "refunded" or "paid")
+        {
+            return;
+        }
+
+        if (order.AmountDueAtDelivery > 0 || order.PaymentStatus is "pending" or "partiallyPaid")
+        {
+            order.PaymentStatus = "paid";
+        }
+    }
+
+    private static decimal GetRefundablePaidAmount(OrderEntity order)
+    {
+        if (order.PaymentStatus is "paid" or "partiallyPaid")
+        {
+            return order.OnlinePaymentAmount > 0 ? order.OnlinePaymentAmount : order.Total;
+        }
+
+        return 0;
+    }
+
+    private static bool IsOnlinePaymentMethod(string paymentMethod) =>
+        paymentMethod is "card" or "wallet" or "instapay";
+
+    private async Task<OrderPricingResult> CalculatePricingAsync(
+        IReadOnlyList<OrderItemDto> items,
+        string? promoCode,
+        string? deliveryZoneId,
+        string? deliveryAreaId,
+        string? paymentMethod)
+    {
+        if (items is null || items.Count == 0)
+        {
+            throw new InvalidOperationException("Your cart is empty.");
+        }
+
+        var requestedQuantities = items
+            .GroupBy(item => item.Id)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity));
+        var productIds = requestedQuantities.Keys.ToList();
+        var products = await db.Products
+            .Where(product => productIds.Contains(product.Id))
+            .ToDictionaryAsync(product => product.Id);
+
+        foreach (var item in items)
+        {
+            if (item.Quantity <= 0 || !products.TryGetValue(item.Id, out var product))
+            {
+                throw new InvalidOperationException($"Product {item.Id} is unavailable.");
+            }
+
+            if (product.StockQuantity < requestedQuantities[item.Id])
+            {
+                throw new InvalidOperationException($"{product.Name} has only {product.StockQuantity} item(s) in stock.");
+            }
+        }
+
+        var delivery = await deliveryZones.ResolveAsync(deliveryZoneId ?? string.Empty, deliveryAreaId);
+        var method = NormalizePaymentMethod(paymentMethod);
+        var subtotal = items.Sum(item => Math.Round(products[item.Id].Price * item.Quantity, 2));
+        var discount = await CalculateDiscountAsync(NormalizePromoCode(promoCode), subtotal);
+        var shippingFee = delivery.Fee;
+        var total = Math.Round(subtotal - discount + shippingFee, 2);
+        var productsPayable = Math.Max(0, Math.Round(subtotal - discount, 2));
+        var onlinePaymentAmount = IsOnlinePaymentMethod(method) ? productsPayable : 0;
+        var amountDueAtDelivery = IsOnlinePaymentMethod(method) ? shippingFee : total;
+
+        var quote = new CheckoutQuoteDto(
+            subtotal,
+            discount,
+            shippingFee,
+            total,
+            method,
+            onlinePaymentAmount,
+            amountDueAtDelivery,
+            delivery.Zone.Id,
+            delivery.Zone.Name,
+            delivery.Area?.Id,
+            delivery.Area?.Name,
+            delivery.EstimatedDays);
+
+        return new OrderPricingResult(quote, products, requestedQuantities);
+    }
+
+    private sealed record OrderPricingResult(
+        CheckoutQuoteDto Quote,
+        Dictionary<int, ProductEntity> Products,
+        Dictionary<int, int> RequestedQuantities);
+
     private static OrderDto ToDto(OrderEntity order)
     {
         return new OrderDto(
@@ -1628,6 +1750,8 @@ END
             order.Discount,
             order.ShippingFee,
             order.Total,
+            order.OnlinePaymentAmount,
+            order.AmountDueAtDelivery,
             order.PaymentMethod,
             order.PaymentStatus,
             order.PaymentProvider,
@@ -1657,7 +1781,11 @@ END
             (order.TrackingEvents ?? [])
                 .OrderBy(item => item.CreatedAt)
                 .Select(item => new OrderTrackingEventDto(item.Id, item.Status, item.Title, item.Description, item.CreatedAt))
-                .ToList());
+                .ToList(),
+            order.DeliveryZoneId,
+            order.DeliveryZoneName,
+            order.DeliveryAreaId,
+            order.DeliveryAreaName);
     }
 
     private async Task<IReadOnlyList<OrderDto>> AddRatingsAsync(IReadOnlyList<OrderDto> orders)

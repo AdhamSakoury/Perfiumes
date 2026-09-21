@@ -424,14 +424,19 @@
                   <span class="text-[11px] font-semibold text-nubian-earth dark:text-nubian-sand">
                     {{ isAr ? 'طريقة الدفع:' : 'Payment:' }}
                   </span>
-                  @if (order.paymentStatus === 'paid' || order.paymentMethod === 'wallet') {
+                  @if (order.paymentStatus === 'paid') {
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/40">
-                      ✓ {{ isAr ? 'مدفوع إلكترونياً' : 'Prepaid' }}
+                      ✓ {{ isAr ? 'تم التحصيل بالكامل' : 'Collected in full' }}
+                    </span>
+                  } @else if ((order.onlinePaymentAmount || 0) > 0) {
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50 flex items-center gap-1">
+                      <i class="fas fa-hand-holding-dollar"></i>
+                      {{ isAr ? 'تحصيل التوصيل: ' : 'Collect delivery: ' }} {{ cashDue(order) | egp }}
                     </span>
                   } @else {
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50 flex items-center gap-1">
                       <i class="fas fa-hand-holding-dollar"></i>
-                      {{ isAr ? 'تحصيل كاش: ' : 'Collect Cash: ' }} {{ order.total | egp }}
+                      {{ isAr ? 'تحصيل كاش: ' : 'Collect Cash: ' }} {{ cashDue(order) | egp }}
                     </span>
                   }
                 </div>
