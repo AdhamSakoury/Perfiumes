@@ -62,7 +62,8 @@ public sealed record CheckoutQuoteDto(
 public sealed record DetectLocationRequest(
     double? Latitude,
     double? Longitude,
-    string? Address);
+    string? Address,
+    string? Language = null);
 
 public sealed record DetectedLocationDto(
     bool Success,

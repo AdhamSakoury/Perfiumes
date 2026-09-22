@@ -1,4 +1,4 @@
-<div class="audio-message-player" [class.is-playing]="playing">
+<div class="audio-player" [class.is-playing]="playing">
   <audio #audio [src]="src" preload="metadata"
     (loadedmetadata)="onLoadedMetadata(audio)"
     (timeupdate)="onTimeUpdate(audio)"
@@ -6,23 +6,48 @@
     (pause)="playing = false"
     (ended)="onEnded(audio)"></audio>
 
-  <button type="button" class="audio-play-button" (click)="togglePlayback(audio)"
-    [attr.aria-label]="playing ? 'Pause audio message' : 'Play audio message'">
+  <!-- Play / Pause Button -->
+  <button type="button" class="audio-btn" (click)="togglePlayback(audio)"
+    [attr.aria-label]="playing ? 'إيقاف مؤقت' : 'تشغيل'">
     <i class="fas" [class.fa-pause]="playing" [class.fa-play]="!playing"></i>
   </button>
 
-  <div class="audio-progress-group">
-    <div class="audio-time-row"><span>{{ formatTime(currentTime) }}</span><span>{{ formatTime(duration) }}</span></div>
-    <input type="range" class="audio-progress" min="0" [max]="duration || 0" step="0.1"
-      [value]="currentTime" (input)="seek(audio, $event)" aria-label="Audio progress">
-  </div>
+  <!-- Waveform & Meta -->
+  <div class="audio-content">
+    <!-- Interactive Waveform Bars -->
+    <div
+      class="audio-waveform"
+      role="slider"
+      [attr.aria-valuenow]="currentTime"
+      [attr.aria-valuemax]="duration"
+      (mousedown)="startSeeking(audio, $event)"
+      (mousemove)="onSeeking(audio, $event)"
+      (mouseup)="stopSeeking()"
+      (mouseleave)="stopSeeking()"
+      (touchstart)="startTouchSeeking(audio, $event)"
+      (touchmove)="onTouchSeeking(audio, $event)"
+      (touchend)="stopSeeking()"
+      title="انقر أو اسحب للتقديم والتأخير">
+      @for (bar of bars; track $index) {
+        <span
+          class="waveform-bar"
+          [class.played]="isBarPlayed($index)"
+          [class.current]="isCurrentBar($index)"
+          [style.height.%]="bar"></span>
+      }
+    </div>
 
-  <div class="audio-volume-control">
-    <button type="button" class="audio-volume-button" (click)="toggleMute(audio)"
-      [attr.aria-label]="muted ? 'Unmute audio message' : 'Mute audio message'">
-      <i class="fas" [class.fa-volume-xmark]="muted || volume === 0" [class.fa-volume-low]="!muted && volume > 0 && volume < 0.55" [class.fa-volume-high]="!muted && volume >= 0.55"></i>
-    </button>
-    <input type="range" class="audio-volume-slider" min="0" max="1" step="0.05" [value]="muted ? 0 : volume"
-      (input)="setVolume(audio, $event)" aria-label="Audio volume">
+    <!-- Duration / Elapsed & Speed -->
+    <div class="audio-info">
+      <span class="audio-time">
+        {{ formatTime(currentTime) }}
+        <span class="audio-sep">/</span>
+        {{ formatTime(duration) }}
+      </span>
+
+      <button type="button" class="audio-speed-btn" (click)="toggleSpeed(audio)" title="سرعة التشغيل">
+        {{ playbackRate }}x
+      </button>
+    </div>
   </div>
 </div>

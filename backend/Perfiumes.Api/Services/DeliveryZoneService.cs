@@ -206,7 +206,7 @@ END
         {
             try
             {
-                var resolved = await ReverseGeocodeAsync(lat.Value, lon.Value, cancellationToken);
+                var resolved = await ReverseGeocodeAsync(lat.Value, lon.Value, cancellationToken, request.Language);
                 formattedAddress = string.IsNullOrWhiteSpace(resolved.FormattedAddress) ? formattedAddress : resolved.FormattedAddress;
                 city = resolved.City;
                 state = resolved.State;
@@ -218,6 +218,34 @@ END
             catch
             {
                 // Fallback to coordinates-based region detection
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(request.Address) && !string.IsNullOrWhiteSpace(request.Language))
+        {
+            // No GPS coordinates â€” caller wants the address in a specific language
+            // (e.g. user saved an Arabic address, site switched to English).
+            // Forward-geocode the text to get coordinates, then reverse-geocode in the right language.
+            try
+            {
+                var coords = await ForwardGeocodeAsync(request.Address, cancellationToken);
+                if (coords.HasValue)
+                {
+                    lat = coords.Value.Lat;
+                    lon = coords.Value.Lon;
+                    var resolved = await ReverseGeocodeAsync(lat.Value, lon.Value, cancellationToken, request.Language);
+                    if (!string.IsNullOrWhiteSpace(resolved.FormattedAddress))
+                        formattedAddress = resolved.FormattedAddress;
+                    city = resolved.City;
+                    state = resolved.State;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // Keep original address text on failure
             }
         }
 
@@ -286,9 +314,10 @@ END
             .FirstOrDefault();
     }
 
-    private async Task<CachedReverseGeocode> ReverseGeocodeAsync(double latitude, double longitude, CancellationToken cancellationToken)
+    private async Task<CachedReverseGeocode> ReverseGeocodeAsync(double latitude, double longitude, CancellationToken cancellationToken, string? language = null)
     {
-        var cacheKey = $"{Math.Round(latitude, 4):F4}:{Math.Round(longitude, 4):F4}";
+        var lang = string.IsNullOrWhiteSpace(language) ? "en" : language.Trim().ToLowerInvariant();
+        var cacheKey = $"{Math.Round(latitude, 4):F4}:{Math.Round(longitude, 4):F4}:{lang}";
         if (ReverseGeocodeCache.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow)
         {
             return cached;
@@ -299,8 +328,12 @@ END
         client.DefaultRequestHeaders.UserAgent.ParseAdd("GnoubyPerfumes/1.0 (support@gnouby.com)");
         var lat = latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var lon = longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        // Use the site language for the reverse-geocoded display_name.
+        // Nominatim honours the accept-language header for both display_name and
+        // the individual address components it returns.
+        var acceptLang = lang == "ar" ? "ar,en" : "en,ar";
         var response = await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
-            $"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&accept-language=ar,en", cancellationToken);
+            $"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&accept-language={acceptLang}", cancellationToken);
 
         var formattedAddress = response.TryGetProperty("display_name", out var displayName) ? displayName.GetString() ?? string.Empty : string.Empty;
         var city = string.Empty;
@@ -311,8 +344,9 @@ END
             city = GetStringProp(address, "city") ?? GetStringProp(address, "town") ?? GetStringProp(address, "village")
                 ?? GetStringProp(address, "county") ?? GetStringProp(address, "suburb") ?? string.Empty;
             var road = GetStringProp(address, "road") ?? GetStringProp(address, "street") ?? string.Empty;
+            var separator = lang == "ar" ? "، " : ", ";
             var parts = new[] { road, city, state }.Where(part => !string.IsNullOrWhiteSpace(part));
-            formattedAddress = parts.Any() ? string.Join("، ", parts) : formattedAddress;
+            formattedAddress = parts.Any() ? string.Join(separator, parts) : formattedAddress;
         }
 
         var resolved = new CachedReverseGeocode(formattedAddress, city, state, DateTimeOffset.UtcNow.AddMinutes(3));
@@ -443,6 +477,37 @@ END
     }
 
     private sealed record CachedReverseGeocode(string FormattedAddress, string City, string State, DateTimeOffset ExpiresAt);
+    private sealed record CachedForwardGeocode(double Lat, double Lon, DateTimeOffset ExpiresAt);
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, CachedForwardGeocode>
+        ForwardGeocodeCache = new();
+
+    private async Task<(double Lat, double Lon)?> ForwardGeocodeAsync(string address, CancellationToken cancellationToken)
+    {
+        var cacheKey = address.Trim().ToLowerInvariant();
+        if (ForwardGeocodeCache.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow)
+            return (cached.Lat, cached.Lon);
+
+        var client = httpFactory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(4);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("GnoubyPerfumes/1.0 (support@gnouby.com)");
+        var encoded = Uri.EscapeDataString(address.Trim());
+        var response = await client.GetFromJsonAsync<System.Text.Json.JsonElement[]>(
+            $"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&limit=1&countrycodes=eg",
+            cancellationToken);
+
+        if (response is null || response.Length == 0) return null;
+        var first = response[0];
+        if (!first.TryGetProperty("lat", out var latEl) || !first.TryGetProperty("lon", out var lonEl)) return null;
+        if (!double.TryParse(latEl.GetString(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var lat)) return null;
+        if (!double.TryParse(lonEl.GetString(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var lon)) return null;
+
+        ForwardGeocodeCache[cacheKey] = new CachedForwardGeocode(lat, lon, DateTimeOffset.UtcNow.AddHours(6));
+        return (lat, lon);
+    }
+
 
     private static double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
     {

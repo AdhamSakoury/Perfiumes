@@ -14,10 +14,12 @@ import { environment } from '../../../../environments/environment';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize, switchMap, timeout } from 'rxjs/operators';
 
+import { AudioMessagePlayerComponent } from '@shared/components/audio-message-player/audio-message-player.component';
+
 @Component({
   selector: 'app-admin-messages',
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [DatePipe, FormsModule, RouterLink, TranslatePipe, AudioMessagePlayerComponent],
   templateUrl: './admin-messages.component.html',
   styleUrl: './admin-messages.component.css'
 })

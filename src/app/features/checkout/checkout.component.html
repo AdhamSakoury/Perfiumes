@@ -43,7 +43,10 @@
                   <i class="fas fa-location-dot"></i>
                   <textarea name="address" [(ngModel)]="form.address" (ngModelChange)="onAddressInput()"
                     [placeholder]="'enterAddressOrGps' | t"
-                    class="checkout-address-field" rows="2" required></textarea>
+                    class="checkout-address-field !border-0 !border-none !outline-none !shadow-none !ring-0 !bg-transparent !p-0"
+                    rows="2"
+                    dir="auto"
+                    required></textarea>
                 </div>
                 @if (addressDetecting) {
                   <p class="checkout-location-feedback"><i class="fas fa-spinner fa-spin"></i>{{ 'updatingDeliveryLocation' | t }}</p>

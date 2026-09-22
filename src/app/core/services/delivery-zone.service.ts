@@ -12,11 +12,12 @@ export class DeliveryZoneService {
     return this.http.get<DeliveryZone[]>(`${environment.apiBaseUrl}/api/delivery-zones`);
   }
 
-  detectLocation(latitude?: number, longitude?: number, address?: string): Observable<DetectedLocationResult> {
+  detectLocation(latitude?: number, longitude?: number, address?: string, language?: string): Observable<DetectedLocationResult> {
     return this.http.post<DetectedLocationResult>(`${environment.apiBaseUrl}/api/delivery-zones/detect-location`, {
       latitude,
       longitude,
-      address
+      address,
+      language
     });
   }
 

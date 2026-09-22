@@ -1,6 +1,6 @@
 import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, NgZone, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, effect, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CheckoutQuote, DeliveryZone, DetectedLocationResult, Order } from '@core/models/store.models';
@@ -13,6 +13,7 @@ import { PerfumeService } from '@core/services/perfume.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { translateAddress } from '@core/utils/address-translator.util';
 import { catchError, finalize, map, Subscription, switchMap, throwError, timeout, TimeoutError } from 'rxjs';
 
 @Component({
@@ -22,7 +23,7 @@ import { catchError, finalize, map, Subscription, switchMap, throwError, timeout
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.css'
 })
-export class CheckoutPageComponent implements OnDestroy {
+export class CheckoutPageComponent implements OnInit, OnDestroy {
   form = { name: '', email: '', phone: '', address: '', city: '', postal: '' };
   paymentMethod: 'cashOnDelivery' | 'wallet' | 'card' | 'instapay' = 'cashOnDelivery';
   selectedZoneId = '';
@@ -48,6 +49,7 @@ export class CheckoutPageComponent implements OnDestroy {
   private locationDetection?: Subscription;
   private locationRequestId = 0;
   private lastDetectedAddress = '';
+  private lastGpsCoords: { lat: number; lng: number } | null = null;
 
   constructor(
     readonly cart: CartService,
@@ -59,14 +61,33 @@ export class CheckoutPageComponent implements OnDestroy {
     private readonly toast: ToastService,
     private readonly router: Router,
     private readonly i18n: LocalizationService,
-    private readonly ngZone: NgZone
+    private readonly ngZone: NgZone,
+    private readonly cdr: ChangeDetectorRef
   ) {
+    // When the site language changes:
+    // 1) If we have GPS coordinates, silently re-run reverse-geocoding in the new language.
+    // 2) If user has a typed or saved address, dynamically localize it to the new language.
+    effect(() => {
+      const lang = this.i18n.language(); // reactive — tracks the signal
+      if (this.lastGpsCoords) {
+        const { lat, lng } = this.lastGpsCoords;
+        this.ngZone.run(() => this.detectZone(lat, lng, undefined, 'gps'));
+      } else if (this.form.address && this.form.address.trim()) {
+        this.ngZone.run(() => {
+          this.form.address = translateAddress(this.form.address, lang);
+          this.markViewDirty();
+        });
+      }
+    });
+  }
+
+  ngOnInit(): void {
     const user = this.auth.currentUser();
     if (user) {
       this.form.name = user.fullName;
       this.form.email = user.email;
       this.form.phone = user.phone || '';
-      this.form.address = user.address || '';
+      this.form.address = translateAddress(user.address || '', this.i18n.language());
     }
 
     this.loadZones();
@@ -76,9 +97,23 @@ export class CheckoutPageComponent implements OnDestroy {
     }
 
     this.payments.paymobAvailability().subscribe({
-      next: (status) => this.cardGatewayReady = status.configured,
-      error: () => this.cardGatewayReady = false
+      next: (status) => {
+        this.cardGatewayReady = status.configured;
+        this.markViewDirty();
+      },
+      error: () => {
+        this.cardGatewayReady = false;
+        this.markViewDirty();
+      }
     });
+  }
+
+  private markViewDirty(): void {
+    try {
+      this.cdr.detectChanges();
+    } catch {
+      this.cdr.markForCheck();
+    }
   }
 
   ngOnDestroy(): void {
@@ -126,10 +161,12 @@ export class CheckoutPageComponent implements OnDestroy {
       if (zone.areas.length === 1) this.selectedAreaId = zone.areas[0].id;
     }
     this.scheduleQuote();
+    this.markViewDirty();
   }
 
   onAreaChange(): void {
     this.scheduleQuote();
+    this.markViewDirty();
   }
 
   onAddressInput(): void {
@@ -139,6 +176,7 @@ export class CheckoutPageComponent implements OnDestroy {
       this.cancelLocationDetection();
       this.addressDetecting = false;
       this.lastDetectedAddress = '';
+      this.markViewDirty();
       return;
     }
 
@@ -146,23 +184,30 @@ export class CheckoutPageComponent implements OnDestroy {
     if (normalizedAddress === this.lastDetectedAddress) return;
 
     this.addressDebounceTimer = setTimeout(() => {
-      // Keep address matching responsive without geocoding on every keystroke.
-      this.detectZone(undefined, undefined, addr, 'address');
-    }, 450);
+      this.ngZone.run(() => {
+        this.detectZone(undefined, undefined, addr, 'address');
+        this.markViewDirty();
+      });
+    }, 350);
   }
 
   locateRealtime(): void {
     if (!navigator.geolocation) {
       this.gpsError = this.i18n.t('gpsNotSupported');
+      this.markViewDirty();
       return;
     }
     this.gpsLoading = true;
     this.gpsError = '';
+    this.markViewDirty();
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
-        this.detectZone(latitude, longitude);
+        this.ngZone.run(() => {
+          const { latitude, longitude } = pos.coords;
+          this.detectZone(latitude, longitude);
+          this.markViewDirty();
+        });
       },
       (positionError) => {
         this.ngZone.run(() => {
@@ -172,6 +217,7 @@ export class CheckoutPageComponent implements OnDestroy {
             : positionError.code === positionError.TIMEOUT
               ? this.i18n.t('gpsTimedOut')
               : this.i18n.t('gpsFetchError');
+          this.markViewDirty();
         });
       },
       // Reuse only a very recent GPS fix; this avoids a second hardware scan without
@@ -186,16 +232,20 @@ export class CheckoutPageComponent implements OnDestroy {
     this.gpsLoading = source === 'gps';
     this.addressDetecting = source === 'address';
     this.gpsError = '';
+    this.markViewDirty();
 
-    this.locationDetection = this.deliveryZones.detectLocation(latitude, longitude, address).pipe(
+    this.locationDetection = this.deliveryZones.detectLocation(latitude, longitude, address, this.i18n.language()).pipe(
       // The API includes reverse geocoding for GPS requests. Never leave checkout in
       // a loading state if that upstream service is slow or unavailable.
       timeout(4_500),
       finalize(() => {
-        if (requestId === this.locationRequestId) {
-          this.gpsLoading = false;
-          this.addressDetecting = false;
-        }
+        this.ngZone.run(() => {
+          if (requestId === this.locationRequestId) {
+            this.gpsLoading = false;
+            this.addressDetecting = false;
+            this.markViewDirty();
+          }
+        });
       })
     ).subscribe({
       next: (res) => {
@@ -205,23 +255,31 @@ export class CheckoutPageComponent implements OnDestroy {
             this.detectedZoneInfo = res;
             if (latitude !== undefined && longitude !== undefined && res.formattedAddress) {
               this.form.address = res.formattedAddress;
+              // Remember the coordinates so a language change can re-geocode silently.
+              this.lastGpsCoords = { lat: latitude, lng: longitude };
             }
             if (res.city) {
               this.form.city = res.city;
             }
             this.selectedZoneId = res.zoneId;
             this.selectedAreaId = res.areaId || '';
+            const matchingZone = this.zones.find(z => z.id === res.zoneId);
+            if (matchingZone && !this.selectedAreaId && matchingZone.areas.length === 1) {
+              this.selectedAreaId = matchingZone.areas[0].id;
+            }
             if (source === 'address' && address) this.lastDetectedAddress = this.normalizeAddress(address);
             this.scheduleQuote();
           } else {
             this.gpsError = this.i18n.t('gpsZoneNotFound');
           }
+          this.markViewDirty();
         });
       },
       error: () => {
         this.ngZone.run(() => {
           if (requestId !== this.locationRequestId) return;
           this.gpsError = this.i18n.t('gpsFetchError');
+          this.markViewDirty();
         });
       }
     });
@@ -390,42 +448,55 @@ export class CheckoutPageComponent implements OnDestroy {
   private loadZones(): void {
     this.deliveryZones.getActive().subscribe({
       next: (zones) => {
-        this.zones = zones;
-        if (!this.selectedZoneId && zones.length > 0) {
-          if (this.detectedZoneInfo?.zoneId) {
-            this.selectedZoneId = this.detectedZoneInfo.zoneId;
-          } else {
-            this.selectedZoneId = zones[0].id;
+        this.ngZone.run(() => {
+          this.zones = zones;
+          if (!this.selectedZoneId && zones.length > 0) {
+            if (this.detectedZoneInfo?.zoneId) {
+              this.selectedZoneId = this.detectedZoneInfo.zoneId;
+            } else {
+              this.selectedZoneId = zones[0].id;
+            }
           }
-        }
-        const zone = this.selectedZone;
-        if (zone) {
-          this.form.city = this.form.city || zone.cityRegion;
-          if (this.needsArea && !this.selectedAreaId && zone.areas.length === 1) {
-            this.selectedAreaId = zone.areas[0].id;
+          const zone = this.selectedZone;
+          if (zone) {
+            this.form.city = this.form.city || zone.cityRegion;
+            if (this.needsArea && !this.selectedAreaId && zone.areas.length === 1) {
+              this.selectedAreaId = zone.areas[0].id;
+            }
           }
-        }
-        this.scheduleQuote();
+          this.scheduleQuote();
+          this.markViewDirty();
+        });
       },
       error: () => {
-        this.quoteError = this.i18n.t('deliveryZonesLoadFailed');
+        this.ngZone.run(() => {
+          this.quoteError = this.i18n.t('deliveryZonesLoadFailed');
+          this.markViewDirty();
+        });
       }
     });
   }
 
   private scheduleQuote(): void {
     if (this.quoteTimer) clearTimeout(this.quoteTimer);
-    this.quoteTimer = setTimeout(() => this.refreshQuote(), 180);
+    this.quoteTimer = setTimeout(() => {
+      this.ngZone.run(() => {
+        this.refreshQuote();
+      });
+    }, 120);
   }
 
   private refreshQuote(): void {
     if (!this.auth.currentUser() || !this.cart.lines().length || !this.selectedZoneId) {
       this.quote = null;
+      this.markViewDirty();
       return;
     }
 
     this.quoting = true;
     this.quoteError = '';
+    this.markViewDirty();
+
     this.auth.ensureAccessToken().pipe(
       switchMap((token) => token
         ? this.deliveryZones.quote(
@@ -454,16 +525,22 @@ export class CheckoutPageComponent implements OnDestroy {
       })
     ).subscribe({
       next: (quote) => {
-        this.quoting = false;
-        this.quote = quote;
-        this.quoteError = '';
+        this.ngZone.run(() => {
+          this.quoting = false;
+          this.quote = quote;
+          this.quoteError = '';
+          this.markViewDirty();
+        });
       },
       error: (error: unknown) => {
-        this.quoting = false;
-        this.quote = null;
-        this.quoteError = error instanceof HttpErrorResponse
-          ? error.error?.message || this.i18n.t('deliveryQuoteFailed')
-          : this.i18n.t('deliveryQuoteFailed');
+        this.ngZone.run(() => {
+          this.quoting = false;
+          this.quote = null;
+          this.quoteError = error instanceof HttpErrorResponse
+            ? error.error?.message || this.i18n.t('deliveryQuoteFailed')
+            : this.i18n.t('deliveryQuoteFailed');
+          this.markViewDirty();
+        });
       }
     });
   }

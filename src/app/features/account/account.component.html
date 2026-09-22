@@ -59,7 +59,7 @@
                   </div>
                   <div class="ltr:text-left rtl:text-right overflow-hidden">
                     <p class="text-xs text-nubian-earth dark:text-nubian-sand/70 uppercase tracking-wider font-semibold">{{ 'address' | t }}</p>
-                    <p class="text-sm font-medium text-nubian-brown dark:text-nubian-sand truncate">{{ user.address || 'Not provided' }}</p>
+                    <p class="text-sm font-medium text-nubian-brown dark:text-nubian-sand truncate">{{ (user.address | localizeAddress) || ('notProvided' | t) }}</p>
                   </div>
                 </div>
               </div>
@@ -283,7 +283,7 @@
                   Address
                   <span class="relative block mt-1">
                     <i class="fas fa-map-marker-alt absolute left-3 top-3 text-nubian-gold"></i>
-                    <textarea name="address" [ngModel]="form.address || user.address" (ngModelChange)="form.address = $event" rows="3" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand resize-none transition-colors"></textarea>
+                    <textarea name="address" [ngModel]="form.address || (user.address | localizeAddress)" (ngModelChange)="form.address = $event" rows="3" dir="auto" class="w-full pl-10 pr-4 py-2.5 border-2 border-nubian-sand dark:border-nubian-dark rounded-lg focus:outline-none focus:border-nubian-gold bg-white dark:bg-nubian-dark text-nubian-dark dark:text-nubian-sand resize-none transition-colors"></textarea>
                   </span>
                 </label>
               </div>

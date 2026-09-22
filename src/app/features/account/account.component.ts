@@ -14,12 +14,14 @@ import { WalletService } from '@core/services/wallet.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { InvoiceService } from '@core/services/invoice.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { LocalizeAddressPipe } from '@shared/pipes/localize-address.pipe';
+import { translateAddress } from '@core/utils/address-translator.util';
 import { catchError, switchMap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-account-page',
   standalone: true,
-  imports: [EgpPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe],
+  imports: [EgpPipe, CurrencyPipe, DatePipe, FormsModule, RouterLink, TranslatePipe, LocalizeAddressPipe],
   templateUrl: './account.component.html',
   styleUrl: './account.component.css'
 })
@@ -77,7 +79,7 @@ export class AccountPageComponent implements OnInit {
       fullName: user.fullName,
       email: user.email,
       phone: user.phone || '',
-      address: user.address || ''
+      address: translateAddress(user.address || '', this.i18n.language())
     };
     this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
     this.orderHistoryOpen = false;

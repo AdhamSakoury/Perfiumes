@@ -292,7 +292,7 @@
                     <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i> View</span>
                   </div>
                 } @else if (message.messageType === 'audio' && message.mediaUrl) {
-                  <audio controls [src]="mediaUrl(message.mediaUrl)" class="sd-audio-player"></audio>
+                  <app-audio-message-player [src]="mediaUrl(message.mediaUrl)" />
                 } @else if (message.messageType === 'document' && message.mediaUrl) {
                   <a class="sd-media-doc" [href]="mediaUrl(message.mediaUrl)" target="_blank" rel="noopener noreferrer">
                     <i class="fas fa-file-lines"></i>{{ message.fileName || 'Download document' }}

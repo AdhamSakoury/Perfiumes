@@ -7,6 +7,7 @@ import { StorageService } from '@core/services/storage.service';
 import { ThemeService } from '@core/services/theme.service';
 import { ToastService } from '@core/services/toast.service';
 import { CustomDropdownComponent, CustomDropdownOption } from '@shared/components/custom-dropdown/custom-dropdown.component';
+import { translateAddress } from '@core/utils/address-translator.util';
 
 interface UserSettings {
   emailNotifications: boolean;
@@ -72,7 +73,7 @@ export class SettingsPageComponent {
       fullName: user.fullName,
       email: user.email,
       phone: user.phone || '',
-      address: user.address || ''
+      address: translateAddress(user.address || '', this.i18n.language())
     };
     this.settings = {
       ...this.storage.get<UserSettings>(this.settingsKey(), DEFAULT_SETTINGS),
@@ -167,6 +168,9 @@ export class SettingsPageComponent {
     const nextLanguage: AppLanguage = language === 'ar' ? 'ar' : 'en';
     this.settings.language = nextLanguage;
     this.i18n.setLanguage(nextLanguage);
+    if (this.profileForm.address && this.profileForm.address.trim()) {
+      this.profileForm.address = translateAddress(this.profileForm.address, nextLanguage);
+    }
     this.storage.set(this.settingsKey(), this.settings);
   }
 

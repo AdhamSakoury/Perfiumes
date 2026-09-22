@@ -19,10 +19,12 @@ import { finalize, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { CHAT_EMOJIS } from '@core/constants/emoji.constants';
 
+import { AudioMessagePlayerComponent } from '@shared/components/audio-message-player/audio-message-player.component';
+
 @Component({
   selector: 'app-support-messages',
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink],
+  imports: [DatePipe, FormsModule, RouterLink, AudioMessagePlayerComponent],
   templateUrl: './support-messages.component.html',
   styleUrl: './support-messages.component.css'
 })
