@@ -322,7 +322,9 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(t => t.Status).HasMaxLength(32);
             entity.Property(t => t.PaymentProvider).HasMaxLength(64);
             entity.Property(t => t.ProviderTransactionId).HasMaxLength(128);
-            entity.Property(t => t.ClientSecret).HasMaxLength(256);
+            entity.Property(t => t.ClientSecret).HasMaxLength(2000);
+            entity.Property(t => t.IntentionId).HasMaxLength(128);
+            entity.Property(t => t.IntentionOrderId).HasMaxLength(128);
         });
 
         modelBuilder.Entity<DeliveryZoneEntity>(entity =>

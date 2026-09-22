@@ -6,9 +6,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { UserWallet, WalletTransaction } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
-import { WalletService } from '@core/services/wallet.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { WalletService, paymobConfirmPayloadFromParams } from '@core/services/wallet.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, of, switchMap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-wallet-page',
@@ -33,13 +34,16 @@ export class WalletPageComponent implements OnInit {
     readonly auth: AuthService,
     private readonly walletService: WalletService,
     private readonly toast: ToastService,
+    private readonly i18n: LocalizationService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadWallet();
-    this.checkReturnFromPaymob();
+    if (this.isPaymobWalletReturn()) {
+      this.checkReturnFromPaymob();
+    }
   }
 
   refresh(): void {
@@ -57,7 +61,7 @@ export class WalletPageComponent implements OnInit {
   topUpWithPaymob(): void {
     const amount = Number(this.topUpAmount());
     if (!Number.isFinite(amount) || amount < 5) {
-      this.toast.show('Enter an amount of at least 5 EGP.', 'error');
+      this.toast.show(this.i18n.t('enterTopUpAmount'), 'error');
       return;
     }
 
@@ -67,51 +71,88 @@ export class WalletPageComponent implements OnInit {
       catchError((error) => this.retryInitiateAfterAuthError(error, amount))
     ).subscribe({
       next: (response) => {
-        this.toast.show('Connecting to Paymob secure checkout...');
+        sessionStorage.setItem('gnouby_pending_wallet_topup', JSON.stringify({
+          id: response.topUpId,
+          amount,
+          at: Date.now()
+        }));
+        this.toast.show(this.i18n.t('connectingPaymob'));
         window.location.href = response.checkoutUrl;
       },
       error: (err) => {
         this.topUpBusy.set(false);
-        const msg = err?.error?.message || err?.error?.detail || 'Could not reach Paymob checkout. Please try again.';
+        const msg = err?.error?.message || err?.error?.detail || this.i18n.t('paymobUnavailable');
         this.toast.show(msg, 'error');
       }
     });
   }
 
+  private isPaymobWalletReturn(): boolean {
+    const params = this.route.snapshot.queryParamMap;
+    const success = params.get('success');
+    const transactionId = params.get('id');
+    const topUpId = params.get('topUpId')
+      || params.get('merchant_order_id')
+      || params.get('special_reference')
+      || '';
+    return params.get('type') === 'wallet'
+      || topUpId.startsWith('wtop_')
+      || (!!transactionId && success !== null && !params.get('orderId'));
+  }
+
   private checkReturnFromPaymob(): void {
     const params = this.route.snapshot.queryParamMap;
-    const topUpId = params.get('topUpId');
-    const success = params.get('success');
-    const transactionId = params.get('id') || undefined;
+    const payload = paymobConfirmPayloadFromParams(params);
+    const storedTopUpId = this.readStoredTopUpId();
+    if (storedTopUpId && (!payload.topUpId || !payload.topUpId.startsWith('wtop_'))) {
+      payload.topUpId = storedTopUpId;
+    }
 
-    if (!topUpId) return;
-
-    if (success === 'false') {
-      this.toast.show('Card payment was cancelled or failed.', 'error');
+    if (payload.success === false) {
+      this.toast.show(this.i18n.t('cardPaymentCancelled'), 'error');
       this.clearQueryParams();
       return;
     }
 
-    this.loading.set(true);
     this.auth.ensureAccessToken().pipe(
-      switchMap((token) => token ? this.walletService.confirmPaymobTopUp(token, topUpId, transactionId) : throwError(() => new Error('No access token')))
+      switchMap((token) => token
+        ? this.walletService.confirmPaymobTopUpReturn(token, payload)
+        : throwError(() => new Error('No access token'))),
+      catchError((error) => this.retryConfirmAfterAuthError(error, payload))
     ).subscribe({
       next: (res) => {
-        this.loading.set(false);
         if (res.status === 'paid' && res.wallet) {
           this.wallet.set(res.wallet);
-          this.toast.show('Wallet topped up successfully via Visa!');
+          this.loading.set(false);
+          sessionStorage.removeItem('gnouby_pending_wallet_topup');
+          this.toast.show(this.i18n.t('walletTopUpVisaSuccess'));
+        } else if (res.status === 'failed') {
+          sessionStorage.removeItem('gnouby_pending_wallet_topup');
+          this.toast.show(this.i18n.t('cardPaymentCancelled'), 'error');
+          this.loadWallet();
         } else {
           this.loadWallet();
         }
         this.clearQueryParams();
       },
       error: () => {
-        this.loading.set(false);
         this.loadWallet();
         this.clearQueryParams();
       }
     });
+  }
+
+  private readStoredTopUpId(): string | undefined {
+    try {
+      const raw = sessionStorage.getItem('gnouby_pending_wallet_topup');
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw) as { id?: string; at?: number };
+      if (!parsed.id?.startsWith('wtop_')) return undefined;
+      if (parsed.at && Date.now() - parsed.at > 2 * 60 * 60 * 1000) return undefined;
+      return parsed.id;
+    } catch {
+      return undefined;
+    }
   }
 
   private clearQueryParams(): void {
@@ -137,7 +178,7 @@ export class WalletPageComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.loadError.set('Could not load your wallet right now. Try logging out and back in if this keeps happening.');
+        this.loadError.set(this.i18n.t('walletLoadFailed'));
       }
     });
   }
@@ -159,6 +200,16 @@ export class WalletPageComponent implements OnInit {
 
     return this.auth.ensureAccessToken(true).pipe(
       switchMap((token) => token ? this.walletService.initiatePaymobTopUp(token, amount) : throwError(() => error))
+    );
+  }
+
+  private retryConfirmAfterAuthError(error: unknown, payload: ReturnType<typeof paymobConfirmPayloadFromParams>) {
+    if (!(error instanceof HttpErrorResponse) || (error.status !== 401 && error.status !== 403)) {
+      return throwError(() => error);
+    }
+
+    return this.auth.ensureAccessToken(true).pipe(
+      switchMap((token) => token ? this.walletService.confirmPaymobTopUpReturn(token, payload) : throwError(() => error))
     );
   }
 }

@@ -20,11 +20,13 @@ import { environment } from '../../../environments/environment';
 import { CHAT_EMOJIS } from '@core/constants/emoji.constants';
 
 import { AudioMessagePlayerComponent } from '@shared/components/audio-message-player/audio-message-player.component';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
+import { LocalizationService } from '@core/services/localization.service';
 
 @Component({
   selector: 'app-support-messages',
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink, AudioMessagePlayerComponent],
+  imports: [DatePipe, FormsModule, RouterLink, AudioMessagePlayerComponent, TranslatePipe],
   templateUrl: './support-messages.component.html',
   styleUrl: './support-messages.component.css'
 })
@@ -95,6 +97,7 @@ export class SupportMessagesComponent implements OnDestroy {
   constructor(
     readonly auth: AuthService,
     readonly support: SupportMessageService,
+    private readonly i18n: LocalizationService,
     private readonly router: Router,
     private readonly toast: ToastService,
     private readonly cdr: ChangeDetectorRef
@@ -165,7 +168,7 @@ export class SupportMessagesComponent implements OnDestroy {
       finalize(() => { this.loading = false; })
     ).subscribe({
       next: () => { if (!this.conversations.length) this.composing = true; },
-      error: () => { this.toast.show('Could not load support messages.', 'error'); }
+      error: () => { this.toast.show(this.i18n.t('supportMessagesLoadFailed'), 'error'); }
     });
   }
 
@@ -311,7 +314,7 @@ export class SupportMessagesComponent implements OnDestroy {
       }
     } catch (err) {
       console.warn('getUserMedia failed:', err);
-      this.toast.show('Could not access camera. Please allow camera access in browser settings.', 'error');
+      this.toast.show(this.i18n.t('cameraAccessFailed'), 'error');
     }
   }
 
@@ -366,7 +369,7 @@ export class SupportMessagesComponent implements OnDestroy {
       this.cdr.markForCheck();
     } else if (this.composing) {
       this.pendingInitialMedia = { file, type: 'image' };
-      this.toast.show('Photo attached. Send your message to include it.', 'success');
+      this.toast.show(this.i18n.t('photoAttached'), 'success');
       this.cdr.markForCheck();
     }
   }
@@ -403,7 +406,7 @@ export class SupportMessagesComponent implements OnDestroy {
     this.clearRecordingTimer();
     this.recording.set(false);
     this.clearPendingVoice();
-    this.toast.show('Voice recording cancelled.');
+    this.toast.show(this.i18n.t('voiceRecordingCancelled'));
     this.cdr.markForCheck();
   }
 
@@ -451,7 +454,7 @@ export class SupportMessagesComponent implements OnDestroy {
 
   private async beginRecording(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      this.toast.show('Voice recording is not supported by this browser.', 'error');
+      this.toast.show(this.i18n.t('voiceRecordingUnsupported'), 'error');
       return;
     }
     try {
@@ -488,7 +491,7 @@ export class SupportMessagesComponent implements OnDestroy {
       this.startRecordingTimer();
       this.cdr.markForCheck();
     } catch {
-      this.toast.show('Microphone permission is required.', 'error');
+      this.toast.show(this.i18n.t('microphonePermissionRequired'), 'error');
       this.cdr.markForCheck();
     }
   }
@@ -530,7 +533,7 @@ export class SupportMessagesComponent implements OnDestroy {
       error: () => {
         this.support.upsertConversation(selected);
         this.replyText = body;
-        this.toast.show('Could not send message.', 'error');
+        this.toast.show(this.i18n.t('supportMessageSendFailed'), 'error');
       }
     });
   }
@@ -570,7 +573,7 @@ export class SupportMessagesComponent implements OnDestroy {
         this.support.removeConversation(tempConversation.id);
         this.composing  = true;
         this.newMessage = body;
-        this.toast.show('Could not contact the admin.', 'error');
+        this.toast.show(this.i18n.t('supportContactFailed'), 'error');
         this.cdr.markForCheck();
       }
     });
@@ -589,7 +592,7 @@ export class SupportMessagesComponent implements OnDestroy {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.toast.show(err?.error?.message || 'Could not send file.', 'error');
+        this.toast.show(err?.error?.message || this.i18n.t('supportFileSendFailed'), 'error');
         this.cdr.markForCheck();
       }
     });

@@ -2,50 +2,50 @@
   @if (auth.currentUser(); as user) {
     <div class="wallet-hero">
       <div>
-        <span class="wallet-kicker">Wallet</span>
+        <span class="wallet-kicker">{{ 'wallet' | t }}</span>
         <h1>{{ user.fullName }}</h1>
-        <p>Track your balance, credit, debit, and latest wallet activity.</p>
+        <p>{{ 'walletOverview' | t }}</p>
       </div>
       <button type="button" (click)="refresh()" [disabled]="loading()">
         <i class="fas fa-rotate" [class.is-spinning]="loading()"></i>
-        <span>{{ loading() ? 'Loading...' : 'Refresh' }}</span>
+        <span>{{ loading() ? ('loading' | t) : ('refresh' | t) }}</span>
       </button>
     </div>
 
     @if (loadError()) {
       <div class="wallet-empty">
         <i class="fas fa-wallet"></i>
-        <h2>Wallet unavailable</h2>
+        <h2>{{ 'walletUnavailable' | t }}</h2>
         <p>{{ loadError() }}</p>
-        <button type="button" (click)="refresh()">Try again</button>
+        <button type="button" (click)="refresh()">{{ 'tryAgain' | t }}</button>
       </div>
     } @else if (loading() && !wallet()) {
       <div class="wallet-empty">
         <i class="fas fa-circle-notch fa-spin"></i>
-        <h2>Loading wallet...</h2>
-        <p>Fetching the latest balance from your account.</p>
+        <h2>{{ 'loading' | t }}</h2>
+        <p>{{ 'latestWalletBalance' | t }}</p>
       </div>
     } @else if (wallet(); as currentWallet) {
       <div class="wallet-summary-grid">
         <article class="wallet-balance-card metric-balance">
           <span class="wallet-card-icon"><i class="fas fa-wallet"></i></span>
-          <p>Available balance</p>
+          <p>{{ 'availableBalance' | t }}</p>
           <strong>{{ currentWallet.balance | currency:currentWallet.currency:'symbol-narrow' }}</strong>
-          <small>Updated {{ currentWallet.updatedAt | date:'medium' }}</small>
+          <small>{{ 'updatedAt' | t:{ date: (currentWallet.updatedAt | date:'medium') ?? '' } }}</small>
         </article>
         <article class="metric-credit">
           <span class="wallet-card-icon credit"><i class="fas fa-arrow-up"></i></span>
-          <p>Lifetime credit</p>
+          <p>{{ 'lifetimeCredit' | t }}</p>
           <strong>{{ currentWallet.lifetimeCredit | currency:currentWallet.currency:'symbol-narrow' }}</strong>
         </article>
         <article class="metric-debit">
           <span class="wallet-card-icon debit"><i class="fas fa-arrow-down"></i></span>
-          <p>Lifetime debit</p>
+          <p>{{ 'lifetimeDebit' | t }}</p>
           <strong>{{ currentWallet.lifetimeDebit | currency:currentWallet.currency:'symbol-narrow' }}</strong>
         </article>
         <article class="metric-count">
           <span class="wallet-card-icon"><i class="fas fa-receipt"></i></span>
-          <p>Transactions</p>
+          <p>{{ 'transactions' | t }}</p>
           <strong>{{ transactions().length }}</strong>
         </article>
       </div>
@@ -54,8 +54,8 @@
         <section class="wallet-panel">
           <div class="wallet-panel-title">
             <div>
-              <p>Activity</p>
-              <h2>Transaction history</h2>
+              <p>{{ 'activity' | t }}</p>
+              <h2>{{ 'transactionHistory' | t }}</h2>
             </div>
             <span>{{ currentWallet.currency }}</span>
           </div>
@@ -67,7 +67,7 @@
                   <i class="fas" [class]="transactionIcon(transaction)"></i>
                 </span>
                 <div>
-                  <strong>{{ transaction.reason || 'Wallet update' }}</strong>
+                  <strong>{{ transaction.reason || ('walletUpdate' | t) }}</strong>
                   <small>{{ transaction.createdAt | date:'medium' }}</small>
                   @if (transaction.referenceId) {
                     <em>{{ transaction.referenceId }}</em>
@@ -80,8 +80,8 @@
             } @empty {
               <div class="wallet-empty compact">
                 <i class="fas fa-receipt"></i>
-                <h2>No wallet activity yet</h2>
-                <p>Your credit and debit records will appear here.</p>
+                <h2>{{ 'noWalletActivity' | t }}</h2>
+                <p>{{ 'walletActivityHint' | t }}</p>
               </div>
             }
           </div>
@@ -90,10 +90,10 @@
         <aside class="wallet-panel wallet-help-panel">
           <div class="wallet-panel-title">
             <div>
-              <p>Paymob Gateway</p>
+              <p>{{ 'paymobGateway' | t }}</p>
               <h2>{{ 'topUpWallet' | t }}</h2>
             </div>
-            <span class="paymob-badge"><i class="fas fa-shield-alt"></i> Paymob</span>
+            <span class="paymob-badge"><i class="fas fa-shield-alt"></i> {{ 'securePayment' | t }}</span>
           </div>
 
           <div class="wallet-paymob-card">
@@ -147,27 +147,27 @@
 
           <div class="wallet-panel-title wallet-details-title">
             <div>
-              <p>Account</p>
-              <h2>Wallet details</h2>
+              <p>{{ 'account' | t }}</p>
+              <h2>{{ 'walletDetails' | t }}</h2>
             </div>
           </div>
           <dl>
             <div>
-              <dt>Wallet ID</dt>
+              <dt>{{ 'walletId' | t }}</dt>
               <dd>{{ currentWallet.id }}</dd>
             </div>
             <div>
-              <dt>Currency</dt>
+              <dt>{{ 'currency' | t }}</dt>
               <dd>{{ currentWallet.currency }}</dd>
             </div>
             <div>
-              <dt>Current user</dt>
+              <dt>{{ 'currentUser' | t }}</dt>
               <dd>{{ user.email }}</dd>
             </div>
           </dl>
           <a routerLink="/orders">
             <i class="fas fa-box"></i>
-            <span>View orders</span>
+            <span>{{ 'viewOrders' | t }}</span>
           </a>
         </aside>
       </div>
@@ -175,9 +175,9 @@
   } @else {
     <div class="wallet-empty">
       <i class="fas fa-user-lock"></i>
-      <h1>Login required</h1>
-      <p>Please login to view your wallet.</p>
-      <a routerLink="/login">Go to Login</a>
+      <h1>{{ 'loginRequired' | t }}</h1>
+      <p>{{ 'loginToViewWallet' | t }}</p>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
     </div>
   }
 </section>

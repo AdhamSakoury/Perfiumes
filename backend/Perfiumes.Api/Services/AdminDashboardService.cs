@@ -101,6 +101,13 @@ BEGIN
     CREATE INDEX [IX_WalletTopUpRequests_UserEmail] ON [WalletTopUpRequests] ([UserEmail]);
     CREATE INDEX [IX_WalletTopUpRequests_Status] ON [WalletTopUpRequests] ([Status]);
 END
+
+IF COL_LENGTH(N'[WalletTopUpRequests]', N'IntentionId') IS NULL
+    ALTER TABLE [WalletTopUpRequests] ADD [IntentionId] nvarchar(128) NULL;
+IF COL_LENGTH(N'[WalletTopUpRequests]', N'IntentionOrderId') IS NULL
+    ALTER TABLE [WalletTopUpRequests] ADD [IntentionOrderId] nvarchar(128) NULL;
+IF COL_LENGTH(N'[WalletTopUpRequests]', N'ClientSecret') IS NOT NULL
+    ALTER TABLE [WalletTopUpRequests] ALTER COLUMN [ClientSecret] nvarchar(2000) NULL;
 """);
 
         await EnsureWalletsForUsersAsync();
@@ -194,14 +201,26 @@ END
 
     public async Task<UserWalletDto?> GetWalletForUserAsync(string userEmail)
     {
-        await EnsureWalletsForUsersAsync();
+        await EnsureWalletForUserAsync(userEmail);
         var normalizedEmail = userEmail.Trim().ToLowerInvariant();
         var wallet = await db.UserWallets
             .AsNoTracking()
-            .Include(item => item.Transactions)
             .FirstOrDefaultAsync(item => item.UserEmail == normalizedEmail);
 
-        return wallet is null ? null : ToUserWalletDto(wallet);
+        if (wallet is null)
+        {
+            return null;
+        }
+
+        var transactions = await db.WalletTransactions
+            .AsNoTracking()
+            .Where(item => item.WalletId == wallet.Id)
+            .OrderByDescending(item => item.CreatedAt)
+            .Take(20)
+            .ToListAsync();
+
+        wallet.Transactions = transactions;
+        return ToUserWalletDto(wallet);
     }
 
     public async Task<UserWalletDto?> TopUpWalletForUserAsync(string userEmail, TopUpWalletRequest request)
@@ -248,7 +267,7 @@ END
     {
         if (amount <= 0) return null;
 
-        await EnsureWalletsForUsersAsync();
+        await EnsureWalletForUserAsync(userEmail);
         var normalizedEmail = userEmail.Trim().ToLowerInvariant();
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
         if (user is null) return null;
@@ -275,6 +294,54 @@ END
         return await db.WalletTopUpRequests.FirstOrDefaultAsync(t => t.Id == id);
     }
 
+    public async Task<WalletTopUpEntity?> FindTopUpByPaymobRefsAsync(
+        string? topUpId,
+        string? merchantOrderId,
+        string? paymobOrderId,
+        string? transactionId)
+    {
+        var refs = new[] { topUpId, merchantOrderId, paymobOrderId, transactionId }
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (refs.Length == 0)
+        {
+            return null;
+        }
+
+        foreach (var reference in refs)
+        {
+            var match = await db.WalletTopUpRequests.FirstOrDefaultAsync(item =>
+                item.Id == reference
+                || item.IntentionOrderId == reference
+                || item.IntentionId == reference
+                || item.ProviderTransactionId == reference);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    public async Task<WalletTopUpEntity?> FindPendingTopUpForUserAsync(string userEmail, decimal? amount = null)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        var query = db.WalletTopUpRequests.Where(t =>
+            t.UserEmail == normalizedEmail && t.Status == "pending");
+
+        if (amount is > 0)
+        {
+            var rounded = Math.Round(amount.Value, 2);
+            query = query.Where(t => t.Amount == rounded);
+        }
+
+        return await query.OrderByDescending(t => t.CreatedAt).FirstOrDefaultAsync();
+    }
+
     public async Task<(WalletTopUpEntity TopUp, UserWalletDto? Wallet)?> CompleteTopUpAsync(string id, string? transactionId)
     {
         var topUp = await db.WalletTopUpRequests.FirstOrDefaultAsync(t => t.Id == id);
@@ -283,6 +350,14 @@ END
         var wallet = await db.UserWallets
             .Include(w => w.Transactions)
             .FirstOrDefaultAsync(w => w.UserEmail == topUp.UserEmail);
+
+        if (wallet is null)
+        {
+            await EnsureWalletForUserAsync(topUp.UserEmail);
+            wallet = await db.UserWallets
+                .Include(w => w.Transactions)
+                .FirstOrDefaultAsync(w => w.UserEmail == topUp.UserEmail);
+        }
 
         if (wallet is null) return null;
 
@@ -373,6 +448,36 @@ END
 
         await db.SaveChangesAsync();
         return new AdminWalletDto(wallet.Id, wallet.UserId, wallet.User?.FullName ?? wallet.UserEmail, wallet.UserEmail, wallet.Balance, wallet.LifetimeCredit, wallet.LifetimeDebit, wallet.Currency, wallet.UpdatedAt);
+    }
+
+    private async Task EnsureWalletForUserAsync(string userEmail)
+    {
+        var normalizedEmail = userEmail.Trim().ToLowerInvariant();
+        if (await db.UserWallets.AnyAsync(wallet => wallet.UserEmail == normalizedEmail))
+        {
+            return;
+        }
+
+        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(item => item.Email == normalizedEmail);
+        if (user is null)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        db.UserWallets.Add(new UserWalletEntity
+        {
+            Id = $"wallet_{Guid.NewGuid():N}",
+            UserId = user.Id,
+            UserEmail = user.Email,
+            Balance = 0,
+            LifetimeCredit = 0,
+            LifetimeDebit = 0,
+            Currency = "EGP",
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
     }
 
     private async Task EnsureWalletsForUsersAsync()

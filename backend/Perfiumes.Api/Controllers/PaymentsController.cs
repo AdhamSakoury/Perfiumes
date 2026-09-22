@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Perfiumes.Api.Data;
+using Perfiumes.Api.Data.Entities;
 using Perfiumes.Api.Hubs;
 using Perfiumes.Api.Models;
 using Perfiumes.Api.Services;
@@ -108,6 +109,8 @@ public sealed class PaymentsController(
                 cancellationToken);
 
             topUp.ClientSecret = checkout.ClientSecret;
+            topUp.IntentionId = checkout.IntentionId;
+            topUp.IntentionOrderId = checkout.IntentionOrderId;
             await db.SaveChangesAsync(cancellationToken);
 
             return Results.Ok(new WalletTopUpResponse(
@@ -161,6 +164,17 @@ public sealed class PaymentsController(
             topUp.CompletedAt));
     }
 
+    [HttpPost("wallet-top-up/confirm-return")]
+    public async Task<IResult> ConfirmWalletTopUpReturn([FromBody] WalletTopUpConfirmRequest? request, CancellationToken cancellationToken)
+    {
+        var principal = auth.ValidateRequest(HttpContext);
+        if (principal is null)
+            return Results.Unauthorized();
+
+        var result = await ApplyWalletTopUpConfirmationAsync(principal.Email, request, cancellationToken);
+        return Results.Ok(result);
+    }
+
     [HttpPost("wallet-top-up/{id}/confirm")]
     public async Task<IResult> ConfirmWalletTopUp(string id, [FromBody] WalletTopUpConfirmRequest? request, CancellationToken cancellationToken)
     {
@@ -168,32 +182,22 @@ public sealed class PaymentsController(
         if (principal is null)
             return Results.Unauthorized();
 
-        var topUp = await dashboard.GetTopUpRequestByIdAsync(id);
-        if (topUp is null)
+        var result = await ApplyWalletTopUpConfirmationAsync(
+            principal.Email,
+            new WalletTopUpConfirmRequest(
+                request?.TransactionId,
+                id,
+                request?.Success,
+                request?.AmountCents,
+                request?.MerchantOrderId,
+                request?.PaymobOrderId,
+                request?.Pending),
+            cancellationToken);
+
+        if (result.Kind == "unknown")
             return Results.NotFound();
 
-        if (!principal.Email.Equals(topUp.UserEmail, StringComparison.OrdinalIgnoreCase))
-            return Results.Forbid();
-
-        if (topUp.Status == "paid")
-        {
-            var currentWallet = await dashboard.GetWalletForUserAsync(topUp.UserEmail);
-            return Results.Ok(new { status = "paid", wallet = currentWallet });
-        }
-
-        var transactionId = request?.TransactionId;
-        if (!string.IsNullOrWhiteSpace(transactionId))
-        {
-            var verification = await paymob.VerifyTransactionAsync(transactionId, cancellationToken);
-            if (verification.Success && (verification.SpecialReference == topUp.Id || verification.SpecialReference == null))
-            {
-                var completed = await dashboard.CompleteTopUpAsync(topUp.Id, transactionId);
-                await PublishWalletTopUpNotificationAsync(topUp.UserEmail, topUp.Amount, topUp.Currency);
-                return Results.Ok(new { status = "paid", wallet = completed?.Wallet });
-            }
-        }
-
-        return Results.Ok(new { status = topUp.Status });
+        return Results.Ok(result);
     }
 
     [HttpPost("webhook")]
@@ -228,17 +232,37 @@ public sealed class PaymentsController(
         var existingOrder = await orders.GetByIdAsync(orderId);
         if (existingOrder is null)
         {
-            var walletTopUp = await dashboard.GetTopUpRequestByIdAsync(orderId);
+            var walletTopUp = await dashboard.GetTopUpRequestByIdAsync(orderId)
+                ?? await dashboard.FindTopUpByPaymobRefsAsync(orderId, orderId, orderId, transactionId);
             if (walletTopUp is not null)
             {
                 if (success)
                 {
-                    var result = await dashboard.CompleteTopUpAsync(orderId, transactionId);
-                    await PublishWalletTopUpNotificationAsync(walletTopUp.UserEmail, walletTopUp.Amount, walletTopUp.Currency);
+                    if (amountCents is > 0)
+                    {
+                        var expectedCents = (long)Math.Round(walletTopUp.Amount * 100m, MidpointRounding.AwayFromZero);
+                        if (amountCents != expectedCents)
+                        {
+                            logger.LogWarning(
+                                "Paymob amount mismatch for wallet top-up {TopUpId}. Expected {Expected} cents, received {Received}.",
+                                walletTopUp.Id, expectedCents, amountCents);
+                            success = false;
+                        }
+                    }
+
+                    if (success)
+                    {
+                        await dashboard.CompleteTopUpAsync(walletTopUp.Id, transactionId);
+                        await PublishWalletTopUpNotificationAsync(walletTopUp.UserEmail, walletTopUp.Amount, walletTopUp.Currency);
+                    }
+                    else
+                    {
+                        await dashboard.FailTopUpAsync(walletTopUp.Id, transactionId);
+                    }
                 }
                 else
                 {
-                    await dashboard.FailTopUpAsync(orderId, transactionId);
+                    await dashboard.FailTopUpAsync(walletTopUp.Id, transactionId);
                 }
                 return Results.Ok(new { received = true, type = "wallet" });
             }
@@ -263,6 +287,122 @@ public sealed class PaymentsController(
 
         var order = await orders.UpdatePaymentStatusAsync(orderId, success ? "paid" : "failed", transactionId);
         return order is null ? Results.NotFound() : Results.Ok(new { received = true });
+    }
+
+    private async Task<WalletTopUpConfirmResult> ApplyWalletTopUpConfirmationAsync(
+        string userEmail,
+        WalletTopUpConfirmRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var topUpId = request?.TopUpId;
+        var transactionId = request?.TransactionId;
+        var successHint = request?.Success;
+        var amountCents = request?.AmountCents;
+        var merchantOrderId = request?.MerchantOrderId;
+        var paymobOrderId = request?.PaymobOrderId;
+
+        PaymobTransactionVerificationResult? verification = null;
+        var shouldInquire = successHint != true && !string.IsNullOrWhiteSpace(transactionId);
+        if (shouldInquire)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
+            try
+            {
+                verification = await paymob.VerifyTransactionAsync(transactionId!, timeout.Token);
+                if (!string.IsNullOrWhiteSpace(verification.Error))
+                {
+                    logger.LogWarning(
+                        "Paymob transaction inquiry failed for {TransactionId}: {Error}",
+                        transactionId,
+                        verification.Error);
+                }
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning("Paymob transaction inquiry timed out for {TransactionId}", transactionId);
+            }
+        }
+
+        WalletTopUpEntity? topUp = null;
+        if (!string.IsNullOrWhiteSpace(verification?.SpecialReference))
+        {
+            topUp = await dashboard.GetTopUpRequestByIdAsync(verification.SpecialReference);
+        }
+
+        topUp ??= await dashboard.FindTopUpByPaymobRefsAsync(topUpId, merchantOrderId, paymobOrderId, transactionId);
+
+        var hintedAmount = amountCents is > 0 ? amountCents.Value / 100m : (decimal?)null;
+        if (topUp is null && verification is { Success: true, Amount: > 0 })
+        {
+            topUp = await dashboard.FindPendingTopUpForUserAsync(userEmail, verification.Amount);
+        }
+
+        if (topUp is null && successHint == true && hintedAmount is > 0)
+        {
+            topUp = await dashboard.FindPendingTopUpForUserAsync(userEmail, hintedAmount);
+        }
+
+        if (topUp is null && (successHint == true || !string.IsNullOrWhiteSpace(transactionId)))
+        {
+            topUp = await dashboard.FindPendingTopUpForUserAsync(userEmail);
+        }
+
+        if (topUp is null)
+        {
+            logger.LogWarning("Wallet top-up confirmation could not match a request for {Email}. TopUpId={TopUpId} Txn={Txn}", userEmail, topUpId, transactionId);
+            return new WalletTopUpConfirmResult("pending", "unknown", null);
+        }
+
+        if (!userEmail.Equals(topUp.UserEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return new WalletTopUpConfirmResult("pending", "unknown", null);
+        }
+
+        if (topUp.Status == "paid")
+        {
+            var currentWallet = await dashboard.GetWalletForUserAsync(topUp.UserEmail);
+            return new WalletTopUpConfirmResult("paid", "wallet", currentWallet);
+        }
+
+        if (successHint == false)
+        {
+            await dashboard.FailTopUpAsync(topUp.Id, transactionId);
+            return new WalletTopUpConfirmResult("failed", "wallet", null);
+        }
+
+        var verifiedPaid = verification is { Success: true }
+            && (verification.Amount <= 0 || AmountsMatch(topUp.Amount, verification.Amount));
+        var redirectPaid = successHint == true
+            && request?.Pending != true
+            && (hintedAmount is null || AmountsMatch(topUp.Amount, hintedAmount.Value));
+
+        if (verifiedPaid || redirectPaid)
+        {
+            var completed = await dashboard.CompleteTopUpAsync(topUp.Id, transactionId);
+            await PublishWalletTopUpNotificationAsync(topUp.UserEmail, topUp.Amount, topUp.Currency);
+            return new WalletTopUpConfirmResult("paid", "wallet", completed?.Wallet);
+        }
+
+        if (verification is { Pending: true } || (verification is { Success: false, Error: not null }))
+        {
+            return new WalletTopUpConfirmResult(topUp.Status, "wallet", null);
+        }
+
+        if (verification is { Success: false, Pending: false, Error: null })
+        {
+            await dashboard.FailTopUpAsync(topUp.Id, transactionId);
+            return new WalletTopUpConfirmResult("failed", "wallet", null);
+        }
+
+        return new WalletTopUpConfirmResult(topUp.Status, "wallet", null);
+    }
+
+    private static bool AmountsMatch(decimal expected, decimal actual)
+    {
+        var expectedCents = (long)Math.Round(expected * 100m, MidpointRounding.AwayFromZero);
+        var actualCents = (long)Math.Round(actual * 100m, MidpointRounding.AwayFromZero);
+        return expectedCents == actualCents;
     }
 
     private async Task PublishWalletTopUpNotificationAsync(string userEmail, decimal amount, string currency)

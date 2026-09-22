@@ -104,9 +104,10 @@ html.dark .nubian-pattern {
 
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .admin-sidebar-mode > main {
     padding-inline-start: 0;
+    padding-top: 3.1rem;
   }
 }
 
@@ -188,6 +189,33 @@ input:focus,
 select:focus,
 textarea:focus {
   box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.14);
+}
+
+/* Keep responsive layouts within the viewport when long dynamic content is shown. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  /* 16px prevents Safari from zooming the page when a form field receives focus. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .page-shell {
+    min-width: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

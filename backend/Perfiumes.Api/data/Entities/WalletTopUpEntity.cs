@@ -11,6 +11,8 @@ public sealed class WalletTopUpEntity
     public string PaymentProvider { get; set; } = "Paymob";
     public string? ProviderTransactionId { get; set; }
     public string? ClientSecret { get; set; }
+    public string? IntentionId { get; set; }
+    public string? IntentionOrderId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
 }

@@ -2,30 +2,30 @@
   @if (!auth.currentUser()) {
     <div class="sd-state-card">
       <i class="fas fa-lock"></i>
-      <h2>Login required</h2>
-      <p>Please login to access live support.</p>
-      <a routerLink="/login">Go to login</a>
+      <h2>{{ 'loginRequired' | t }}</h2>
+      <p>{{ 'loginFirstSupportMessages' | t }}</p>
+      <a routerLink="/login">{{ 'goToLogin' | t }}</a>
     </div>
   } @else {
 
     <!-- Page Header -->
     <div class="sd-topbar">
       <div class="sd-topbar-left">
-        <span class="sd-label">Live Support</span>
-        <h1 class="sd-heading">Support Desk</h1>
+        <span class="sd-label">{{ 'liveSupport' | t }}</span>
+        <h1 class="sd-heading">{{ 'supportDesk' | t }}</h1>
       </div>
       <div class="sd-topbar-right">
         <span class="sd-live-badge" [class.connected]="support.connected()">
           <span class="sd-live-dot"></span>
-          {{ support.connected() ? 'Admin Live Relay: Connected' : 'Connecting...' }}
+          {{ support.connected() ? ('adminRelayConnected' | t) : ('connecting' | t) }}
         </span>
         <button type="button" class="sd-btn sd-btn-ghost" (click)="startNewMessage()">
           <i class="fas fa-pen"></i>
-          <span>New Ticket</span>
+          <span>{{ 'newTicket' | t }}</span>
         </button>
         <button type="button" class="sd-btn sd-btn-ghost" (click)="load()" [disabled]="loading">
           <i class="fas fa-rotate" [class.is-spinning]="loading"></i>
-          <span>{{ loading ? 'Loading...' : 'Refresh' }}</span>
+          <span>{{ loading ? ('loading' | t) : ('refresh' | t) }}</span>
         </button>
       </div>
     </div>
@@ -44,7 +44,7 @@
                 <span class="sd-conv-avatar">{{ conversation.userName.slice(0, 1).toUpperCase() }}</span>
                 <span class="sd-conv-copy">
                   <strong>{{ conversation.subject }}</strong>
-                  <small>{{ conversation.status }} &bull; {{ conversation.updatedAt | date:'shortTime' }}</small>
+                  <small>{{ ('conversationStatus_' + conversation.status) | t }} &bull; {{ conversation.updatedAt | date:'shortTime' }}</small>
                 </span>
               </button>
             }
@@ -52,29 +52,29 @@
         } @else {
           <button type="button" class="sd-new-ticket-empty" (click)="startNewMessage()">
             <i class="fas fa-headset"></i>
-            <span>Start your first support conversation</span>
+            <span>{{ 'startFirstSupportConversation' | t }}</span>
           </button>
         }
 
         <!-- Active Ticket Info (shown when a conversation is selected) -->
         @if (selected; as conv) {
           <div class="sd-sidebar-section">
-            <p class="sd-sidebar-label">Active Ticket</p>
+            <p class="sd-sidebar-label">{{ 'activeTicket' | t }}</p>
             <div class="sd-ticket-card">
               <b class="sd-ticket-id">#{{ conv.id.slice(-6).toUpperCase() }}</b>
               <p class="sd-ticket-subject">{{ conv.subject }}</p>
-              <small class="sd-ticket-meta">Opened {{ conv.createdAt | date:'mediumDate' }} &bull; {{ conv.createdAt | date:'shortTime' }}</small>
-              <span class="sd-status-badge sd-status-{{ conv.status }}">{{ conv.status }}</span>
+              <small class="sd-ticket-meta">{{ 'openedAt' | t:{ date: (conv.createdAt | date:'mediumDate') ?? '' } }} &bull; {{ conv.createdAt | date:'shortTime' }}</small>
+              <span class="sd-status-badge sd-status-{{ conv.status }}">{{ ('conversationStatus_' + conv.status) | t }}</span>
             </div>
           </div>
 
           <div class="sd-sidebar-section">
-            <p class="sd-sidebar-label">Assigned Specialist</p>
+            <p class="sd-sidebar-label">{{ 'assignedSpecialist' | t }}</p>
             <div class="sd-specialist-card">
               <span class="sd-specialist-avatar"><i class="fas fa-headset"></i></span>
               <div>
-                <strong>Gnouby Support</strong>
-                <small>{{ support.connected() ? 'Online &bull; Live now' : 'Connecting...' }}</small>
+                <strong>{{ 'gnoubySupport' | t }}</strong>
+                <small>{{ support.connected() ? ('onlineLiveNow' | t) : ('connecting' | t) }}</small>
               </div>
             </div>
           </div>
@@ -83,7 +83,7 @@
         <!-- Footer -->
         <div class="sd-sidebar-footer">
           <i class="fas fa-lock"></i>
-          <span>End-to-end encrypted</span>
+          <span>{{ 'endToEndEncrypted' | t }}</span>
         </div>
       </aside>
 
@@ -96,8 +96,8 @@
             <div class="sd-chat-header-left">
               <span class="sd-chat-icon"><i class="fas fa-headset"></i></span>
               <div>
-                <h2>Admin Support Feed</h2>
-                <p>Send your message and an admin will respond live.</p>
+                <h2>{{ 'adminSupportFeed' | t }}</h2>
+                <p>{{ 'adminSupportFeedHint' | t }}</p>
               </div>
             </div>
           </header>
@@ -105,8 +105,8 @@
           <div class="sd-messages custom-scrollbar">
             <div class="sd-start-state">
               <i class="fas fa-comments"></i>
-              <strong>Start a conversation</strong>
-              <p>Describe your issue and our admin team will get back to you shortly.</p>
+              <strong>{{ 'startConversation' | t }}</strong>
+              <p>{{ 'startConversationHint' | t }}</p>
             </div>
           </div>
 
@@ -114,12 +114,12 @@
           @if (stagedImage()) {
             <div class="sd-staged-preview">
               <div class="sd-staged-img-wrap">
-                <img [src]="stagedImage()?.previewUrl" alt="Selected image preview">
+                <img [src]="stagedImage()?.previewUrl" [attr.alt]="'sendImage' | t">
                 <span class="sd-staged-name">{{ stagedImage()?.file?.name }}</span>
               </div>
               <div class="sd-staged-actions">
                 <button type="button" class="sd-btn-attach-staged" (click)="sendStagedImage()" title="Attach image">
-                  <i class="fas fa-check"></i> Attach
+                  <i class="fas fa-check"></i> {{ 'attach' | t }}
                 </button>
                 <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedImage()" title="Cancel image">
                   <i class="fas fa-times"></i>
@@ -136,7 +136,7 @@
               </div>
               <div class="sd-staged-actions">
                 <button type="button" class="sd-btn-attach-staged" (click)="sendStagedDoc()" title="Attach file">
-                  <i class="fas fa-check"></i> Attach
+                  <i class="fas fa-check"></i> {{ 'attach' | t }}
                 </button>
                 <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedDoc()" title="Cancel document">
                   <i class="fas fa-times"></i>
@@ -151,12 +151,12 @@
                 <i class="fas" [class.fa-play]="!voicePlaying()" [class.fa-pause]="voicePlaying()"></i>
               </button>
               <div class="sd-voice-preview-info">
-                <span>Voice Note</span>
-                <small>Ready to send</small>
+                <span>{{ 'voiceNote' | t }}</span>
+                <small>{{ 'readyToSend' | t }}</small>
               </div>
               <div class="sd-staged-actions">
                 <button type="button" class="sd-btn-attach-staged" (click)="sendPendingVoice()" title="Attach voice note">
-                  <i class="fas fa-check"></i> Attach
+                  <i class="fas fa-check"></i> {{ 'attach' | t }}
                 </button>
                 <button type="button" class="sd-btn-cancel-staged" (click)="clearPendingVoice()" title="Cancel voice note">
                   <i class="fas fa-times"></i>
@@ -200,7 +200,7 @@
               name="newMessage"
               [(ngModel)]="newMessage"
               rows="3"
-              placeholder="Write your message to Admin Support..."
+              [placeholder]="'writeToAdminSupport' | t"
               dir="auto">
             </textarea>
             <div class="sd-composer-toolbar">
@@ -239,14 +239,14 @@
                 </button>
               </div>
               <div class="sd-composer-send">
-                <small class="sd-press-hint">Press Enter to send</small>
+                <small class="sd-press-hint">{{ 'pressEnterToSend' | t }}</small>
                 <button type="submit" class="sd-send-btn" [disabled]="creating || (!newMessage.trim() && !hasInitialMedia && !stagedImage() && !stagedDoc())">
                   <i class="fas fa-paper-plane"></i>
-                  <span>Send Reply</span>
+                  <span>{{ 'sendReply' | t }}</span>
                 </button>
               </div>
             </div>
-            <p class="sd-disclaimer"><i class="fas fa-shield-halved"></i> All attachments undergo automated malware &amp; KYC verification. Max file size: 25MB</p>
+            <p class="sd-disclaimer"><i class="fas fa-shield-halved"></i> {{ 'attachmentVerification' | t }}</p>
           </form>
 
         <!-- ── Active conversation ── -->
@@ -255,22 +255,22 @@
             <div class="sd-chat-header-left">
               <span class="sd-chat-icon"><i class="fas fa-headset"></i></span>
               <div>
-                <h2>Admin Support Feed
+                <h2>{{ 'adminSupportFeed' | t }}
                   <span class="sd-live-session-badge" [class.active]="support.connected()">
-                    {{ support.connected() ? 'Live Session' : conversation.status }}
+                    {{ support.connected() ? ('liveSession' | t) : (('conversationStatus_' + conversation.status) | t) }}
                   </span>
                 </h2>
-                <p>{{ support.connected() ? 'Gnouby Support is responding via priority queue' : 'Waiting for admin...' }}</p>
+                <p>{{ support.connected() ? ('supportPriorityQueue' | t) : ('waitingForAdmin' | t) }}</p>
               </div>
             </div>
             <div class="sd-chat-header-actions">
               <button type="button" class="sd-btn sd-btn-outline" disabled>
                 <i class="fas fa-arrow-right-arrow-left"></i>
-                <span>Transfer</span>
+                <span>{{ 'transfer' | t }}</span>
               </button>
               <button type="button" class="sd-btn sd-btn-resolve" disabled>
                 <i class="fas fa-circle-check"></i>
-                <span>Resolve Ticket</span>
+                <span>{{ 'resolveTicket' | t }}</span>
               </button>
             </div>
           </header>
@@ -284,18 +284,18 @@
             @for (message of conversation.messages; track message.id) {
               <article class="sd-bubble" [class.mine]="message.senderRole === 'customer'">
                 @if (message.senderRole !== 'customer') {
-                  <span class="sd-bubble-sender">Gnouby Support<b class="sd-admin-tag">ADMIN</b></span>
+                  <span class="sd-bubble-sender">{{ 'gnoubySupport' | t }}<b class="sd-admin-tag">{{ 'administrator' | t }}</b></span>
                 }
                 @if (message.messageType === 'image' && message.mediaUrl) {
                   <div class="media-image-container" (click)="openLightbox(mediaUrl(message.mediaUrl))" title="Click to view full size">
                     <img class="sd-media-image" [src]="mediaUrl(message.mediaUrl)" [alt]="message.fileName || 'Shared image'">
-                    <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i> View</span>
+                    <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i> {{ 'view' | t }}</span>
                   </div>
                 } @else if (message.messageType === 'audio' && message.mediaUrl) {
                   <app-audio-message-player [src]="mediaUrl(message.mediaUrl)" />
                 } @else if (message.messageType === 'document' && message.mediaUrl) {
                   <a class="sd-media-doc" [href]="mediaUrl(message.mediaUrl)" target="_blank" rel="noopener noreferrer">
-                    <i class="fas fa-file-lines"></i>{{ message.fileName || 'Download document' }}
+                    <i class="fas fa-file-lines"></i>{{ message.fileName || ('downloadDocument' | t) }}
                   </a>
                 } @else {
                   <p>{{ message.body }}</p>
@@ -309,7 +309,7 @@
           @if (conversation.status !== 'closed') {
             <div class="sd-quick-replies">
               <i class="fas fa-bolt"></i>
-              <span>Quick reply:</span>
+              <span>{{ 'quickReply' | t }}</span>
               @for (qr of quickReplies; track qr) {
                 <button type="button" (click)="applyQuickReply(qr)">{{ qr }}</button>
               }
@@ -320,12 +320,12 @@
           @if (stagedImage()) {
             <div class="sd-staged-preview">
               <div class="sd-staged-img-wrap">
-                <img [src]="stagedImage()?.previewUrl" alt="Selected image preview">
+                <img [src]="stagedImage()?.previewUrl" [attr.alt]="'sendImage' | t">
                 <span class="sd-staged-name">{{ stagedImage()?.file?.name }}</span>
               </div>
               <div class="sd-staged-actions">
                 <button type="button" class="sd-btn-send-staged" (click)="sendStagedImage()" [disabled]="sending" title="Send image now">
-                  <i class="fas fa-paper-plane"></i> Send Image
+                  <i class="fas fa-paper-plane"></i> {{ 'sendImage' | t }}
                 </button>
                 <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedImage()" title="Cancel image">
                   <i class="fas fa-times"></i>
@@ -342,7 +342,7 @@
               </div>
               <div class="sd-staged-actions">
                 <button type="button" class="sd-btn-send-staged" (click)="sendStagedDoc()" [disabled]="sending" title="Send document now">
-                  <i class="fas fa-paper-plane"></i> Send File
+                  <i class="fas fa-paper-plane"></i> {{ 'sendFile' | t }}
                 </button>
                 <button type="button" class="sd-btn-cancel-staged" (click)="cancelStagedDoc()" title="Cancel document">
                   <i class="fas fa-times"></i>
@@ -357,12 +357,12 @@
                 <i class="fas" [class.fa-play]="!voicePlaying()" [class.fa-pause]="voicePlaying()"></i>
               </button>
               <div class="sd-voice-preview-info">
-                <span>Voice Note</span>
-                <small>Ready to send</small>
+                <span>{{ 'voiceNote' | t }}</span>
+                <small>{{ 'readyToSend' | t }}</small>
               </div>
               <div class="sd-staged-actions">
                 <button type="button" class="sd-btn-send-staged" (click)="sendPendingVoice()" [disabled]="sending" title="Send voice note now">
-                  <i class="fas fa-paper-plane"></i> Send Voice
+                  <i class="fas fa-paper-plane"></i> {{ 'sendVoice' | t }}
                 </button>
                 <button type="button" class="sd-btn-cancel-staged" (click)="clearPendingVoice()" title="Cancel voice note">
                   <i class="fas fa-times"></i>
@@ -399,7 +399,7 @@
               name="replyText"
               [(ngModel)]="replyText"
               rows="3"
-              [placeholder]="conversation.status === 'closed' ? 'This conversation is closed.' : 'Write your response to Admin Support...'"
+              [placeholder]="conversation.status === 'closed' ? ('conversationClosed' | t) : ('writeToAdminSupport' | t)"
               [disabled]="conversation.status === 'closed'"
               dir="auto">
             </textarea>
@@ -439,26 +439,26 @@
                 </button>
               </div>
               <div class="sd-composer-send">
-                <small class="sd-press-hint">Press Enter to send</small>
+                <small class="sd-press-hint">{{ 'pressEnterToSend' | t }}</small>
                 <button type="submit" class="sd-send-btn"
                   [disabled]="sending || (!replyText.trim() && !stagedImage() && !stagedDoc() && !pendingVoiceUrl() && !recording()) || conversation.status === 'closed'">
                   <i class="fas fa-paper-plane"></i>
-                  <span>Send Reply</span>
+                  <span>{{ 'sendReply' | t }}</span>
                 </button>
               </div>
             </div>
-            <p class="sd-disclaimer"><i class="fas fa-shield-halved"></i> All attachments undergo automated malware &amp; KYC verification. Max file size: 25MB</p>
+            <p class="sd-disclaimer"><i class="fas fa-shield-halved"></i> {{ 'attachmentVerification' | t }}</p>
           </form>
 
         <!-- ── No conversation selected / empty ── -->
         } @else {
           <div class="sd-start-state sd-start-state--full">
             <i class="fas fa-headset"></i>
-            <strong>Admin Live Relay</strong>
-            <p>Select a conversation on the left, or start a new support ticket.</p>
+            <strong>{{ 'liveSupport' | t }}</strong>
+            <p>{{ 'selectOrStartSupport' | t }}</p>
             <button type="button" class="sd-btn sd-btn-primary" (click)="startNewMessage()">
               <i class="fas fa-pen"></i>
-              <span>New Support Ticket</span>
+              <span>{{ 'newSupportTicket' | t }}</span>
             </button>
           </div>
         }
@@ -471,7 +471,7 @@
     <div class="camera-modal-backdrop" (click)="closeCamera()">
       <div class="camera-modal-panel" (click)="$event.stopPropagation()">
         <header class="camera-modal-header">
-          <h4><i class="fas fa-camera"></i> Take Photo</h4>
+          <h4><i class="fas fa-camera"></i> {{ 'takePhoto' | t }}</h4>
           <button type="button" class="close-btn" (click)="closeCamera()"><i class="fas fa-times"></i></button>
         </header>
 
@@ -492,19 +492,19 @@
           @if (capturedPhotoUrl()) {
             <button type="button" class="camera-retake-btn" (click)="retakePhoto()">
               <i class="fas fa-rotate-left"></i>
-              <span>Retake</span>
+              <span>{{ 'retake' | t }}</span>
             </button>
             <button type="button" class="camera-confirm-btn" (click)="confirmPhoto()">
               <i class="fas fa-check"></i>
-              <span>Use Photo</span>
+              <span>{{ 'usePhoto' | t }}</span>
             </button>
           } @else {
             <button type="button" class="camera-snap-btn" (click)="capturePhoto()">
               <i class="fas fa-circle-dot"></i>
-              <span>Snap Photo</span>
+              <span>{{ 'snapPhoto' | t }}</span>
             </button>
             <button type="button" class="camera-cancel-btn" (click)="closeCamera()">
-              Cancel
+              {{ 'cancel' | t }}
             </button>
           }
         </footer>

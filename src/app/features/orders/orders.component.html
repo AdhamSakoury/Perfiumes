@@ -2,8 +2,8 @@
   @if (auth.currentUser()) {
     <div class="orders-hero">
       <div>
-        <span class="orders-kicker">Purchases</span>
-        <h1>Order Tracking</h1>
+        <span class="orders-kicker">{{ 'purchases' | t }}</span>
+        <h1>{{ 'orderTracking' | t }}</h1>
         <p>{{ 'orderCount' | t:{ count: count('all'), plural: count('all') === 1 ? '' : 's' } }}</p>
       </div>
       <div class="orders-toolbar">
@@ -86,7 +86,7 @@
     <div class="modal-content orders-modal-content">
       <div class="orders-modal-header">
         <div>
-          <span>Order details</span>
+          <span>{{ 'orderDetails' | t }}</span>
           <h2>{{ 'orderNumber' | t:{ id: order.id } }}</h2>
           <p>{{ order.date | date:'fullDate' }}</p>
           @if (order.estimatedDelivery) {
@@ -106,12 +106,12 @@
       @if (order.status === 'Delivered') {
         <div class="delivered-rating-banner">
           <div>
-            <h4><i class="fas fa-award text-amber-500 mr-2"></i>Order Completed & Delivered!</h4>
-            <p>Help us improve by rating your perfumes and the delivery courier service.</p>
+            <h4><i class="fas fa-award text-amber-500 mr-2"></i>{{ 'orderCompletedDelivered' | t }}</h4>
+            <p>{{ 'rateOrderCourierHint' | t }}</p>
           </div>
           <button type="button" (click)="openRating(order)" class="btn-open-rating">
             <i class="fas fa-star text-amber-300"></i>
-            <span>Rate Order & Courier</span>
+            <span>{{ 'rateOrderCourier' | t }}</span>
           </button>
         </div>
       }
@@ -132,7 +132,7 @@
               <i class="fas fa-motorcycle"></i>
             </div>
             <div class="delivery-details">
-              <span class="badge-role">Assigned Delivery Partner</span>
+                <span class="badge-role">{{ 'assignedDeliveryPartner' | t }}</span>
               <h4 class="delivery-name">{{ order.deliveryName }}</h4>
             </div>
             <div class="delivery-contact-buttons">
@@ -155,11 +155,11 @@
           <div class="delivery-map-cta">
             <div class="tracking-live-indicator">
               <span class="live-dot"></span>
-              <span>Live GPS tracking available</span>
+              <span>{{ 'liveGpsTrackingAvailable' | t }}</span>
             </div>
             <button type="button" (click)="openMap(order)" class="btn-open-map">
               <i class="fas fa-map-location-dot"></i>
-              <span>View Live Map & Courier Route</span>
+              <span>{{ 'viewLiveMapRoute' | t }}</span>
             </button>
           </div>
         </div>
@@ -181,9 +181,9 @@
       <div class="tracking-panel">
         @if (order.trackingNumber || order.courierName || order.paymentReference) {
           <div class="rounded-xl border border-nubian-gold/20 p-4 mb-5 text-sm">
-            @if (order.courierName) { <p><strong>Courier:</strong> {{ order.courierName }}</p> }
-            @if (order.trackingNumber) { <p><strong>Tracking number:</strong> {{ order.trackingNumber }}</p> }
-            @if (order.paymentReference) { <p><strong>Payment reference:</strong> {{ order.paymentReference }}</p> }
+            @if (order.courierName) { <p><strong>{{ 'courier' | t }}</strong> {{ order.courierName }}</p> }
+            @if (order.trackingNumber) { <p><strong>{{ 'trackingNumber' | t }}</strong> {{ order.trackingNumber }}</p> }
+            @if (order.paymentReference) { <p><strong>{{ 'paymentReference' | t }}</strong> {{ order.paymentReference }}</p> }
           </div>
         }
         <div class="tracking-steps">

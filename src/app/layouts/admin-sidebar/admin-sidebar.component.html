@@ -1,16 +1,40 @@
-<button type="button" class="admin-sidebar-toggle" (click)="open.set(!open())" [attr.aria-label]="'openAdminSidebar' | t">
-  <i class="fas" [class.fa-bars]="!open()" [class.fa-times]="open()"></i>
-</button>
+<!-- Mobile Sub-header Bar (<= 1024px) -->
+<div class="admin-mobile-bar">
+  <button 
+    type="button" 
+    class="admin-sidebar-toggle" 
+    [class.active]="open()"
+    (click)="open.set(!open())" 
+    [attr.aria-label]="(open() ? 'closeAdminSidebar' : 'openAdminSidebar') | t">
+    <i class="fas" [class.fa-bars-staggered]="!open()" [class.fa-times]="open()"></i>
+    <span class="toggle-text">{{ 'dashboard' | t }}</span>
+  </button>
+  <div class="admin-mobile-bar-badge">
+    <i class="fas fa-shield-halved"></i>
+    <span>{{ 'admin' | t }}</span>
+  </div>
+</div>
 
-<button type="button" class="admin-sidebar-backdrop" [class.show]="open()" (click)="close()" [attr.aria-label]="'closeAdminSidebar' | t"></button>
+<button 
+  type="button" 
+  class="admin-sidebar-backdrop" 
+  [class.show]="open()" 
+  (click)="close()" 
+  [attr.aria-label]="'closeAdminSidebar' | t">
+</button>
 
 <aside class="admin-global-sidebar" [class.open]="open()">
   <div class="admin-sidebar-head">
-    <span class="admin-avatar">{{ (auth.currentUser()?.fullName || 'A').slice(0, 1).toUpperCase() }}</span>
-    <div>
-      <strong>{{ auth.currentUser()?.fullName || ('admin' | t) }}</strong>
-      <small>{{ auth.currentUser()?.email }}</small>
+    <div class="admin-head-user">
+      <span class="admin-avatar">{{ (auth.currentUser()?.fullName || 'A').slice(0, 1).toUpperCase() }}</span>
+      <div class="admin-user-info">
+        <strong>{{ auth.currentUser()?.fullName || ('admin' | t) }}</strong>
+        <small>{{ auth.currentUser()?.email }}</small>
+      </div>
     </div>
+    <button type="button" class="admin-sidebar-close-btn" (click)="close()" [attr.aria-label]="'closeAdminSidebar' | t">
+      <i class="fas fa-times"></i>
+    </button>
   </div>
 
   <nav class="admin-side-nav">
@@ -43,7 +67,7 @@
     <div class="admin-nav-group">
       <button type="button" class="admin-nav-group-header" (click)="toggleFinance()">
         <div class="flex items-center gap-2">
-          <i class="fas fa-wallet text-amber-500"></i>
+          <i class="fas fa-coins text-amber-500"></i>
           <span>{{ 'finance' | t }}</span>
         </div>
         <i class="fas fa-chevron-down chevron" [class.rotated]="!financeOpen()"></i>

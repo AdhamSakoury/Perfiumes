@@ -92,7 +92,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<GoogleAuthService>();
 builder.Services.AddHttpClient<PaymobService>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(8);
+    client.Timeout = TimeSpan.FromSeconds(20);
 })
 .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 {

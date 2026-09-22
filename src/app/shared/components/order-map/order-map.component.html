@@ -4,8 +4,8 @@
   } @else {
     <div class="map-unavailable-state">
       <i class="fas fa-location-dot"></i>
-      <strong>Customer location is unavailable</strong>
-      <span>Use the saved address or contact the customer for directions.</span>
+      <strong>{{ 'customerLocationUnavailable' | t }}</strong>
+      <span>{{ 'customerLocationHint' | t }}</span>
     </div>
   }
 
@@ -15,28 +15,28 @@
     <div class="stat-pill">
       <i class="fas fa-route text-amber-500"></i>
       <div>
-        <span class="stat-label">Distance</span>
-        <strong class="stat-value">{{ distanceKm !== null ? distanceKm + ' km' : 'Calculating...' }}</strong>
+        <span class="stat-label">{{ 'distance' | t }}</span>
+        <strong class="stat-value">{{ distanceKm !== null ? distanceKm + ' km' : ('calculating' | t) }}</strong>
       </div>
     </div>
 
     <div class="stat-pill">
       <i class="fas fa-clock text-blue-500"></i>
       <div>
-        <span class="stat-label">Est. Time</span>
-        <strong class="stat-value">{{ estimatedMinutes !== null ? estimatedMinutes + ' mins' : '~' }}</strong>
+        <span class="stat-label">{{ 'estimatedTime' | t }}</span>
+        <strong class="stat-value">{{ estimatedMinutes !== null ? estimatedMinutes + ' ' + ('minutes' | t) : '~' }}</strong>
       </div>
     </div>
 
     <div class="stat-pill status-pill" [class.live]="isWatching || isSimulating">
       <span class="pulse-dot"></span>
-      <span>{{ isSimulating ? 'Simulating' : isWatching ? 'Live GPS' : 'Active Tracking' }}</span>
+      <span>{{ isSimulating ? ('simulating' | t) : isWatching ? ('live' | t) : ('activeTracking' | t) }}</span>
     </div>
 
     @if (googleMapsUrl; as navUrl) {
     <a [href]="navUrl" target="_blank" rel="noopener noreferrer" class="nav-button" title="Navigate to customer in Google Maps">
       <i class="fas fa-location-arrow"></i>
-      <span>Navigate</span>
+      <span>{{ 'navigate' | t }}</span>
     </a>
     }
   </div>
@@ -46,17 +46,17 @@
     <div class="delivery-map-controls">
       <button type="button" class="btn-map-action" (click)="useCurrentGPS()" title="Send current device GPS coordinates">
         <i class="fas fa-crosshairs"></i>
-        <span>My GPS</span>
+        <span>{{ 'myGps' | t }}</span>
       </button>
 
       <button type="button" class="btn-map-action" [class.active]="isWatching" (click)="toggleLiveTracking()">
         <i class="fas" [class.fa-satellite-dish]="!isWatching" [class.fa-circle-stop]="isWatching"></i>
-        <span>{{ isWatching ? 'Stop GPS' : 'Live GPS' }}</span>
+        <span>{{ isWatching ? ('stopGps' | t) : ('live' | t) }}</span>
       </button>
 
       <button type="button" class="btn-map-action btn-sim" [class.active]="isSimulating" (click)="toggleSimulation()">
         <i class="fas" [class.fa-play]="!isSimulating" [class.fa-pause]="isSimulating"></i>
-        <span>{{ isSimulating ? 'Pause Route' : 'Simulate Drive' }}</span>
+        <span>{{ isSimulating ? ('pauseRoute' | t) : ('simulateDrive' | t) }}</span>
       </button>
     </div>
 

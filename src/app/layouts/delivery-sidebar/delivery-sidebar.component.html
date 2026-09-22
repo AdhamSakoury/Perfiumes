@@ -9,13 +9,13 @@
     <span>{{ (auth.currentUser()?.fullName || 'D').slice(0, 1).toUpperCase() }}</span>
     <div>
       <strong>{{ auth.currentUser()?.fullName }}</strong>
-      <small>Delivery partner</small>
+      <small>{{ 'deliveryPartner' | t }}</small>
     </div>
   </div>
   <nav>
-    <a routerLink="/delivery" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="close()"><i class="fas fa-gauge-high"></i>Dashboard</a>
-    <a routerLink="/delivery/orders" routerLinkActive="active" (click)="close()"><i class="fas fa-truck-fast"></i>Assigned orders</a>
-    <a routerLink="/account" routerLinkActive="active" (click)="close()"><i class="fas fa-user"></i>Account</a>
+    <a routerLink="/delivery" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="close()"><i class="fas fa-gauge-high"></i>{{ 'dashboard' | t }}</a>
+    <a routerLink="/delivery/orders" routerLinkActive="active" (click)="close()"><i class="fas fa-truck-fast"></i>{{ 'assignedOrders' | t }}</a>
+    <a routerLink="/account" routerLinkActive="active" (click)="close()"><i class="fas fa-user"></i>{{ 'account' | t }}</a>
   </nav>
-  <button type="button" class="delivery-logout" (click)="auth.logout()"><i class="fas fa-arrow-right-from-bracket"></i>Sign out</button>
+  <button type="button" class="delivery-logout" (click)="auth.logout()"><i class="fas fa-arrow-right-from-bracket"></i>{{ 'signOut' | t }}</button>
 </aside>

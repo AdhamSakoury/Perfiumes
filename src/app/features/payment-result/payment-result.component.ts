@@ -1,15 +1,17 @@
 import { Component } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Order } from '@core/models/store.models';
 import { AuthService } from '@core/services/auth.service';
 import { OrderService } from '@core/services/order.service';
-import { WalletService } from '@core/services/wallet.service';
+import { WalletService, paymobConfirmPayloadFromParams } from '@core/services/wallet.service';
+import { LocalizationService } from '@core/services/localization.service';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 import { catchError, of, switchMap, take, takeWhile, timer } from 'rxjs';
 
 @Component({
   selector: 'app-payment-result',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, TranslatePipe],
   templateUrl: './payment-result.component.html',
   styleUrl: './payment-result.component.css'
 })
@@ -20,7 +22,10 @@ export class PaymentResultComponent {
     || this.route.snapshot.queryParamMap.get('special_reference')
     || '';
   readonly isWallet = this.route.snapshot.queryParamMap.get('type') === 'wallet'
-    || this.topUpId.startsWith('wtop_');
+    || this.topUpId.startsWith('wtop_')
+    || (!this.route.snapshot.queryParamMap.get('orderId')
+      && !!this.route.snapshot.queryParamMap.get('id')
+      && this.route.snapshot.queryParamMap.get('success') !== null);
 
   order?: Order;
   walletStatus: 'pending' | 'paid' | 'failed' = 'pending';
@@ -29,14 +34,28 @@ export class PaymentResultComponent {
 
   constructor(
     private readonly route: ActivatedRoute,
+    private readonly router: Router,
     private readonly orders: OrderService,
     private readonly walletService: WalletService,
-    private readonly auth: AuthService
+    private readonly auth: AuthService,
+    private readonly i18n: LocalizationService
   ) {
-    if (this.isWallet && this.topUpId) {
-      this.handleWalletResult();
-    } else if (this.orderId) {
+    if (this.isWallet) {
+      this.router.navigate(['/wallet'], {
+        queryParams: this.route.snapshot.queryParams,
+        replaceUrl: true
+      });
+      return;
+    }
+
+    if (this.orderId) {
       this.handleOrderResult();
+      return;
+    }
+
+    const transactionId = this.route.snapshot.queryParamMap.get('id');
+    if (transactionId) {
+      this.resolvePaymobReturn(transactionId);
     }
   }
 
@@ -44,31 +63,24 @@ export class PaymentResultComponent {
     return this.order?.paymentStatus === 'paid' || this.order?.paymentStatus === 'partiallyPaid';
   }
 
-  private handleWalletResult(): void {
-    const success = this.route.snapshot.queryParamMap.get('success');
-    const transactionId = this.route.snapshot.queryParamMap.get('id') || undefined;
-
-    if (success === 'false') {
-      this.walletStatus = 'failed';
-      this.loading = false;
-      return;
-    }
-
+  private resolvePaymobReturn(transactionId: string): void {
     this.loading = true;
-    timer(0, 2_000).pipe(
-      take(8),
-      switchMap(() => this.auth.ensureAccessToken().pipe(
-        switchMap((token) => token ? this.walletService.confirmPaymobTopUp(token, this.topUpId, transactionId) : of(undefined)),
-        catchError(() => of(undefined))
-      )),
-      takeWhile((res) => !res || res.status === 'pending', true)
+    this.auth.ensureAccessToken().pipe(
+      switchMap((token) => token
+        ? this.walletService.confirmPaymobTopUpReturn(token, paymobConfirmPayloadFromParams(this.route.snapshot.queryParamMap))
+        : of(undefined)),
+      catchError(() => of(undefined))
     ).subscribe((res) => {
-      this.loading = false;
-      if (!res) {
-        this.walletStatus = 'pending';
+      if (res?.kind === 'wallet' || res?.status === 'paid') {
+        this.router.navigate(['/wallet'], {
+          queryParams: this.route.snapshot.queryParams,
+          replaceUrl: true
+        });
         return;
       }
-      this.walletStatus = res.status === 'paid' ? 'paid' : 'failed';
+
+      this.loading = false;
+      this.error = this.i18n.t('paymentStatusUnavailable');
     });
   }
 
@@ -81,7 +93,7 @@ export class PaymentResultComponent {
     ).subscribe((order) => {
       this.loading = false;
       if (!order) {
-        this.error = 'We could not read the payment status. Please check your orders shortly.';
+        this.error = this.i18n.t('orderPaymentStatusUnavailable');
         return;
       }
 

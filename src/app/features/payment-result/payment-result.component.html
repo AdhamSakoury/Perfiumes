@@ -2,38 +2,38 @@
   <div class="payment-result-panel">
     @if (isWallet) {
       <i class="fas fa-wallet"></i>
-      <p>Paymob Wallet Top-Up</p>
-      <h1>{{ loading ? 'Confirming your wallet top-up' : walletStatus === 'paid' ? 'Wallet topped up successfully' : walletStatus === 'failed' ? 'Payment was not completed' : 'Payment is being confirmed' }}</h1>
+      <p>{{ 'paymobWalletTopUp' | t }}</p>
+      <h1>{{ loading ? ('confirmingWalletTopUp' | t) : walletStatus === 'paid' ? ('walletTopUpComplete' | t) : walletStatus === 'failed' ? ('topUpFailed' | t) : ('paymentConfirming' | t) }}</h1>
       <span>
         @if (error) {
           {{ error }}
         } @else if (loading) {
-          We are securely verifying the card payment with Paymob. Please do not close this window.
+          {{ 'verifyingCardPayment' | t }}
         } @else if (walletStatus === 'paid') {
-          Your Visa/card payment was successfully confirmed! The funds have been added to your wallet balance.
+          {{ 'walletPaymentConfirmed' | t }}
         } @else if (walletStatus === 'failed') {
-          The payment was not completed or was cancelled. No funds were deducted for your wallet.
+          {{ 'walletPaymentNotCompleted' | t }}
         } @else {
-          We are awaiting confirmation from Paymob. You can check your updated balance in your wallet.
+          {{ 'awaitingWalletConfirmation' | t }}
         }
       </span>
       <div>
-        <a routerLink="/wallet">Go to Wallet</a>
-        <a routerLink="/perfumes">Continue shopping</a>
+        <a routerLink="/wallet">{{ 'wallet' | t }}</a>
+        <a routerLink="/perfumes">{{ 'continueShopping' | t }}</a>
       </div>
     } @else {
       <i class="fas fa-credit-card"></i>
-      <p>Paymob Checkout</p>
-      <h1>{{ loading ? 'Confirming your payment' : isOnlineSuccess ? 'Payment successful' : order?.paymentStatus === 'failed' ? 'Payment was not completed' : 'Payment is being confirmed' }}</h1>
+      <p>{{ 'paymobCheckout' | t }}</p>
+      <h1>{{ loading ? ('confirmingPayment' | t) : isOnlineSuccess ? ('paymentSuccessful' | t) : order?.paymentStatus === 'failed' ? ('topUpFailed' | t) : ('paymentConfirming' | t) }}</h1>
       <span>
         @if (error) {
           {{ error }}
         } @else if (loading) {
-          We are securely checking Paymob's final result. Please do not pay again.
+          {{ 'checkingPaymobResult' | t }}
         } @else if (isOnlineSuccess) {
-          Product payment was confirmed. Delivery is collected when the order arrives.
+          {{ 'productPaymentConfirmed' | t }}
         } @else if (order?.paymentStatus === 'failed') {
-          No payment was confirmed. You can return to the store and try again.
+          {{ 'noPaymentConfirmed' | t }}
         } @else if (orderId) {
           Order {{ orderId }} is awaiting Paymob confirmation. You can safely check it again from your orders.
         } @else {
@@ -41,8 +41,8 @@
         }
       </span>
       <div>
-        <a routerLink="/orders">View orders</a>
-        <a routerLink="/perfumes">Continue shopping</a>
+        <a routerLink="/orders">{{ 'viewOrders' | t }}</a>
+        <a routerLink="/perfumes">{{ 'continueShopping' | t }}</a>
       </div>
     }
   </div>

@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Order } from '@core/models/store.models';
 import { OrderTrackingService } from '@core/services/order-tracking.service';
 import { Subscription } from 'rxjs';
+import { TranslatePipe } from '@shared/pipes/translate.pipe';
 
 declare const L: any;
 
 @Component({
   selector: 'app-order-map',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   templateUrl: './order-map.component.html',
   styleUrl: './order-map.component.css'
 })

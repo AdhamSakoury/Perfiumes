@@ -134,11 +134,7 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
 
         using var document = JsonDocument.Parse(responseBody);
         var root = document.RootElement;
-        var clientSecret = root.TryGetProperty("client_secret", out var clientSecretElement)
-            ? clientSecretElement.GetString()
-            : root.TryGetProperty("cs", out var csElement)
-                ? csElement.GetString()
-                : null;
+        var clientSecret = ReadFlexibleString(root, "client_secret") ?? ReadFlexibleString(root, "cs");
 
         if (string.IsNullOrWhiteSpace(clientSecret))
         {
@@ -146,7 +142,9 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
         }
 
         var checkoutUrl = $"{_options.BaseUrl.TrimEnd('/')}/unifiedcheckout/?publicKey={Uri.EscapeDataString(_options.PublicKey)}&clientSecret={Uri.EscapeDataString(clientSecret)}";
-        return new PaymobCheckoutResponse(order.Id, clientSecret, checkoutUrl);
+        var intentionId = ReadFlexibleString(root, "id");
+        var intentionOrderId = ReadFlexibleString(root, "intention_order_id");
+        return new PaymobCheckoutResponse(order.Id, clientSecret, checkoutUrl, intentionId, intentionOrderId);
     }
 
     public async Task<PaymobCheckoutResponse> CreateWalletTopUpCheckoutAsync(
@@ -165,7 +163,7 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
         var amountCents = ToSmallestCurrencyUnit(amount);
         var names = SplitName(string.IsNullOrWhiteSpace(fullName) ? userEmail : fullName);
         var phoneNumber = NormalizePhone(phone ?? string.Empty);
-        var redirectionUrl = $"{_options.RedirectionUrl}?type=wallet&topUpId={Uri.EscapeDataString(topUpId)}";
+        var redirectionUrl = BuildWalletRedirectionUrl(topUpId);
 
         var payload = new
         {
@@ -222,11 +220,7 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
 
         using var document = JsonDocument.Parse(responseBody);
         var root = document.RootElement;
-        var clientSecret = root.TryGetProperty("client_secret", out var clientSecretElement)
-            ? clientSecretElement.GetString()
-            : root.TryGetProperty("cs", out var csElement)
-                ? csElement.GetString()
-                : null;
+        var clientSecret = ReadFlexibleString(root, "client_secret") ?? ReadFlexibleString(root, "cs");
 
         if (string.IsNullOrWhiteSpace(clientSecret))
         {
@@ -234,14 +228,16 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
         }
 
         var checkoutUrl = $"{_options.BaseUrl.TrimEnd('/')}/unifiedcheckout/?publicKey={Uri.EscapeDataString(_options.PublicKey)}&clientSecret={Uri.EscapeDataString(clientSecret)}";
-        return new PaymobCheckoutResponse(topUpId, clientSecret, checkoutUrl);
+        var intentionId = ReadFlexibleString(root, "id");
+        var intentionOrderId = ReadFlexibleString(root, "intention_order_id");
+        return new PaymobCheckoutResponse(topUpId, clientSecret, checkoutUrl, intentionId, intentionOrderId);
     }
 
     public async Task<PaymobTransactionVerificationResult> VerifyTransactionAsync(string transactionId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_options.SecretKey))
         {
-            return new PaymobTransactionVerificationResult(false, null, null, 0, "Paymob secret key is not configured.");
+            return new PaymobTransactionVerificationResult(false, false, null, null, 0, "Paymob secret key is not configured.");
         }
 
         try
@@ -252,33 +248,27 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
             using var response = await http.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                return new PaymobTransactionVerificationResult(false, transactionId, null, 0, $"Paymob transaction inquiry failed with status {(int)response.StatusCode}.");
+                return new PaymobTransactionVerificationResult(false, response.StatusCode == System.Net.HttpStatusCode.NotFound, transactionId, null, 0, $"Paymob transaction inquiry failed with status {(int)response.StatusCode}.");
             }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            var success = root.TryGetProperty("success", out var s) && s.GetBoolean();
-            var isVoided = root.TryGetProperty("is_voided", out var iv) && iv.GetBoolean();
-            var isRefunded = root.TryGetProperty("is_refunded", out var ir) && ir.GetBoolean();
+            var success = ReadFlexibleBool(root, "success");
+            var pending = ReadFlexibleBool(root, "pending");
+            var isVoided = ReadFlexibleBool(root, "is_voided");
+            var isRefunded = ReadFlexibleBool(root, "is_refunded");
             var amountCents = root.TryGetProperty("amount_cents", out var ac) && ac.TryGetInt64(out var cents) ? cents : 0;
 
-            string? specialRef = null;
-            if (root.TryGetProperty("special_reference", out var sr) && sr.ValueKind == JsonValueKind.String)
-            {
-                specialRef = sr.GetString();
-            }
-            else if (root.TryGetProperty("order", out var ord) && ord.TryGetProperty("merchant_order_id", out var moi) && moi.ValueKind == JsonValueKind.String)
-            {
-                specialRef = moi.GetString();
-            }
+            string? specialRef = ReadFlexibleString(root, "special_reference")
+                ?? (root.TryGetProperty("order", out var ord) ? ReadFlexibleString(ord, "merchant_order_id") : null);
 
-            var isPaid = success && !isVoided && !isRefunded;
-            return new PaymobTransactionVerificationResult(isPaid, transactionId, specialRef, amountCents / 100m, null);
+            var isPaid = success && !isVoided && !isRefunded && !pending;
+            return new PaymobTransactionVerificationResult(isPaid, pending && !isPaid, transactionId, specialRef, amountCents / 100m, null);
         }
         catch (Exception ex)
         {
-            return new PaymobTransactionVerificationResult(false, transactionId, null, 0, ex.Message);
+            return new PaymobTransactionVerificationResult(false, true, transactionId, null, 0, ex.Message);
         }
     }
 
@@ -327,6 +317,52 @@ public sealed class PaymobService(HttpClient http, IOptions<PaymobOptions> optio
     private static string? BlankAsNull(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private string BuildWalletRedirectionUrl(string topUpId)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(_options.RedirectionUrl)
+            ? "http://localhost:4200/wallet"
+            : _options.RedirectionUrl.Trim();
+
+        if (baseUrl.Contains("/payment-result", StringComparison.OrdinalIgnoreCase))
+        {
+            baseUrl = baseUrl.Replace("/payment-result", "/wallet", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var separator = baseUrl.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        return $"{baseUrl}{separator}type=wallet&topUpId={Uri.EscapeDataString(topUpId)}";
+    }
+
+    private static bool ReadFlexibleBool(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var element))
+        {
+            return false;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(element.GetString(), out var value) => value,
+            _ => false
+        };
+    }
+
+    private static string? ReadFlexibleString(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var element))
+        {
+            return null;
+        }
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => string.IsNullOrWhiteSpace(element.GetString()) ? null : element.GetString(),
+            JsonValueKind.Number => element.ToString(),
+            _ => null
+        };
     }
 }
 
