@@ -352,5 +352,20 @@ public sealed class PerfiumesDbContext(DbContextOptions<PerfiumesDbContext> opti
             entity.Property(area => area.Name).HasMaxLength(160);
             entity.Property(area => area.Fee).HasPrecision(18, 2);
         });
+
+        modelBuilder.Entity<AdminExpenseEntity>(entity =>
+        {
+            entity.ToTable("AdminExpenses");
+            entity.HasKey(expense => expense.Id);
+            entity.Property(expense => expense.Id).HasMaxLength(64);
+            entity.Property(expense => expense.Title).HasMaxLength(220);
+            entity.Property(expense => expense.Category).HasMaxLength(80);
+            entity.Property(expense => expense.Amount).HasPrecision(18, 2);
+            entity.Property(expense => expense.Description).HasMaxLength(2000);
+            entity.Property(expense => expense.CreatedByEmail).HasMaxLength(256);
+            entity.Property(expense => expense.ReceiptUrl).HasMaxLength(1000);
+            entity.HasIndex(expense => expense.Date);
+            entity.HasIndex(expense => expense.Category);
+        });
     }
 }
