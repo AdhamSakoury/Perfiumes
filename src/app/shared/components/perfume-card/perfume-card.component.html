@@ -3,6 +3,8 @@
         <img
           [src]="perfume.image"
           [alt]="perfume.name"
+          loading="lazy"
+          decoding="async"
           class="w-full h-48 sm:h-52 object-cover transform group-hover:scale-110 transition-transform duration-500"
           (error)="useFallback($event)">
         <div class="absolute top-4 right-4">

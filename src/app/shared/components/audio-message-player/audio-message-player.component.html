@@ -1,0 +1,28 @@
+<div class="audio-message-player" [class.is-playing]="playing">
+  <audio #audio [src]="src" preload="metadata"
+    (loadedmetadata)="onLoadedMetadata(audio)"
+    (timeupdate)="onTimeUpdate(audio)"
+    (play)="playing = true"
+    (pause)="playing = false"
+    (ended)="onEnded(audio)"></audio>
+
+  <button type="button" class="audio-play-button" (click)="togglePlayback(audio)"
+    [attr.aria-label]="playing ? 'Pause audio message' : 'Play audio message'">
+    <i class="fas" [class.fa-pause]="playing" [class.fa-play]="!playing"></i>
+  </button>
+
+  <div class="audio-progress-group">
+    <div class="audio-time-row"><span>{{ formatTime(currentTime) }}</span><span>{{ formatTime(duration) }}</span></div>
+    <input type="range" class="audio-progress" min="0" [max]="duration || 0" step="0.1"
+      [value]="currentTime" (input)="seek(audio, $event)" aria-label="Audio progress">
+  </div>
+
+  <div class="audio-volume-control">
+    <button type="button" class="audio-volume-button" (click)="toggleMute(audio)"
+      [attr.aria-label]="muted ? 'Unmute audio message' : 'Mute audio message'">
+      <i class="fas" [class.fa-volume-xmark]="muted || volume === 0" [class.fa-volume-low]="!muted && volume > 0 && volume < 0.55" [class.fa-volume-high]="!muted && volume >= 0.55"></i>
+    </button>
+    <input type="range" class="audio-volume-slider" min="0" max="1" step="0.05" [value]="muted ? 0 : volume"
+      (input)="setVolume(audio, $event)" aria-label="Audio volume">
+  </div>
+</div>

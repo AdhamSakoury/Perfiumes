@@ -9,11 +9,12 @@ import { ToastService } from '@core/services/toast.service';
 import { Subscription } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { CHAT_EMOJIS } from '@core/constants/emoji.constants';
+import { AudioMessagePlayerComponent } from '@shared/components/audio-message-player/audio-message-player.component';
 
 @Component({
   selector: 'app-order-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AudioMessagePlayerComponent],
   templateUrl: './order-chat.component.html',
   styleUrl: './order-chat.component.css'
 })

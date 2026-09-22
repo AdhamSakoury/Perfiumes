@@ -1,7 +1,15 @@
 <div class="order-map-wrapper">
-  <!-- Map container -->
-  <div #mapContainer class="order-map-canvas"></div>
+  @if (hasCustomerCoordinates()) {
+    <div #mapContainer class="order-map-canvas"></div>
+  } @else {
+    <div class="map-unavailable-state">
+      <i class="fas fa-location-dot"></i>
+      <strong>Customer location is unavailable</strong>
+      <span>Use the saved address or contact the customer for directions.</span>
+    </div>
+  }
 
+  @if (hasCustomerCoordinates()) {
   <!-- Floating Stats Header -->
   <div class="order-map-stats-bar">
     <div class="stat-pill">
@@ -25,10 +33,12 @@
       <span>{{ isSimulating ? 'Simulating' : isWatching ? 'Live GPS' : 'Active Tracking' }}</span>
     </div>
 
-    <a [href]="googleMapsUrl" target="_blank" rel="noopener noreferrer" class="nav-button" title="Navigate in Google Maps">
+    @if (googleMapsUrl; as navUrl) {
+    <a [href]="navUrl" target="_blank" rel="noopener noreferrer" class="nav-button" title="Navigate to customer in Google Maps">
       <i class="fas fa-location-arrow"></i>
-      <span>Google Maps</span>
+      <span>Navigate</span>
     </a>
+    }
   </div>
 
   <!-- Delivery Controls Toolbar (Only shown in delivery mode) -->
@@ -49,5 +59,10 @@
         <span>{{ isSimulating ? 'Pause Route' : 'Simulate Drive' }}</span>
       </button>
     </div>
+
+    @if (gpsError) {
+      <p class="map-gps-error"><i class="fas fa-triangle-exclamation"></i>{{ gpsError }}</p>
+    }
+  }
   }
 </div>

@@ -110,7 +110,7 @@
               {{ 'productsLoaded' | t:{ from: pageStart, to: pageEnd, total: products.length } }}
             </p>
           </div>
-          <button type="button" (click)="perfumeService.loadProducts(); setPage(1)" class="px-4 py-2 rounded-lg border border-nubian-gold text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold hover:text-nubian-dark transition-all">
+          <button type="button" (click)="perfumeService.loadProducts(true); setPage(1)" class="px-4 py-2 rounded-lg border border-nubian-gold text-nubian-brown dark:text-nubian-gold hover:bg-nubian-gold hover:text-nubian-dark transition-all">
             <i class="fas fa-rotate mr-2"></i>{{ 'refresh' | t }}
           </button>
         </div>
@@ -137,7 +137,7 @@
                   <tr>
                     <td>
                       <div class="flex items-center gap-3 min-w-64">
-                        <img [src]="product.image" [alt]="product.name" class="w-12 h-12 rounded-lg object-cover">
+                        <img [src]="product.image" [alt]="product.name" loading="lazy" decoding="async" class="w-12 h-12 rounded-lg object-cover">
                         <div>
                           <p class="font-semibold text-nubian-brown dark:text-nubian-gold">{{ product.name }}</p>
                           <p class="text-xs text-nubian-earth dark:text-nubian-sand">{{ product.gender }} · {{ product.category }}</p>

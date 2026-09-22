@@ -37,6 +37,8 @@ export class PerfumesPageComponent implements OnInit {
     priceMax: 500
   };
   private syncedPriceMax = 500;
+  private displayedCache: Perfume[] = [];
+  private displayedCacheKey = '';
 
   constructor(
     private readonly perfumeService: PerfumeService,
@@ -64,12 +66,24 @@ export class PerfumesPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.perfumeService.loadProducts(true);
+    // The shared service already begins loading at application startup. Do not force
+    // a second request when the page is first rendered.
+    this.perfumeService.loadProducts();
   }
 
   get displayed() {
+    const cacheKey = JSON.stringify({
+      products: this.perfumeService.perfumes.map((perfume) => `${perfume.id}:${perfume.updatedAt}:${perfume.stockQuantity}`).join('|'),
+      filters: this.filters,
+      sort: this.sort,
+      search: this.searchQuery
+    });
+    if (cacheKey === this.displayedCacheKey) return this.displayedCache;
+
     const filtered = this.perfumeService.filter(this.perfumeService.perfumes, this.filters);
-    return this.perfumeService.sort(this.applySearch(filtered), this.sort);
+    this.displayedCache = this.perfumeService.sort(this.applySearch(filtered), this.sort);
+    this.displayedCacheKey = cacheKey;
+    return this.displayedCache;
   }
 
   get pageCount(): number {

@@ -1,0 +1,56 @@
+:host { display: block; width: min(100%, 18rem); }
+
+.audio-message-player {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: inherit;
+}
+
+.audio-message-player audio { display: none; }
+
+.audio-play-button, .audio-volume-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  cursor: pointer;
+}
+
+.audio-play-button {
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  font-size: 0.85rem;
+  box-shadow: 0 5px 12px rgba(15, 118, 110, 0.24);
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.audio-play-button:hover { background: #115e59; transform: scale(1.05); }
+.audio-message-player.is-playing .audio-play-button { background: #d97706; }
+
+.audio-progress-group { min-width: 0; flex: 1; }
+.audio-time-row { display: flex; justify-content: space-between; margin-bottom: 0.3rem; color: color-mix(in srgb, currentColor 72%, transparent); font-size: 0.63rem; font-variant-numeric: tabular-nums; font-weight: 800; }
+
+.audio-progress, .audio-volume-slider { display: block; appearance: none; width: 100%; height: 0.26rem; border-radius: 999px; background: color-mix(in srgb, currentColor 22%, transparent); cursor: pointer; }
+.audio-progress::-webkit-slider-thumb, .audio-volume-slider::-webkit-slider-thumb { appearance: none; width: 0.72rem; height: 0.72rem; border: 2px solid #fff; border-radius: 50%; background: #0f766e; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.audio-progress::-moz-range-thumb, .audio-volume-slider::-moz-range-thumb { width: 0.55rem; height: 0.55rem; border: 2px solid #fff; border-radius: 50%; background: #0f766e; }
+
+.audio-volume-control { display: flex; align-items: center; gap: 0.35rem; }
+.audio-volume-button { width: 1.8rem; height: 1.8rem; border-radius: 0.5rem; background: transparent; color: inherit; font-size: 0.78rem; }
+.audio-volume-button:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.audio-volume-slider { width: 2.7rem; }
+
+@media (max-width: 420px) {
+  :host { width: 100%; }
+  .audio-volume-slider { display: none; }
+  .audio-message-player { gap: 0.5rem; }
+}

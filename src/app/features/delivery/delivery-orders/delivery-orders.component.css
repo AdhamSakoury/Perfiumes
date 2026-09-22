@@ -45,6 +45,60 @@
   transform: translateY(-4px);
 }
 
+.delivery-status-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: -0.2rem 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(245, 166, 35, 0.16);
+  border-radius: 0.85rem;
+  background: rgba(245, 240, 230, 0.35);
+}
+
+.timeline-step {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  min-width: 3.8rem;
+  color: #8b8177;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.timeline-icon {
+  display: inline-flex;
+  width: 1.8rem;
+  height: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid currentColor;
+  border-radius: 9999px;
+  background: #fff;
+}
+
+.timeline-step.complete { color: #059669; }
+.timeline-step.complete .timeline-icon { background: #ecfdf5; }
+.timeline-step.current { color: #0369a1; }
+.timeline-step.current .timeline-icon { color: #fff; background: #0284c7; border-color: #0284c7; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12); }
+.timeline-step.pending { color: #a8a29e; }
+
+.timeline-line {
+  height: 2px;
+  flex: 1;
+  min-width: 0.5rem;
+  margin-top: 0.88rem;
+  background: #d6d3d1;
+}
+
+.timeline-line.complete { background: #34d399; }
+
+.delivery-navigate-button {
+  min-height: 2.5rem;
+  box-shadow: 0 5px 12px rgba(2, 132, 199, 0.22);
+}
+
 /* Dark Mode Overrides */
 :host-context(.dark) .delivery-orders-root {
   color: #f5e6c8;
@@ -57,6 +111,30 @@
 
 :host-context(.dark) .delivery-order-card:hover {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+}
+
+:host-context(.dark) .delivery-status-timeline {
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(245, 166, 35, 0.2);
+}
+
+:host-context(.dark) .timeline-icon { background: #1d2929; }
+
+@media (max-width: 640px) {
+  .delivery-orders-root {
+    padding: 5rem 0.75rem 2rem;
+  }
+
+  .delivery-order-card:hover { transform: none; }
+
+  .delivery-status-timeline {
+    gap: 0.2rem;
+    padding: 0.65rem 0.45rem;
+  }
+
+  .timeline-step { min-width: 3.5rem; font-size: 0.58rem; }
+  .timeline-icon { width: 1.7rem; height: 1.7rem; }
+  .timeline-line { margin-top: 0.82rem; }
 }
 
 /* RTL Support */

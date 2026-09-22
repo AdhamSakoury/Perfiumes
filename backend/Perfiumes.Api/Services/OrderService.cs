@@ -386,6 +386,9 @@ END
 
     public async Task<OrderDto> CreateAsync(CreateOrderRequest request, string? authenticatedEmail = null)
     {
+        // The stock check and decrement must occur in one serializable transaction.
+        // Otherwise two checkouts can both read the last units before either saves.
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var now = DateTimeOffset.UtcNow;
         var id = $"ORD-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():X}";
         var normalizedEmail = request.UserEmail.Trim().ToLowerInvariant();
@@ -551,6 +554,7 @@ END
         order.TrackingEvents.Add(CreateTrackingEvent(id, "Processing", now));
         db.Orders.Add(order);
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return ToDto(order);
     }
 

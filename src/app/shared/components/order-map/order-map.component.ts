@@ -32,6 +32,7 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   estimatedMinutes: number | null = null;
   isWatching = false;
   isSimulating = false;
+  gpsError = '';
 
   currentDeliveryLat: number | null = null;
   currentDeliveryLng: number | null = null;
@@ -69,10 +70,10 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private initMap(): void {
-    if (!this.mapContainer || typeof L === 'undefined') return;
+    if (!this.hasCustomerCoordinates() || !this.mapContainer || typeof L === 'undefined') return;
 
-    const custLat = this.order.customerLatitude ?? 30.0444;
-    const custLng = this.order.customerLongitude ?? 31.2357;
+    const custLat = this.order.customerLatitude!;
+    const custLng = this.order.customerLongitude!;
     const delLat = this.order.deliveryLatitude ?? (custLat - 0.015);
     const delLng = this.order.deliveryLongitude ?? (custLng - 0.012);
 
@@ -93,10 +94,10 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private updateMarkers(): void {
-    if (!this.map || typeof L === 'undefined') return;
+    if (!this.map || typeof L === 'undefined' || !this.hasCustomerCoordinates()) return;
 
-    const custLat = this.order.customerLatitude ?? 30.0444;
-    const custLng = this.order.customerLongitude ?? 31.2357;
+    const custLat = this.order.customerLatitude!;
+    const custLng = this.order.customerLongitude!;
     const delLat = this.currentDeliveryLat ?? this.order.deliveryLatitude ?? (custLat - 0.015);
     const delLng = this.currentDeliveryLng ?? this.order.deliveryLongitude ?? (custLng - 0.012);
 
@@ -187,8 +188,9 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.deliveryMarker.setLatLng([lat, lng]);
     }
 
-    const custLat = this.order.customerLatitude ?? 30.0444;
-    const custLng = this.order.customerLongitude ?? 31.2357;
+    if (!this.hasCustomerCoordinates()) return;
+    const custLat = this.order.customerLatitude!;
+    const custLng = this.order.customerLongitude!;
 
     if (this.routeLine) {
       this.routeLine.setLatLngs([
@@ -221,8 +223,9 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   useCurrentGPS(): void {
+    this.gpsError = '';
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
+      this.gpsError = 'GPS is not supported by this device.';
       return;
     }
 
@@ -237,7 +240,9 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
       },
       (error) => {
         console.warn('GPS error:', error);
-        alert('Could not obtain current location. Please allow location access.');
+        this.gpsError = error.code === error.PERMISSION_DENIED
+          ? 'Location access was denied. Allow GPS access and try again.'
+          : 'Could not obtain your current location. Please try again.';
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -252,14 +257,22 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private startWatching(): void {
-    if (!navigator.geolocation) return;
+    this.gpsError = '';
+    if (!navigator.geolocation) {
+      this.gpsError = 'GPS is not supported by this device.';
+      return;
+    }
     this.isWatching = true;
     this.watchId = navigator.geolocation.watchPosition(
       (position) => {
         this.updateDeliveryPosition(position.coords.latitude, position.coords.longitude, true);
       },
-      (err) => console.warn('Watch GPS error:', err),
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      (err) => {
+        console.warn('Watch GPS error:', err);
+        this.gpsError = 'Live GPS paused. Check location permission and retry.';
+        this.stopWatching();
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 }
     );
   }
 
@@ -280,8 +293,9 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private startSimulation(): void {
-    const custLat = this.order.customerLatitude ?? 30.0444;
-    const custLng = this.order.customerLongitude ?? 31.2357;
+    if (!this.hasCustomerCoordinates()) return;
+    const custLat = this.order.customerLatitude!;
+    const custLng = this.order.customerLongitude!;
     let currentLat = this.currentDeliveryLat ?? (custLat - 0.015);
     let currentLng = this.currentDeliveryLng ?? (custLng - 0.012);
 
@@ -311,9 +325,15 @@ export class OrderMapComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.isSimulating = false;
   }
 
-  get googleMapsUrl(): string {
-    const custLat = this.order.customerLatitude ?? 30.0444;
-    const custLng = this.order.customerLongitude ?? 31.2357;
-    return `https://www.google.com/maps/dir/?api=1&destination=${custLat},${custLng}`;
+  hasCustomerCoordinates(): boolean {
+    const { customerLatitude: latitude, customerLongitude: longitude } = this.order;
+    return typeof latitude === 'number' && typeof longitude === 'number'
+      && Number.isFinite(latitude) && Number.isFinite(longitude)
+      && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+  }
+
+  get googleMapsUrl(): string | null {
+    if (!this.hasCustomerCoordinates()) return null;
+    return `https://www.google.com/maps/dir/?api=1&destination=${this.order.customerLatitude},${this.order.customerLongitude}`;
   }
 }

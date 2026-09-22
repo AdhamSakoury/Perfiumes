@@ -60,7 +60,7 @@
                     <span class="image-zoom-hint"><i class="fas fa-magnifying-glass-plus"></i></span>
                   </div>
                 } @else if (msg.messageType === 'audio' && msg.mediaUrl) {
-                  <audio class="msg-audio" controls [src]="mediaUrl(msg.mediaUrl)"></audio>
+                  <app-audio-message-player [src]="mediaUrl(msg.mediaUrl)" />
                 } @else if (msg.messageType === 'document' && msg.mediaUrl) {
                   <a class="msg-document" [href]="mediaUrl(msg.mediaUrl)" target="_blank" rel="noopener noreferrer">
                     <i class="fas fa-file-lines"></i>{{ msg.fileName || 'Download document' }}

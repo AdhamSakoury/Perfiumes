@@ -137,6 +137,23 @@
               </span>
             </div>
 
+            <div class="delivery-status-timeline" [attr.aria-label]="isAr ? 'مراحل التوصيل' : 'Delivery progress'">
+              <div class="timeline-step" [ngClass]="statusStepClass(order, 1)">
+                <span class="timeline-icon"><i class="fas fa-box"></i></span>
+                <span>{{ isAr ? 'جاهز' : 'Ready' }}</span>
+              </div>
+              <div class="timeline-line" [class.complete]="statusStepClass(order, 2) !== 'pending'"></div>
+              <div class="timeline-step" [ngClass]="statusStepClass(order, 2)">
+                <span class="timeline-icon"><i class="fas fa-motorcycle"></i></span>
+                <span>{{ isAr ? 'في الطريق' : 'On route' }}</span>
+              </div>
+              <div class="timeline-line" [class.complete]="statusStepClass(order, 3) !== 'pending'"></div>
+              <div class="timeline-step" [ngClass]="statusStepClass(order, 3)">
+                <span class="timeline-icon"><i class="fas fa-circle-check"></i></span>
+                <span>{{ isAr ? 'تم التسليم' : 'Delivered' }}</span>
+              </div>
+            </div>
+
             <!-- Customer Contact Box -->
             <div class="p-3.5 rounded-xl bg-nubian-sand/20 dark:bg-nubian-dark/40 border border-nubian-gold/15 mb-3.5">
               <div class="flex items-center gap-2.5 mb-2.5">
@@ -189,14 +206,14 @@
                 <button type="button" (click)="openMap(order)"
                   class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white dark:bg-nubian-dark border border-nubian-gold/30 text-nubian-brown dark:text-nubian-gold font-bold text-xs hover:border-nubian-gold transition-colors">
                   <i class="fas fa-map-location-dot text-amber-500"></i>
-                  <span>{{ 'liveGpsNav' | t }}</span>
+                  <span>{{ isAr ? 'عرض الموقع' : 'View location' }}</span>
                 </button>
 
-                <a [href]="getGoogleNavUrl(order)" target="_blank" rel="noopener noreferrer"
-                  class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 transition-colors">
+                <button type="button" (click)="navigateToCustomer(order)"
+                  class="delivery-navigate-button flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 transition-colors">
                   <i class="fas fa-diamond-turn-right"></i>
-                  <span>{{ 'openInGmaps' | t }}</span>
-                </a>
+                  <span>{{ isAr ? 'اذهب للعميل' : 'Navigate to customer' }}</span>
+                </button>
               </div>
             </div>
 
@@ -213,6 +230,9 @@
                   } @else {
                     {{ 'paidOnline' | t }}
                   }
+                </span>
+                <span class="text-[11px] text-nubian-earth/70 dark:text-nubian-sand/60 block mt-1">
+                  {{ 'deliveryFee' | t }}: {{ (order.shippingFee || 0) | egp }}
                 </span>
               </div>
               

@@ -69,6 +69,17 @@ export class CartService {
       this.remove(perfumeId);
       return;
     }
+    const perfume = this.perfumes.findById(perfumeId);
+    const available = perfume?.stockQuantity ?? 0;
+    if (!perfume || available <= 0) {
+      this.toast.show('This perfume is currently out of stock.', 'error');
+      this.remove(perfumeId);
+      return;
+    }
+    if (quantity > available) {
+      this.toast.show(`Only ${available} item(s) available.`, 'error');
+      return;
+    }
     this.save(this.items().map((item) => item.perfumeId === perfumeId ? { ...item, quantity } : item));
   }
 

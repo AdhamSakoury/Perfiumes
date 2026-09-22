@@ -9,10 +9,11 @@ import { CartService } from '@core/services/cart.service';
 import { DeliveryZoneService } from '@core/services/delivery-zone.service';
 import { OrderService } from '@core/services/order.service';
 import { PaymentService } from '@core/services/payment.service';
+import { PerfumeService } from '@core/services/perfume.service';
 import { ToastService } from '@core/services/toast.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { catchError, map, switchMap, throwError, TimeoutError } from 'rxjs';
+import { catchError, finalize, map, Subscription, switchMap, throwError, timeout, TimeoutError } from 'rxjs';
 
 @Component({
   selector: 'app-checkout-page',
@@ -38,17 +39,22 @@ export class CheckoutPageComponent implements OnDestroy {
   cardGatewayReady: boolean | null = null;
   paymentNotice = 'Your order will be confirmed immediately. You pay the full amount when it arrives.';
   gpsLoading = false;
+  addressDetecting = false;
   gpsError = '';
   private quoteTimer?: ReturnType<typeof setTimeout>;
   private addressDebounceTimer?: ReturnType<typeof setTimeout>;
   private processingWatchdog?: ReturnType<typeof setTimeout>;
   private paymentAttemptId?: string;
+  private locationDetection?: Subscription;
+  private locationRequestId = 0;
+  private lastDetectedAddress = '';
 
   constructor(
     readonly cart: CartService,
     readonly auth: AuthService,
     private readonly orders: OrderService,
     private readonly payments: PaymentService,
+    private readonly perfumes: PerfumeService,
     private readonly deliveryZones: DeliveryZoneService,
     private readonly toast: ToastService,
     private readonly router: Router,
@@ -66,7 +72,7 @@ export class CheckoutPageComponent implements OnDestroy {
     this.loadZones();
 
     if (this.form.address.trim()) {
-      this.detectZone(undefined, undefined, this.form.address.trim());
+      this.detectZone(undefined, undefined, this.form.address.trim(), 'address');
     }
 
     this.payments.paymobAvailability().subscribe({
@@ -77,6 +83,7 @@ export class CheckoutPageComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearProcessingWatchdog();
+    this.cancelLocationDetection();
     if (this.quoteTimer) clearTimeout(this.quoteTimer);
     if (this.addressDebounceTimer) clearTimeout(this.addressDebounceTimer);
   }
@@ -128,11 +135,20 @@ export class CheckoutPageComponent implements OnDestroy {
   onAddressInput(): void {
     if (this.addressDebounceTimer) clearTimeout(this.addressDebounceTimer);
     const addr = this.form.address?.trim() ?? '';
-    if (addr.length < 3) return;
+    if (addr.length < 3) {
+      this.cancelLocationDetection();
+      this.addressDetecting = false;
+      this.lastDetectedAddress = '';
+      return;
+    }
+
+    const normalizedAddress = this.normalizeAddress(addr);
+    if (normalizedAddress === this.lastDetectedAddress) return;
 
     this.addressDebounceTimer = setTimeout(() => {
-      this.detectZone(undefined, undefined, addr);
-    }, 600);
+      // Keep address matching responsive without geocoding on every keystroke.
+      this.detectZone(undefined, undefined, addr, 'address');
+    }, 450);
   }
 
   locateRealtime(): void {
@@ -148,27 +164,46 @@ export class CheckoutPageComponent implements OnDestroy {
         const { latitude, longitude } = pos.coords;
         this.detectZone(latitude, longitude);
       },
-      () => {
+      (positionError) => {
         this.ngZone.run(() => {
           this.gpsLoading = false;
-          this.gpsError = this.i18n.t('gpsDenied');
+          this.gpsError = positionError.code === positionError.PERMISSION_DENIED
+            ? this.i18n.t('gpsDenied')
+            : positionError.code === positionError.TIMEOUT
+              ? this.i18n.t('gpsTimedOut')
+              : this.i18n.t('gpsFetchError');
         });
       },
-      { timeout: 12000, enableHighAccuracy: true, maximumAge: 60000 }
+      // Reuse only a very recent GPS fix; this avoids a second hardware scan without
+      // accepting a stale location.
+      { timeout: 8_000, enableHighAccuracy: true, maximumAge: 30_000 }
     );
   }
 
-  private detectZone(latitude?: number, longitude?: number, address?: string): void {
-    this.gpsLoading = true;
+  private detectZone(latitude?: number, longitude?: number, address?: string, source: 'gps' | 'address' = 'gps'): void {
+    this.cancelLocationDetection();
+    const requestId = ++this.locationRequestId;
+    this.gpsLoading = source === 'gps';
+    this.addressDetecting = source === 'address';
     this.gpsError = '';
 
-    this.deliveryZones.detectLocation(latitude, longitude, address).subscribe({
+    this.locationDetection = this.deliveryZones.detectLocation(latitude, longitude, address).pipe(
+      // The API includes reverse geocoding for GPS requests. Never leave checkout in
+      // a loading state if that upstream service is slow or unavailable.
+      timeout(4_500),
+      finalize(() => {
+        if (requestId === this.locationRequestId) {
+          this.gpsLoading = false;
+          this.addressDetecting = false;
+        }
+      })
+    ).subscribe({
       next: (res) => {
         this.ngZone.run(() => {
-          this.gpsLoading = false;
+          if (requestId !== this.locationRequestId) return;
           if (res.success && res.zoneId) {
             this.detectedZoneInfo = res;
-            if (latitude && longitude && res.formattedAddress) {
+            if (latitude !== undefined && longitude !== undefined && res.formattedAddress) {
               this.form.address = res.formattedAddress;
             }
             if (res.city) {
@@ -176,6 +211,7 @@ export class CheckoutPageComponent implements OnDestroy {
             }
             this.selectedZoneId = res.zoneId;
             this.selectedAreaId = res.areaId || '';
+            if (source === 'address' && address) this.lastDetectedAddress = this.normalizeAddress(address);
             this.scheduleQuote();
           } else {
             this.gpsError = this.i18n.t('gpsZoneNotFound');
@@ -184,11 +220,20 @@ export class CheckoutPageComponent implements OnDestroy {
       },
       error: () => {
         this.ngZone.run(() => {
-          this.gpsLoading = false;
+          if (requestId !== this.locationRequestId) return;
           this.gpsError = this.i18n.t('gpsFetchError');
         });
       }
     });
+  }
+
+  private cancelLocationDetection(): void {
+    this.locationDetection?.unsubscribe();
+    this.locationDetection = undefined;
+  }
+
+  private normalizeAddress(value: string): string {
+    return value.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
   }
 
   placeOrder(): void {
@@ -259,6 +304,9 @@ export class CheckoutPageComponent implements OnDestroy {
     orderRequest.subscribe({
       next: ({ createdOrder, token }) => {
         this.auth.updateCurrentUser({ ...user, orders: [createdOrder, ...(user.orders || [])] });
+        // Stock is authoritative on the backend; refresh the shared catalog after
+        // the order reserves its quantities so cards and cart limits are current.
+        this.perfumes.loadProducts(true);
         const chargeOnline = createdOrder.onlinePaymentAmount ?? this.quote?.onlinePaymentAmount ?? 0;
         if (this.paymentMethod === 'card' && chargeOnline > 0) {
           this.processingStep = 'paymob';
@@ -305,6 +353,16 @@ export class CheckoutPageComponent implements OnDestroy {
   deliveryEta(): string {
     const days = this.quote?.estimatedDays ?? this.detectedZoneInfo?.estimatedDays ?? this.selectedZone?.estimatedDays;
     return days ? `${days} business day${days === 1 ? '' : 's'}` : 'Auto-calculated';
+  }
+
+  deliveryDestination(): string {
+    const typedAddress = this.form.address.trim();
+    if (typedAddress) return typedAddress;
+    return this.detectedZoneInfo?.city || this.selectedZone?.cityRegion || 'Your delivery address';
+  }
+
+  deliveryServiceArea(): string {
+    return this.detectedZoneInfo?.zoneName || this.selectedZone?.name || '';
   }
 
   payableTotal(): number {

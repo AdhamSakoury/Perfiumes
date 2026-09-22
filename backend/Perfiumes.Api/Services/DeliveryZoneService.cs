@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Perfiumes.Api.Data;
 using Perfiumes.Api.Data.Entities;
@@ -8,6 +9,9 @@ namespace Perfiumes.Api.Services;
 
 public sealed class DeliveryZoneService(PerfiumesDbContext db, IHttpClientFactory httpFactory)
 {
+    // Reverse geocoding is an external, rate-limited service. Cache a small rounded
+    // coordinate cell briefly so retries and nearby fixes do not repeat the request.
+    private static readonly ConcurrentDictionary<string, CachedReverseGeocode> ReverseGeocodeCache = new();
     public async Task EnsureSchemaAsync()
     {
         await db.Database.ExecuteSqlRawAsync("""
@@ -48,6 +52,20 @@ END
         if (!await db.DeliveryZones.AnyAsync())
         {
             await SeedDefaultZonesAsync();
+        }
+
+        // Upgrade only the original seeded catch-all wording. It is used for places
+        // such as Mansoura and Tanta, so "Areas Near Upper Egypt" is misleading.
+        var legacyCatchAll = await db.DeliveryZones.FirstOrDefaultAsync(zone =>
+            zone.Id == "zone_upper_egypt_near"
+            && zone.Name == "Areas Near Upper Egypt"
+            && zone.CityRegion == "Upper Egypt / farther governorates");
+        if (legacyCatchAll is not null)
+        {
+            legacyCatchAll.Name = "Other Egyptian Governorates";
+            legacyCatchAll.CityRegion = "Egyptian governorates outside Cairo / Alexandria";
+            legacyCatchAll.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
         }
     }
 
@@ -153,7 +171,7 @@ END
         return new ResolvedDelivery(zone, area, ResolveFee(zone, area), Math.Max(1, zone.EstimatedDays));
     }
 
-    public async Task<DetectedLocationDto> DetectLocationAsync(DetectLocationRequest request)
+    public async Task<DetectedLocationDto> DetectLocationAsync(DetectLocationRequest request, CancellationToken cancellationToken = default)
     {
         var allZones = await db.DeliveryZones
             .AsNoTracking()
@@ -188,50 +206,14 @@ END
         {
             try
             {
-                var client = httpFactory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(5);
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("GnoubyPerfumes/1.0 (support@gnouby.com)");
-
-                var latStr = lat.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                var lonStr = lon.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                var url = $"https://nominatim.openstreetmap.org/reverse?lat={latStr}&lon={lonStr}&format=json&accept-language=ar,en";
-                var response = await client.GetFromJsonAsync<System.Text.Json.JsonElement>(url);
-
-                if (response.ValueKind == System.Text.Json.JsonValueKind.Object)
-                {
-                    if (response.TryGetProperty("display_name", out var dn))
-                    {
-                        formattedAddress = dn.GetString() ?? formattedAddress;
-                    }
-
-                    if (response.TryGetProperty("address", out var addrElem) && addrElem.ValueKind == System.Text.Json.JsonValueKind.Object)
-                    {
-                        state = GetStringProp(addrElem, "state")
-                             ?? GetStringProp(addrElem, "governorate")
-                             ?? string.Empty;
-
-                        city = GetStringProp(addrElem, "city")
-                            ?? GetStringProp(addrElem, "town")
-                            ?? GetStringProp(addrElem, "village")
-                            ?? GetStringProp(addrElem, "county")
-                            ?? GetStringProp(addrElem, "suburb")
-                            ?? string.Empty;
-
-                        var road = GetStringProp(addrElem, "road")
-                                ?? GetStringProp(addrElem, "street")
-                                ?? string.Empty;
-
-                        var parts = new List<string>();
-                        if (!string.IsNullOrWhiteSpace(road)) parts.Add(road);
-                        if (!string.IsNullOrWhiteSpace(city)) parts.Add(city);
-                        if (!string.IsNullOrWhiteSpace(state)) parts.Add(state);
-
-                        if (parts.Count > 0)
-                        {
-                            formattedAddress = string.Join("، ", parts);
-                        }
-                    }
-                }
+                var resolved = await ReverseGeocodeAsync(lat.Value, lon.Value, cancellationToken);
+                formattedAddress = string.IsNullOrWhiteSpace(resolved.FormattedAddress) ? formattedAddress : resolved.FormattedAddress;
+                city = resolved.City;
+                state = resolved.State;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch
             {
@@ -242,87 +224,34 @@ END
         DeliveryZoneEntity? matchedZone = null;
         DeliveryZoneAreaEntity? matchedArea = null;
 
-        var textToMatch = $"{formattedAddress} {city} {state} {request.Address}".ToLowerInvariant();
-
-        // 1. Check Alexandria:
-        bool isAlex = textToMatch.Contains("alex") || textToMatch.Contains("اسكندر") || textToMatch.Contains("إسكندر");
-        if (!isAlex && lat.HasValue && lon.HasValue)
+        var normalizedText = NormalizeLocationText($"{formattedAddress} {city} {state} {request.Address}");
+        var governorate = InferGovernorate(normalizedText);
+        if (string.IsNullOrWhiteSpace(governorate) && lat.HasValue && lon.HasValue)
         {
-            isAlex = lat.Value >= 31.0 && lat.Value <= 31.45 && lon.Value >= 29.5 && lon.Value <= 30.35;
+            governorate = InferGovernorateFromCoordinates(lat.Value, lon.Value);
         }
 
-        // 2. Check Greater Cairo:
-        bool isCairo = textToMatch.Contains("cairo") || textToMatch.Contains("giza") || textToMatch.Contains("قاهر") ||
-                       textToMatch.Contains("جيز") || textToMatch.Contains("قليوب") || textToMatch.Contains("أكتوبر") ||
-                       textToMatch.Contains("زايد") || textToMatch.Contains("تجمع") || textToMatch.Contains("معادي") ||
-                       textToMatch.Contains("شروق") || textToMatch.Contains("عبور") || textToMatch.Contains("بدر");
-        if (!isCairo && lat.HasValue && lon.HasValue && !isAlex)
+        // Configuration is the first source of truth: zones and their areas can be
+        // named by the administrator in Arabic or English without code changes.
+        matchedZone = FindConfiguredZone(allZones, normalizedText, governorate);
+        if (matchedZone is not null)
         {
-            var distToCairo = HaversineDistance(lat.Value, lon.Value, 30.0444, 31.2357);
-            isCairo = distToCairo <= 45;
+            matchedArea = FindConfiguredArea(matchedZone, normalizedText);
+            matchedArea ??= SelectAreaByDistance(matchedZone, lat, lon);
+            matchedArea ??= DefaultArea(matchedZone);
         }
 
-        if (isAlex)
-        {
-            matchedZone = allZones.FirstOrDefault(z => z.Name.Contains("Alex", StringComparison.OrdinalIgnoreCase) ||
-                                                       z.CityRegion.Contains("Alex", StringComparison.OrdinalIgnoreCase) ||
-                                                       z.Id == "zone_alexandria");
-            if (matchedZone is not null && matchedZone.Areas.Count > 0)
-            {
-                var activeAreas = matchedZone.Areas.Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToList();
-                if (lat.HasValue && lon.HasValue)
-                {
-                    var dist = HaversineDistance(lat.Value, lon.Value, 31.2001, 29.9187);
-                    if (dist <= 12 && activeAreas.Count > 0) matchedArea = activeAreas[0];
-                    else if (dist <= 25 && activeAreas.Count > 1) matchedArea = activeAreas[1];
-                    else if (activeAreas.Count > 2) matchedArea = activeAreas[2];
-                    else matchedArea = activeAreas.LastOrDefault();
-                }
-                matchedArea ??= activeAreas.FirstOrDefault(a => a.Fee == matchedZone.DefaultFee) ?? activeAreas.FirstOrDefault();
-            }
-        }
-        else if (isCairo)
-        {
-            matchedZone = allZones.FirstOrDefault(z => z.Name.Contains("Cairo", StringComparison.OrdinalIgnoreCase) ||
-                                                       z.CityRegion.Contains("Cairo", StringComparison.OrdinalIgnoreCase) ||
-                                                       z.Id == "zone_cairo");
-            if (matchedZone is not null && matchedZone.Areas.Count > 0)
-            {
-                var activeAreas = matchedZone.Areas.Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToList();
-                if (lat.HasValue && lon.HasValue)
-                {
-                    var dist = HaversineDistance(lat.Value, lon.Value, 30.0444, 31.2357);
-                    if (dist <= 15 && activeAreas.Count > 0) matchedArea = activeAreas[0];
-                    else if (dist <= 30 && activeAreas.Count > 1) matchedArea = activeAreas[1];
-                    else if (activeAreas.Count > 2) matchedArea = activeAreas[2];
-                    else matchedArea = activeAreas.LastOrDefault();
-                }
-                matchedArea ??= activeAreas.FirstOrDefault(a => a.Fee == matchedZone.DefaultFee) ?? activeAreas.FirstOrDefault();
-            }
-        }
-        else
-        {
-            // 3. Location is OUTSIDE Cairo & Alexandria (Mansoura, Tanta, Upper Egypt, Canal, etc.)
-            matchedZone = allZones.FirstOrDefault(z =>
-                (!string.IsNullOrWhiteSpace(city) && (z.Name.Contains(city, StringComparison.OrdinalIgnoreCase) || z.CityRegion.Contains(city, StringComparison.OrdinalIgnoreCase))) ||
-                (!string.IsNullOrWhiteSpace(state) && (z.Name.Contains(state, StringComparison.OrdinalIgnoreCase) || z.CityRegion.Contains(state, StringComparison.OrdinalIgnoreCase))));
-
-            matchedZone ??= allZones.FirstOrDefault(z =>
-                z.CityRegion.Contains("Upper Egypt", StringComparison.OrdinalIgnoreCase) ||
-                z.CityRegion.Contains("governorate", StringComparison.OrdinalIgnoreCase) ||
-                z.CityRegion.Contains("المحافظات", StringComparison.OrdinalIgnoreCase) ||
-                z.CityRegion.Contains("خارج", StringComparison.OrdinalIgnoreCase) ||
-                z.Name.Contains("Upper Egypt", StringComparison.OrdinalIgnoreCase) ||
-                z.Id == "zone_upper_egypt_near");
-
-            matchedZone ??= allZones.LastOrDefault();
-
-            if (matchedZone is not null && matchedZone.Areas.Count > 0)
-            {
-                var activeAreas = matchedZone.Areas.Where(a => a.IsActive).OrderBy(a => a.SortOrder).ToList();
-                matchedArea = activeAreas.FirstOrDefault(a => a.Fee == matchedZone.DefaultFee) ?? activeAreas.FirstOrDefault();
-            }
-        }
+        // A known Egyptian governorate without its own configured zone uses the
+        // existing catch-all zone. This preserves existing delivery pricing rules.
+        matchedZone ??= allZones.FirstOrDefault(z =>
+            z.CityRegion.Contains("Upper Egypt", StringComparison.OrdinalIgnoreCase) ||
+            z.CityRegion.Contains("governorate", StringComparison.OrdinalIgnoreCase) ||
+            z.CityRegion.Contains("المحافظات", StringComparison.OrdinalIgnoreCase) ||
+            z.CityRegion.Contains("خارج", StringComparison.OrdinalIgnoreCase) ||
+            z.Name.Contains("Upper Egypt", StringComparison.OrdinalIgnoreCase) ||
+            z.Id == "zone_upper_egypt_near");
+        matchedZone ??= allZones.LastOrDefault();
+        matchedArea ??= matchedZone is null ? null : DefaultArea(matchedZone);
 
         matchedZone ??= allZones[0];
 
@@ -333,7 +262,7 @@ END
             Success: true,
             FormattedAddress: string.IsNullOrWhiteSpace(formattedAddress) ? (request.Address ?? string.Empty) : formattedAddress,
             City: !string.IsNullOrWhiteSpace(city) ? city : (!string.IsNullOrWhiteSpace(state) ? state : matchedZone.CityRegion),
-            Governorate: !string.IsNullOrWhiteSpace(state) ? state : matchedZone.CityRegion,
+            Governorate: !string.IsNullOrWhiteSpace(state) ? state : (!string.IsNullOrWhiteSpace(governorate) ? governorate : matchedZone.CityRegion),
             ZoneId: matchedZone.Id,
             ZoneName: matchedZone.Name,
             AreaId: matchedArea?.Id,
@@ -343,12 +272,177 @@ END
             Message: "Delivery zone detected successfully.");
     }
 
+    private static DeliveryZoneEntity? FindConfiguredZone(
+        IEnumerable<DeliveryZoneEntity> zones,
+        string text,
+        string governorate)
+    {
+        return zones
+            .Select(zone => new { Zone = zone, Score = ZoneMatchScore(zone, text, governorate) })
+            .Where(candidate => candidate.Score > 0)
+            .OrderByDescending(candidate => candidate.Score)
+            .ThenBy(candidate => candidate.Zone.SortOrder)
+            .Select(candidate => candidate.Zone)
+            .FirstOrDefault();
+    }
+
+    private async Task<CachedReverseGeocode> ReverseGeocodeAsync(double latitude, double longitude, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"{Math.Round(latitude, 4):F4}:{Math.Round(longitude, 4):F4}";
+        if (ReverseGeocodeCache.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow)
+        {
+            return cached;
+        }
+
+        var client = httpFactory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(3);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("GnoubyPerfumes/1.0 (support@gnouby.com)");
+        var lat = latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var lon = longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var response = await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
+            $"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&accept-language=ar,en", cancellationToken);
+
+        var formattedAddress = response.TryGetProperty("display_name", out var displayName) ? displayName.GetString() ?? string.Empty : string.Empty;
+        var city = string.Empty;
+        var state = string.Empty;
+        if (response.TryGetProperty("address", out var address) && address.ValueKind == System.Text.Json.JsonValueKind.Object)
+        {
+            state = GetStringProp(address, "state") ?? GetStringProp(address, "governorate") ?? string.Empty;
+            city = GetStringProp(address, "city") ?? GetStringProp(address, "town") ?? GetStringProp(address, "village")
+                ?? GetStringProp(address, "county") ?? GetStringProp(address, "suburb") ?? string.Empty;
+            var road = GetStringProp(address, "road") ?? GetStringProp(address, "street") ?? string.Empty;
+            var parts = new[] { road, city, state }.Where(part => !string.IsNullOrWhiteSpace(part));
+            formattedAddress = parts.Any() ? string.Join("، ", parts) : formattedAddress;
+        }
+
+        var resolved = new CachedReverseGeocode(formattedAddress, city, state, DateTimeOffset.UtcNow.AddMinutes(3));
+        ReverseGeocodeCache[cacheKey] = resolved;
+        return resolved;
+    }
+
+    private static int ZoneMatchScore(DeliveryZoneEntity zone, string text, string governorate)
+    {
+        var profile = NormalizeLocationText($"{zone.Name} {zone.CityRegion}");
+        var score = 0;
+
+        // Prefer administrator-configured zone and area names over the built-in
+        // governorate dictionary, so custom delivery zones remain authoritative.
+        if (ContainsPhrase(text, NormalizeLocationText(zone.CityRegion))) score += 80;
+        if (ContainsPhrase(text, NormalizeLocationText(zone.Name))) score += 70;
+        if (zone.Areas.Any(area => area.IsActive && ContainsPhrase(text, NormalizeLocationText(area.Name)))) score += 100;
+
+        if (!string.IsNullOrWhiteSpace(governorate))
+        {
+            score += GovernorateAliases(governorate)
+                .Where(alias => ContainsPhrase(profile, NormalizeLocationText(alias)))
+                .Any() ? 60 : 0;
+        }
+
+        return score;
+    }
+
+    private static DeliveryZoneAreaEntity? FindConfiguredArea(DeliveryZoneEntity zone, string text) =>
+        zone.Areas
+            .Where(area => area.IsActive && ContainsPhrase(text, NormalizeLocationText(area.Name)))
+            .OrderByDescending(area => NormalizeLocationText(area.Name).Length)
+            .ThenBy(area => area.SortOrder)
+            .FirstOrDefault();
+
+    private static DeliveryZoneAreaEntity? SelectAreaByDistance(DeliveryZoneEntity zone, double? lat, double? lon)
+    {
+        var areas = zone.Areas.Where(area => area.IsActive).OrderBy(area => area.SortOrder).ToList();
+        if (!lat.HasValue || !lon.HasValue || areas.Count == 0) return null;
+
+        var profile = NormalizeLocationText($"{zone.Name} {zone.CityRegion}");
+        if (ContainsPhrase(profile, "alexandria") || ContainsPhrase(profile, "الاسكندرية"))
+        {
+            var distance = HaversineDistance(lat.Value, lon.Value, 31.2001, 29.9187);
+            return distance <= 12 ? areas[0] : distance <= 25 && areas.Count > 1 ? areas[1] : areas.Last();
+        }
+
+        if (ContainsPhrase(profile, "cairo") || ContainsPhrase(profile, "القاهرة"))
+        {
+            var distance = HaversineDistance(lat.Value, lon.Value, 30.0444, 31.2357);
+            return distance <= 15 ? areas[0] : distance <= 30 && areas.Count > 1 ? areas[1] : areas.Last();
+        }
+
+        return null;
+    }
+
+    private static DeliveryZoneAreaEntity? DefaultArea(DeliveryZoneEntity zone) =>
+        zone.Areas.Where(area => area.IsActive).OrderBy(area => area.SortOrder)
+            .FirstOrDefault(area => area.Fee == zone.DefaultFee)
+        ?? zone.Areas.Where(area => area.IsActive).OrderBy(area => area.SortOrder).FirstOrDefault();
+
+    private static string InferGovernorateFromCoordinates(double lat, double lon)
+    {
+        if (lat is >= 31.0 and <= 31.45 && lon is >= 29.5 and <= 30.35) return "Alexandria";
+        return HaversineDistance(lat, lon, 30.0444, 31.2357) <= 45 ? "Cairo" : string.Empty;
+    }
+
+    private static string InferGovernorate(string text)
+    {
+        foreach (var (governorate, aliases) in EgyptianGovernorateAliases)
+        {
+            if (aliases.Any(alias => ContainsPhrase(text, NormalizeLocationText(alias)))) return governorate;
+        }
+        return string.Empty;
+    }
+
+    private static IEnumerable<string> GovernorateAliases(string governorate) =>
+        EgyptianGovernorateAliases.TryGetValue(governorate, out var aliases) ? aliases : [governorate];
+
+    private static bool ContainsPhrase(string text, string phrase)
+    {
+        if (string.IsNullOrWhiteSpace(phrase) || phrase.Length < 3) return false;
+        return $" {text} ".Contains($" {phrase} ", StringComparison.Ordinal)
+            || phrase.Contains(' ') && text.Contains(phrase, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeLocationText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var decomposed = value.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD) ?? string.Empty;
+        var filtered = new string(decomposed.Where(ch => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
+        var sanitized = new string((filtered ?? string.Empty)
+            .Replace('أ', 'ا').Replace('إ', 'ا').Replace('آ', 'ا').Replace('ى', 'ي').Replace('ة', 'ه')
+            .Select(ch => char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch) ? ch : ' ')
+            .ToArray());
+        return string.Join(' ', sanitized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static readonly IReadOnlyDictionary<string, string[]> EgyptianGovernorateAliases =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alexandria"] = ["alexandria", "alex", "الاسكندرية", "اسكندرية", "سيدي بشر", "سيدي بشير", "sidi bishr", "sidi beshr", "agami", "el agamy", "العجمي", "العجمى", "العامرية", "amreya", "miami", "ميامي", "سموحة", "smoha", "محرم بك", "moharam bek", "الرمل", "العصافرة", "abu qir", "ابو قير", "برج العرب", "الدخيلة", "كرموز"],
+            ["Cairo"] = ["cairo", "القاهرة", "nasr city", "مدينة نصر", "heliopolis", "مصر الجديدة", "maadi", "المعادي", "zamalek", "الزمالك", "shorouk", "الشروق", "obour", "العبور", "badr", "بدر", "tagamoa", "التجمع", "new cairo", "القاهرة الجديدة", "helwan", "حلوان"],
+            ["Giza"] = ["giza", "الجيزة", "جيزة", "dokki", "الدقي", "mohandessin", "المهندسين", "6 october", "sixth of october", "٦ اكتوبر", "6 اكتوبر", "sheikh zayed", "الشيخ زايد", "haram", "الهرم", "faisal", "فيصل"],
+            ["Qalyubia"] = ["qalyubia", "qalyoubia", "القليوبية", "قليوب", "shubra", "شبرا"],
+            ["Dakahlia"] = ["dakahlia", "الدقهلية", "mansoura", "المنصورة"],
+            ["Gharbia"] = ["gharbia", "الغربية", "tanta", "طنطا", "mahalla", "المحلة"],
+            ["Sharqia"] = ["sharqia", "الشرقية", "zagazig", "الزقازيق"],
+            ["Monufia"] = ["monufia", "menoufia", "المنوفية", "shebin el kom", "شبين الكوم"],
+            ["Beheira"] = ["beheira", "البحيرة", "damanhur", "دمنهور"],
+            ["Ismailia"] = ["ismailia", "الاسماعيلية", "الإسماعيلية"],
+            ["Suez"] = ["suez", "السويس"], ["Port Said"] = ["port said", "بورسعيد"],
+            ["Red Sea"] = ["red sea", "البحر الاحمر", "الغردقة", "hurghada"],
+            ["Fayoum"] = ["fayoum", "fayum", "الفيوم"], ["Beni Suef"] = ["beni suef", "بني سويف"],
+            ["Minya"] = ["minya", "المنيا"], ["Assiut"] = ["assiut", "asyut", "اسيوط", "أسيوط"],
+            ["Sohag"] = ["sohag", "سوهاج"], ["Qena"] = ["qena", "قنا"], ["Luxor"] = ["luxor", "الاقصر", "الأقصر"],
+            ["Aswan"] = ["aswan", "اسوان", "أسوان"], ["Matrouh"] = ["matrouh", "مطروح", "marsah matrouh", "مرسى مطروح"],
+            ["North Sinai"] = ["north sinai", "شمال سيناء", "العريش"], ["South Sinai"] = ["south sinai", "جنوب سيناء", "شرم الشيخ"],
+            ["New Valley"] = ["new valley", "الوادي الجديد"], ["Kafr El Sheikh"] = ["kafr el sheikh", "كفر الشيخ"],
+            ["Damietta"] = ["damietta", "دمياط"]
+        };
+
     private static string? GetStringProp(System.Text.Json.JsonElement elem, string prop)
     {
         return elem.TryGetProperty(prop, out var val) && val.ValueKind == System.Text.Json.JsonValueKind.String
             ? val.GetString()
             : null;
     }
+
+    private sealed record CachedReverseGeocode(string FormattedAddress, string City, string State, DateTimeOffset ExpiresAt);
 
     private static double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
     {
@@ -511,7 +605,7 @@ END
             NewArea(cairo.Id, "Farther Cairo surroundings", 90, 3)
         ]);
 
-        var upper = NewZone("zone_upper_egypt_near", "Areas Near Upper Egypt", "Upper Egypt / farther governorates", "fixed", 100, 100, 100, 100, 4, 3, now);
+        var upper = NewZone("zone_upper_egypt_near", "Other Egyptian Governorates", "Egyptian governorates outside Cairo / Alexandria", "fixed", 100, 100, 100, 100, 4, 3, now);
 
         db.DeliveryZones.AddRange(alexandria, cairo, upper);
         await db.SaveChangesAsync();

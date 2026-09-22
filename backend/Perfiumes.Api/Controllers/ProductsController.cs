@@ -25,6 +25,10 @@ public sealed class ProductsController(ProductRepository products, AdminAuthServ
         {
             return Results.Unauthorized();
         }
+        if (request.StockQuantity < 0)
+        {
+            return Results.BadRequest(new { message = "Stock quantity cannot be negative." });
+        }
 
         var product = await products.CreateAsync(request);
         return Results.Created($"/api/products/{product.Id}", product);
@@ -36,6 +40,10 @@ public sealed class ProductsController(ProductRepository products, AdminAuthServ
         if (!auth.IsAuthorized(HttpContext))
         {
             return Results.Unauthorized();
+        }
+        if (request.StockQuantity < 0)
+        {
+            return Results.BadRequest(new { message = "Stock quantity cannot be negative." });
         }
 
         var product = await products.UpdateAsync(id, request);

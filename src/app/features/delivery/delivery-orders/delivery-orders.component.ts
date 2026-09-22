@@ -1,5 +1,5 @@
 import { DatePipe, NgClass } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, OnDestroy, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -10,11 +10,12 @@ import { ToastService } from '@core/services/toast.service';
 import { ThemeService } from '@core/services/theme.service';
 import { LocalizationService } from '@core/services/localization.service';
 import { InvoiceService } from '@core/services/invoice.service';
+import { OrderTrackingService } from '@core/services/order-tracking.service';
 import { OrderMapComponent } from '@shared/components/order-map/order-map.component';
 import { OrderChatComponent } from '@shared/components/order-chat/order-chat.component';
 import { EgpPipe } from '@shared/pipes/egp.pipe';
 import { TranslatePipe } from '@shared/pipes/translate.pipe';
-import { forkJoin, timeout } from 'rxjs';
+import { forkJoin, Subscription, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-delivery-orders',
@@ -32,7 +33,7 @@ import { forkJoin, timeout } from 'rxjs';
   templateUrl: './delivery-orders.component.html',
   styleUrls: ['./delivery-orders.component.css']
 })
-export class DeliveryOrdersComponent {
+export class DeliveryOrdersComponent implements OnDestroy {
   readonly orders = signal<Order[]>([]);
   readonly loading = signal(true);
   readonly activeMapOrder = signal<Order | null>(null);
@@ -40,6 +41,8 @@ export class DeliveryOrdersComponent {
   readonly search = signal('');
   readonly filter = signal<'all' | 'ready' | 'on-the-way' | 'delivered'>('all');
   private readonly ratingOrderId: string | null;
+  private statusSubscription?: Subscription;
+  private trackedOrderIds = new Set<string>();
 
   // Computed counts
   readonly totalCount = computed(() => this.orders().length);
@@ -95,6 +98,7 @@ export class DeliveryOrdersComponent {
     readonly theme: ThemeService,
     private readonly i18n: LocalizationService,
     private readonly invoiceService: InvoiceService,
+    private readonly tracking: OrderTrackingService,
     route: ActivatedRoute
   ) {
     this.ratingOrderId = route.snapshot.queryParamMap.get('ratingOrderId');
@@ -102,19 +106,33 @@ export class DeliveryOrdersComponent {
       void this.router.navigateByUrl('/');
       return;
     }
+    this.statusSubscription = this.tracking.status$.subscribe((event) => {
+      this.orders.update((orders) => orders.map((order) =>
+        order.id.toLowerCase() === event.orderId.toLowerCase()
+          ? { ...order, status: event.status as Order['status'] }
+          : order
+      ));
+    });
     this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.statusSubscription?.unsubscribe();
+    this.trackedOrderIds.forEach((id) => this.tracking.leaveOrder(id));
   }
 
   load(): void {
     this.loading.set(true);
     this.auth.ensureAccessToken().pipe(timeout({ first: 10000 })).subscribe((token) => {
       if (!token) {
+        this.loading.set(false);
         void this.router.navigate(['/login'], { queryParams: { redirect: '/delivery/orders' } });
         return;
       }
       this.ordersApi.getDeliveryOrders(token).subscribe({
         next: (orders) => {
           this.orders.set(orders);
+          this.syncTracking(orders);
           const ratingOrder = this.ratingOrderId ? orders.find((order) => order.id === this.ratingOrderId) : undefined;
           if (ratingOrder) {
             this.filter.set('delivered');
@@ -128,6 +146,9 @@ export class DeliveryOrdersComponent {
           this.toast.show(this.isAr ? 'تعذر تحميل الطلبات الموكلة إليك.' : 'Could not load assigned orders.', 'error');
         }
       });
+    }, () => {
+      this.loading.set(false);
+      this.toast.show(this.isAr ? 'تعذر التحقق من تسجيل الدخول.' : 'Could not verify your sign-in session.', 'error');
     });
   }
 
@@ -172,11 +193,20 @@ export class DeliveryOrdersComponent {
     return 'ready';
   }
 
+  statusStepClass(order: Order, step: 1 | 2 | 3): string {
+    const current = order.status === 'Delivered' ? 3 : order.status === 'OutForDelivery' ? 2 : 1;
+    return step < current ? 'complete' : step === current ? 'current' : 'pending';
+  }
+
   updateStatus(order: Order, status: 'OutForDelivery' | 'Delivered'): void {
     if (this.updatingId || order.status === status) return;
     this.updatingId = order.id;
     this.auth.ensureAccessToken().pipe(timeout({ first: 10000 })).subscribe((token) => {
-      if (!token) return;
+      if (!token) {
+        this.updatingId = null;
+        this.toast.show(this.isAr ? 'انتهت الجلسة. سجل الدخول مرة أخرى.' : 'Your session expired. Please sign in again.', 'error');
+        return;
+      }
       this.ordersApi.updateDeliveryStatus(order.id, status, token, this.notes[order.id] || '').subscribe({
         next: (updated) => {
           this.orders.update((list) => list.map((item) => (item.id === updated.id ? updated : item)));
@@ -197,6 +227,9 @@ export class DeliveryOrdersComponent {
           this.toast.show(error?.error?.message || (this.isAr ? 'تعذر تحديث الطلب.' : 'Could not update order.'), 'error');
         }
       });
+    }, () => {
+      this.updatingId = null;
+      this.toast.show(this.isAr ? 'تعذر التحقق من تسجيل الدخول.' : 'Could not verify your sign-in session.', 'error');
     });
   }
 
@@ -265,6 +298,10 @@ export class DeliveryOrdersComponent {
   }
 
   openMap(order: Order): void {
+    if (!this.hasCoordinates(order)) {
+      this.toast.show(this.isAr ? 'لا توجد إحداثيات دقيقة لعنوان العميل. استخدم زر الملاحة بالعنوان.' : 'No precise customer coordinates are available. Use address navigation instead.', 'error');
+      return;
+    }
     this.activeMapOrder.set(order);
   }
 
@@ -292,12 +329,23 @@ export class DeliveryOrdersComponent {
     return phone.replace(/[^\d+]/g, '');
   }
 
-  getGoogleNavUrl(order: Order): string {
-    if (order.customerLatitude && order.customerLongitude) {
+  getGoogleNavUrl(order: Order): string | null {
+    if (this.hasCoordinates(order)) {
       return `https://www.google.com/maps/dir/?api=1&destination=${order.customerLatitude},${order.customerLongitude}`;
     }
     const dest = [order.shippingAddress?.street, order.shippingAddress?.city, 'Egypt'].filter(Boolean).join(', ');
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
+    return dest.length > 'Egypt'.length
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`
+      : null;
+  }
+
+  navigateToCustomer(order: Order): void {
+    const url = this.getGoogleNavUrl(order);
+    if (!url) {
+      this.toast.show(this.isAr ? 'عنوان العميل غير مكتمل. تواصل مع العميل قبل بدء الملاحة.' : 'The customer address is incomplete. Contact the customer before navigating.', 'error');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   routeUrl(order: Order): string {
@@ -322,5 +370,22 @@ export class DeliveryOrdersComponent {
   smsUrl(order: Order): string | null {
     const phone = order.shippingAddress.phone?.replace(/[^+\d]/g, '') || '';
     return phone ? `sms:${phone}` : null;
+  }
+
+  private hasCoordinates(order: Order): boolean {
+    const { customerLatitude: latitude, customerLongitude: longitude } = order;
+    return typeof latitude === 'number' && typeof longitude === 'number'
+      && Number.isFinite(latitude) && Number.isFinite(longitude)
+      && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+  }
+
+  private syncTracking(orders: Order[]): void {
+    void this.tracking.startConnection();
+    orders.forEach((order) => {
+      if (!this.trackedOrderIds.has(order.id)) {
+        this.trackedOrderIds.add(order.id);
+        this.tracking.joinOrder(order.id);
+      }
+    });
   }
 }
