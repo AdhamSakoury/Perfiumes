@@ -113,20 +113,16 @@ public sealed class OrdersController(
 
     [HttpPost("orders/{id}/messages/media")]
     [IgnoreAntiforgeryToken]
+    [Consumes("multipart/form-data")]
     public async Task<IResult> SendAttachment(
         string id,
-        [FromForm] IFormFile file,
-        [FromForm] string messageType,
-        [FromForm] string? senderEmail = null,
-        [FromForm] string? senderRole = null,
-        [FromForm] string? senderName = null)
+        [FromForm] Models.SendAttachmentRequest request)
     {
-        if (file is null)
+        if (request?.File is null)
             return Results.BadRequest(new { message = "File is required." });
-
         var principal = auth.ValidateRequest(HttpContext);
-        var email = principal?.Email ?? senderEmail;
-        var role = principal?.Role ?? senderRole ?? "customer";
+        var email = principal?.Email ?? request.SenderEmail;
+        var role = principal?.Role ?? request.SenderRole ?? "customer";
 
         if (string.IsNullOrWhiteSpace(email))
             return Results.Unauthorized();
@@ -135,7 +131,7 @@ public sealed class OrdersController(
         {
             var user = await users.GetByEmailAsync(email);
             return Results.Ok(await orders.SendOrderAttachmentAsync(
-                id, email, role, senderName ?? user?.FullName ?? email, file, messageType));
+                id, email, role, request.SenderName ?? user?.FullName ?? email, request.File!, request.MessageType));
         }
         catch (UnauthorizedAccessException)
         {

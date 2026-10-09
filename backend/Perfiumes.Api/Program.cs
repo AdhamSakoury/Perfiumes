@@ -12,12 +12,13 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 1. CORS Configuration
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200", "http://127.0.0.1:4200", "http://localhost:4201", "http://127.0.0.1:4201")
+            .SetIsOriginAllowed(_ => true) 
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -27,6 +28,7 @@ builder.Services.AddCors(options =>
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? builder.Configuration["Admin:TokenSecret"]
     ?? "replace-this-dev-secret-with-a-long-random-production-secret";
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Perfiumes.Api";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Perfiumes.Client";
 
@@ -70,11 +72,29 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+
+// Add Swagger/OpenAPI for API documentation
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.OperationFilter<Perfiumes.Api.Swagger.FormFileOperationFilter>();
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Perfiumes API", Version = "v1" });
+});
+
 builder.Services.AddSignalR();
 builder.Services.Configure<PaymobOptions>(builder.Configuration.GetSection("Paymob"));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+
+// 2. DbContext with EnableRetryOnFailure to avoid connection dropouts
 builder.Services.AddDbContext<PerfiumesDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null)
+    ));
+
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<ChatbotService>();
@@ -104,14 +124,25 @@ builder.Services.AddHttpClient<PaymobService>(client =>
 });
 
 var app = builder.Build();
+
 app.UseStaticFiles();
+
+// 3. Enable Swagger in ALL environments
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.RoutePrefix = string.Empty;
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Perfiumes API V1");
+});
 
 var emailOptions = app.Services.GetRequiredService<IOptions<EmailOptions>>().Value;
 var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+
 var emailConfigured =
     !string.IsNullOrWhiteSpace(emailOptions.SmtpHost)
     && !string.IsNullOrWhiteSpace(emailOptions.Username)
     && !string.IsNullOrWhiteSpace(emailOptions.Password);
+
 if (emailConfigured)
 {
     startupLogger.LogInformation(
@@ -128,26 +159,40 @@ else
         emailOptions.DevFallbackLinks);
 }
 
-using (var scope = app.Services.CreateScope())
+// 4. Safe Database Seeding
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<PerfiumesDbContext>();
-    await db.Database.EnsureCreatedAsync();
-    await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureSchemaAsync();
-    await scope.ServiceProvider.GetRequiredService<DeliveryZoneService>().EnsureSchemaAsync();
-    await scope.ServiceProvider.GetRequiredService<ProductRepository>().EnsureSeedAsync();
-    await scope.ServiceProvider.GetRequiredService<UserService>().EnsureSchemaAsync();
-    await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);
-    await scope.ServiceProvider.GetRequiredService<SupportMessageService>().EnsureSchemaAsync();
-    await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
-    await scope.ServiceProvider.GetRequiredService<PromoCodeService>().EnsureSchemaAsync();
-    await scope.ServiceProvider.GetRequiredService<NewsletterService>().EnsureSchemaAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<PerfiumesDbContext>();
+        await db.Database.EnsureCreatedAsync();
+        await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<DeliveryZoneService>().EnsureSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<ProductRepository>().EnsureSeedAsync();
+        await scope.ServiceProvider.GetRequiredService<UserService>().EnsureSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<UserService>().SeedAsync(app.Configuration);
+        await scope.ServiceProvider.GetRequiredService<SupportMessageService>().EnsureSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<AdminDashboardService>().EnsureSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<PromoCodeService>().EnsureSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<NewsletterService>().EnsureSchemaAsync();
+    }
+}
+catch (Exception ex)
+{
+    startupLogger.LogError(ex, "An error occurred while migrating/seeding the database.");
 }
 
+// 5. Correct Pipeline Order
+app.UseRouting();
+
 app.UseCors("Frontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 app.MapHub<NotificationHub>("/notificationHub");
 app.MapHub<SupportMessageHub>("/supportHub");
 app.MapHub<OrderTrackingHub>("/orderTrackingHub");
+
 app.Run();

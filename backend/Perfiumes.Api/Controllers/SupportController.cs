@@ -54,26 +54,24 @@ public sealed class SupportController(
 
     [HttpPost("support/conversations/{id}/messages/media")]
     [IgnoreAntiforgeryToken]
+    [Consumes("multipart/form-data")]
     public async Task<IResult> AddAttachment(
         string id,
-        [FromForm] IFormFile file,
-        [FromForm] string messageType,
-        [FromForm] string? senderEmail = null,
-        [FromForm] string? senderName = null)
+        [FromForm] Models.SupportAttachmentRequest request)
     {
-        if (file is null)
+        if (request?.File is null)
             return Results.BadRequest(new { message = "File is required." });
 
         var principal = auth.ValidateRequest(HttpContext);
         var isAdmin = principal?.Role == "admin";
-        var email = principal?.Email ?? senderEmail;
-        var name = senderName ?? principal?.Email;
+        var email = principal?.Email ?? request.SenderEmail;
+        var name = request.SenderName ?? principal?.Email;
 
         try
         {
             if (isAdmin && !string.IsNullOrWhiteSpace(principal?.Email))
             {
-                var adminConv = await support.AddAdminAttachmentAsync(id, principal.Email, file, messageType);
+                var adminConv = await support.AddAdminAttachmentAsync(id, principal.Email, request.File!, request.MessageType);
                 if (adminConv is null) return Results.NotFound();
                 await NotifyConversationAsync(adminConv);
                 await PublishNotificationAsync(adminConv.UserEmail, "Support replied",
@@ -83,7 +81,7 @@ public sealed class SupportController(
 
             var user = !string.IsNullOrWhiteSpace(email) ? await users.GetByEmailAsync(email) : null;
             var conversation = await support.AddCustomerAttachmentAsync(
-                id, name ?? user?.FullName, email ?? user?.Email, file, messageType);
+                id, name ?? user?.FullName, email ?? user?.Email, request.File!, request.MessageType);
             if (conversation is null)
                 return Results.NotFound();
             await NotifyConversationAsync(conversation);
@@ -128,12 +126,12 @@ public sealed class SupportController(
 
     [HttpPost("admin/support/conversations/{id}/reply/media")]
     [IgnoreAntiforgeryToken]
+    [Consumes("multipart/form-data")]
     public async Task<IResult> ReplyMedia(
         string id,
-        [FromForm] IFormFile file,
-        [FromForm] string messageType)
+        [FromForm] Models.SupportAttachmentRequest request)
     {
-        if (file is null)
+        if (request?.File is null)
             return Results.BadRequest(new { message = "File is required." });
 
         var admin = auth.ValidateRequest(HttpContext);
@@ -142,7 +140,7 @@ public sealed class SupportController(
 
         try
         {
-            var conversation = await support.AddAdminAttachmentAsync(id, admin.Email, file, messageType);
+            var conversation = await support.AddAdminAttachmentAsync(id, admin.Email, request.File!, request.MessageType);
             if (conversation is null)
                 return Results.NotFound();
             await NotifyConversationAsync(conversation);
