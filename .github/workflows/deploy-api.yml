@@ -31,13 +31,13 @@ jobs:
       - name: Deploy to MonsterASP over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ site97274.siteasp.net }}
-          username: ${{ site97274 }}
-          password: ${{ rY@9F7p!a_4H }}
+          server: ${{ secrets.MONSTERASP_FTP_SERVER }}
+          username: ${{ secrets.MONSTERASP_FTP_USERNAME }}
+          password: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
           protocol: ftps
           port: 21
           local-dir: ./publish/
-          server-dir: ${{ /wwwroot/ }}
+          server-dir: ${{ secrets.MONSTERASP_FTP_SERVER_DIR }}
           exclude: |
             **/web.config
             **/appsettings*.json
